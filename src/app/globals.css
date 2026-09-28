@@ -1,7 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+/* Theme values used by the landing page's Tailwind classes. */
+@theme {
+  --color-primary: #061638;
+  --color-primary-container: #1b2a4a;
+  --color-on-primary: #ffffff;
+  --color-secondary: #37689c;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #a4cbff;
+  --color-on-secondary-container: #163d65;
+  --color-secondary-fixed: #d1e3ff;
+  --color-tertiary: #002e2b;
+  --color-tertiary-container: #00534d;
+  --color-tertiary-fixed: #a4f2e5;
+  --color-surface: #f7f8fa;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4f6;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e7e8eb;
+  --color-surface-container-highest: #e1e3e7;
+  --color-on-surface: #1b1c20;
+  --color-on-surface-variant: #4b4e58;
+  --color-outline: #81848c;
+  --color-outline-variant: #c6c8cf;
+  --color-error: #d34545;
+
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+  --spacing-margin: clamp(1rem, 2.5vw, 2rem);
+  --spacing-gutter: 1.5rem;
+
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.2;
+  --text-headline-lg: 2rem;
+  --text-headline-lg--line-height: 1.35;
+  --text-headline-md: 1.5rem;
+  --text-headline-md--line-height: 1.4;
+  --text-headline-sm: 1.25rem;
+  --text-headline-sm--line-height: 1.4;
+  --text-title: 1rem;
+  --text-title--line-height: 1.5;
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.65;
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.6;
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1.5;
+  --text-label-lg: 0.875rem;
+  --text-label-lg--line-height: 1.5;
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1.4;
+  --text-label-sm: 0.6875rem;
+  --text-label-sm--line-height: 1.4;
+  --text-furigana: 0.625rem;
+  --text-furigana--line-height: 1.5;
+
+  --font-weight-display: 700;
+  --font-weight-headline-lg: 700;
+  --font-weight-headline-md: 700;
+  --font-weight-headline-sm: 600;
+  --font-weight-title: 600;
+  --font-weight-body-lg: 400;
+  --font-weight-body-md: 400;
+  --font-weight-body-sm: 400;
+  --font-weight-label-lg: 600;
+  --font-weight-label-md: 500;
+  --font-weight-label-sm: 400;
+  --font-weight-furigana: 400;
+}
+
 body {
-  background: #ffffff;
-  color: #171717;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: "Inter", "Noto Sans JP", Arial, sans-serif;
+}
+
+
+@media (max-width: 639px) {
+  h1.text-display {
+    font-size: 2rem;
+  }
 }
