@@ -58,7 +58,7 @@ Nếu tắt Confirm email để thử local, đăng ký thành công sẽ vào d
 
 Các POST chỉ chấp nhận Origin trùng với origin ứng dụng. Nếu chạy sau reverse proxy, cấu hình proxy giữ đúng host/protocol của request. Cookie phiên là HttpOnly, SameSite=Lax, Secure trong production. Không lưu token trong localStorage. Supabase cung cấp giới hạn tần suất Auth; cấu hình thêm CAPTCHA/rate limits trong Supabase trước khi mở đăng ký công khai.
 
-Không cần service role key. Để bật lưu hồ sơ, chạy migration `supabase/migrations/202609290002_create_candidate_profiles.sql` trong Supabase SQL Editor. Bảng hồ sơ bật RLS và giới hạn mọi thao tác theo `auth.uid()`.
+Không cần service role key. Để bật lưu hồ sơ, chạy các migration `202609290002_create_candidate_profiles.sql` và `202609290003_expand_candidate_profile.sql` trong Supabase SQL Editor theo thứ tự. Migration thứ ba bổ sung lĩnh vực quan tâm, ngôn ngữ, học vấn/kinh nghiệm và kỹ năng công nghệ. Bảng hồ sơ bật RLS và giới hạn mọi thao tác theo `auth.uid()`.
 
 ## Dữ liệu dashboard
 
