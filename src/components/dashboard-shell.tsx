@@ -9,7 +9,7 @@ import Icon, { type IconName } from "@/components/icon";
 
 const navigation: { label: string; icon: IconName; anchor?: string; action?: string }[] = [
   { label: "Dashboard", icon: "home", anchor: "/dashboard" },
-  { label: "My Profile", icon: "person", anchor: "#profile" },
+  { label: "My Profile", icon: "person", anchor: "/profile" },
   { label: "My CV", icon: "description", action: "my-cv" },
   { label: "Job Description", icon: "business_center", anchor: "#profile" },
   { label: "Interview Room", icon: "videocam", action: "interview-room" },
@@ -30,7 +30,7 @@ const previews: Record<string, { title: string; description: string }> = {
   notifications: { title: "Notifications", description: "Sample schedule: 6 days until your Rakuten interview. Today’s suggestion: spend 5 minutes reviewing particles and preparing questions for the interviewer." },
 };
 
-export default function DashboardShell({ children, user }: { children: ReactNode; user: AuthUser }) {
+export default function DashboardShell({ children, user, activePage = "Dashboard" }: { children: ReactNode; user: AuthUser; activePage?: string }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -86,10 +86,11 @@ export default function DashboardShell({ children, user }: { children: ReactNode
         </div>
         <div className="mx-5 border-t border-surface-container" />
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
-          {navigation.map((item, index) => {
-            const className = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] transition-colors ${index === 0 ? "bg-primary-container font-semibold text-white" : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"}`;
+          {navigation.map((item) => {
+            const isActive = item.label === activePage;
+            const className = `flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] transition-colors ${isActive ? "bg-primary-container font-semibold text-white" : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"}`;
             const content = <><span className="text-[20px]"><Icon name={item.icon} /></span><span>{item.label}</span>{item.action === "interview-room" && <span className="ml-auto rounded bg-secondary-fixed px-1.5 py-0.5 text-[9px] font-bold text-primary">DEMO</span>}</>;
-            return item.anchor ? <Link key={item.label} href={item.anchor} aria-current={index === 0 ? "page" : undefined} onClick={() => setMenuOpen(false)} className={className}>{content}</Link> : <button key={item.label} type="button" data-mock={item.action} className={className}>{content}</button>;
+            return item.anchor ? <Link key={item.label} href={item.anchor} aria-current={isActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className={className}>{content}</Link> : <button key={item.label} type="button" data-mock={item.action} className={className}>{content}</button>;
           })}
         </nav>
         <div className="m-3 flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
@@ -107,7 +108,7 @@ export default function DashboardShell({ children, user }: { children: ReactNode
             <span className="hidden rounded bg-surface-container-low px-2 py-1 text-[10px] text-on-surface-variant 2xl:inline">Target: Web Developer · Rakuten / LINE Yahoo! / Mercari</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <div role="group" aria-label="Mock interview proficiency level" className="flex rounded-lg bg-surface-container-low p-1">{["N2", "N1"].map((item) => <button key={item} type="button" aria-pressed={level === item} onClick={() => setLevel(item)} className={`rounded px-2 py-1 text-[11px] ${level === item ? "bg-tertiary-fixed font-semibold text-tertiary" : "text-on-surface-variant"}`}>{item === "N2" ? "JLPT N2" : item}</button>)}</div>
+            <label className="flex items-center gap-1.5 rounded-lg bg-surface-container-low px-2 py-1 text-[11px] text-on-surface-variant"><span className="sr-only">Mock interview proficiency level</span><span className="hidden sm:inline">JLPT</span><select aria-label="Mock interview proficiency level" value={level} onChange={(event) => setLevel(event.target.value)} className="cursor-pointer border-0 bg-transparent p-0 pr-5 text-[11px] font-semibold text-primary outline-none focus:ring-0">{["N5", "N4", "N3", "N2", "N1"].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
             <button type="button" data-mock="interview-room" className="flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-secondary"><Icon name="play_arrow" /><span className="hidden sm:inline">Start New Interview</span><span className="sm:hidden">Start</span></button>
             <button type="button" data-mock="notifications" aria-label="Notifications" className="relative p-2 text-lg text-on-surface-variant"><Icon name="notifications" /><span className="absolute top-1 right-1 size-1.5 rounded-full bg-error" /></button>
           </div>
