@@ -100,11 +100,11 @@ export default function LoginPage() {
                 <span className="flex items-center gap-1"><span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[14px] text-secondary"><Icon name="bolt" /></span>デモアカウントですぐ試す (Quick Demo):</span>
                 <span className="shrink-0 bg-blue-100 px-1.5">1-Click</span>
               </div>
-              <button type="button" onClick={showMockNotice} className="flex w-full items-center gap-1.5 bg-white px-2 py-2.5 text-left text-[11px] font-medium text-primary">
+              <Link href="/dashboard" className="flex w-full items-center gap-1.5 bg-white px-2 py-2.5 text-left text-[11px] font-medium text-primary">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold">P</span>
                 <span>Try as Phạm Trung Hiếu (VKU • JLPT N2)</span>
                 <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle ml-auto text-[18px] text-secondary"><Icon name="arrow_forward" /></span>
-              </button>
+              </Link>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">

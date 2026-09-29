@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* Theme values used by the landing page's Tailwind classes. */
+/* Shared theme for the landing page, login, and workspace. */
 @theme {
   --color-primary: #061638;
   --color-primary-container: #1b2a4a;
@@ -25,6 +25,15 @@
   --color-outline: #81848c;
   --color-outline-variant: #c6c8cf;
   --color-error: #d34545;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #d9e2ff;
+  --color-primary-fixed-dim: #b7c6ee;
+  --color-primary-fixed-variant: #384668;
+  --color-on-secondary-fixed: #001d36;
+  --color-on-tertiary-fixed: #00201d;
+  --color-on-tertiary-fixed-variant: #005049;
 
   --spacing-space-xs: 0.25rem;
   --spacing-space-sm: 0.5rem;
@@ -77,6 +86,22 @@ body {
   background: var(--color-surface);
   color: var(--color-on-surface);
   font-family: "Inter", "Noto Sans JP", Arial, sans-serif;
+}
+
+.dashboard button {
+  cursor: pointer;
+}
+
+.dashboard :is(button, a):focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard *, .dashboard *::before, .dashboard *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 

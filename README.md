@@ -44,6 +44,10 @@ The package scripts, TypeScript, ESLint, and PostCSS configuration, root layout,
 
 TypeScript 6.0 and ESLint 9 satisfy the peer requirements of Next.js's lint tooling. npm marks ESLint 9 as deprecated; ESLint 10 was checked but is outside the peer ranges of several bundled plugins.
 
-## Scope
+## Screens
 
-The homepage only displays the project name and initialization message. No product features, AI integrations, database, authentication, API routes, separate backend, or deployment infrastructure have been implemented. Additional source folders will be added only when needed.
+- `/`: Aizuchi.AI landing page.
+- `/login`: mock login screen; Quick Demo opens the dashboard without authentication.
+- `/dashboard`: responsive workspace based on the supplied dashboard HTML, using the shared Tailwind theme, local logo, and SVG icons. Includes sample KPIs, score history, skill breakdown, practice suggestions, target job/CV, and interview history.
+
+Dashboard navigation scrolls to the corresponding sections. Interview, report, CV, and settings actions open demo previews. The N2/N1 selector changes the interview preview preset. All data is illustrative; authentication, AI, camera/microphone checks, uploads, and persistence are not connected.
