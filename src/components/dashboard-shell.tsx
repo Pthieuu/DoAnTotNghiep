@@ -1,7 +1,9 @@
 "use client";
 
+import type { AuthUser } from "@/lib/auth-types";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Icon, { type IconName } from "@/components/icon";
 
@@ -20,15 +22,27 @@ const navigation: { label: string; icon: IconName; anchor?: string; action?: str
 const previews: Record<string, { title: string; description: string }> = {
   "interview-room": { title: "Interview Preview", description: "Practice for a Web Engineer role at Rakuten with 6 questions in about 20 minutes. Your interviewer is Tanaka, Tech Lead. This is a demo; AI, camera, and microphone features are not connected." },
   "practice-weaknesses": { title: "Practice Preview", description: "Sample drills cover keigo (Japanese honorific language), particles, and structured answers using PREP. Voice practice is not connected in this demo." },
-  "my-cv": { title: "CV Preview", description: "Phạm Trung Hiếu · VKU · JLPT N2. Sample experience: Laravel, Next.js, REST API design, and teamwork. Uploading and saving a CV are not available in this demo." },
+  "my-cv": { title: "CV Preview", description: "Example CV experience: Laravel, Next.js, REST API design, and teamwork. Uploading and saving a CV are not available in this demo." },
   "job-description": { title: "Target Job · Rakuten Symphony", description: "Cloud Platform & Web Application Engineer. Sample requirements: PHP/Laravel or Go/Java, RDBMS, REST APIs, and business Japanese at N2 or above. Illustrative match score: 88%." },
   "interview-history": { title: "AI Report · Demo", description: "Sample feedback: Your technical explanations are well structured. Keep practicing keigo, particles, and questions for the interviewer. All dashboard scores are illustrative." },
   "progress-analytics": { title: "Learning Progress", description: "Your sample score increased from 62 to 82 over 5 practice sessions. Strengths: technical explanations and motivation. Next focus: communication and questions for the interviewer." },
-  settings: { title: "Workspace Settings", description: "Sample profile: Phạm Trung Hiếu · VKU. Target: Backend & Full-Stack roles at Japanese companies. Settings changes are not saved in this demo." },
+  settings: { title: "Workspace Settings", description: "Sample career target: Target: Backend & Full-Stack roles at Japanese companies. Settings changes are not saved in this demo." },
   notifications: { title: "Notifications", description: "Sample schedule: 6 days until your Rakuten interview. Today’s suggestion: spend 5 minutes reviewing particles and preparing questions for the interviewer." },
 };
 
-export default function DashboardShell({ children }: { children: ReactNode }) {
+export default function DashboardShell({ children, user }: { children: ReactNode; user: AuthUser }) {
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  async function signOut() {
+    setSigningOut(true);
+    setLogoutError("");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Sign out failed");
+      router.replace("/login"); router.refresh();
+    } catch { setLogoutError("Unable to sign out. Please try again."); setSigningOut(false); }
+  }
   const [menuOpen, setMenuOpen] = useState(false);
   const [level, setLevel] = useState("N2");
   const [preview, setPreview] = useState<string | null>(null);
@@ -79,10 +93,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="m-3 flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary-fixed font-semibold text-primary">H</span>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Phạm Trung Hiếu</p><p className="mt-0.5 text-[10px] text-on-surface-variant">VKU · JLPT N2</p></div>
-          <Link href="/login" aria-label="Leave demo and return to login" className="p-1.5 text-outline hover:text-error"><Icon name="logout" /></Link>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary-fixed font-semibold text-primary">{user.name.trim().split(/\s+/).at(-1)?.[0]?.toUpperCase()}</span>
+          <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{user.name}</p><p className="mt-0.5 text-[10px] text-on-surface-variant" title={user.email}>{user.email}</p></div>
+          <button type="button" onClick={signOut} disabled={signingOut} aria-label="Sign out" title="Sign out" className="p-1.5 text-outline hover:text-error disabled:opacity-50"><Icon name="logout" /></button>
         </div>
+        {logoutError && <p role="alert" className="px-4 pb-3 text-xs text-error">{logoutError}</p>}
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-surface-container bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6">
@@ -98,13 +113,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="dashboard-content" className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-on-surface-variant"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-secondary" />Demo workspace · Sample data</span><span>Interview preset: JLPT {level}</span></div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-on-surface-variant"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-secondary" />Signed in · Interview data is illustrative</span><span>Interview preset: JLPT {level}</span></div>
           {children}
         </main>
       </div>
       <dialog ref={dialog} onClose={() => setPreview(null)} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }} aria-labelledby="preview-title" className="fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-lg rounded-xl bg-white p-6 text-on-surface shadow-xl backdrop:bg-primary/50">
         <div className="flex items-start justify-between gap-4"><h2 id="preview-title" className="text-lg font-semibold text-primary">{preview && previews[preview]?.title}</h2><button type="button" aria-label="Close" onClick={() => dialog.current?.close()} className="rounded p-2 hover:bg-surface-container-low"><Icon name="close" /></button></div>
         <p className="mt-3 text-sm leading-7 text-on-surface-variant">{preview && previews[preview]?.description}</p>
+        {preview === "settings" && <p className="mt-3 text-sm">Signed in as {user.name} · {user.email}</p>}
         {preview === "interview-room" && <p className="mt-3 rounded-lg bg-surface-container-low p-3 text-sm">Selected level: <strong>JLPT {level}</strong></p>}
         <form method="dialog" className="mt-6 flex justify-end"><button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white">Got It</button></form>
       </dialog>
