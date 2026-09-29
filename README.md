@@ -44,10 +44,12 @@ The package scripts, TypeScript, ESLint, and PostCSS configuration, root layout,
 
 TypeScript 6.0 and ESLint 9 satisfy the peer requirements of Next.js's lint tooling. npm marks ESLint 9 as deprecated; ESLint 10 was checked but is outside the peer ranges of several bundled plugins.
 
-## Screens
+## Screens and authentication
 
 - `/`: Aizuchi.AI landing page.
-- `/login`: mock login screen; Quick Demo opens the dashboard without authentication.
-- `/dashboard`: responsive workspace based on the supplied dashboard HTML, using the shared Tailwind theme, local logo, and SVG icons. Includes sample KPIs, score history, skill breakdown, practice suggestions, target job/CV, and interview history.
+- `/login`: email/password sign-in and registration through Supabase Auth.
+- `/dashboard`: protected workspace showing the authenticated name/email. Interview metrics, CV, and reports are still sample data.
 
-Dashboard navigation scrolls to the corresponding sections. Interview, report, CV, and settings actions open demo previews. The N2/N1 selector changes the interview preview preset. All data is illustrative; authentication, AI, camera/microphone checks, uploads, and persistence are not connected.
+See [Supabase setup](docs/supabase-setup.md) to create a project, configure `.env.local`, and enable confirmation emails. Auth endpoints use Next.js Route Handlers. Google/GitHub login and password recovery are not connected yet.
+
+Without Supabase configuration, the login page shows setup instructions and protected pages redirect to login. The application can still be built without credentials.

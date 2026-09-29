@@ -1,12 +1,18 @@
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import Icon from "@/components/icon";
 import DashboardShell from "@/components/dashboard-shell";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = { title: "Dashboard | Aizuchi.AI", description: "Preview your Japanese interview practice, progress, and AI feedback." };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await getUser();
+  if (!user) redirect("/login");
   return (
-    <DashboardShell>
+    <DashboardShell user={user}>
 <div className="flex flex-col w-full space-y-space-lg">
 {/* ==========================================
        1. HERO & WELCOME BANNER
@@ -20,7 +26,7 @@ export default function DashboardPage() {
 <div className="flex flex-wrap items-center gap-space-xs">
 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-lowest/15 backdrop-blur-md text-on-primary font-label-sm text-label-sm tracking-wide">
 <span className="w-1.5 h-1.5 rounded-full bg-tertiary-fixed animate-pulse"></span>
-            VKU Đà Nẵng • 4th Year CS
+            {user.email}
           </span>
 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">
             JLPT N2 (Target: N1 / Business)
@@ -31,10 +37,10 @@ export default function DashboardPage() {
 </div>
 <div className="pt-1">
 <h1 className="font-headline-lg text-[24px] sm:text-headline-lg font-bold tracking-tight text-on-primary flex flex-wrap items-center gap-2">
-            Good morning, Hiếu
+            Welcome, {user.name}
             <span className="inline-block  text-[26px]">👋</span>
 </h1>
-<p lang="ja" className="mt-1 text-sm text-primary-fixed-dim">おはようございます</p>
+<p lang="ja" className="mt-1 text-sm text-primary-fixed-dim">ようこそ</p>
 <p className="font-body-md text-body-md text-primary-fixed-dim/90 pt-0.5 flex flex-wrap items-center gap-1.5">
 <span className="inline-flex shrink-0 items-center justify-center text-[18px] text-tertiary-fixed"><Icon name="event_upcoming" /></span>
             Next interview: 
