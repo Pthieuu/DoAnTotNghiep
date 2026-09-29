@@ -10,7 +10,7 @@ import Icon, { type IconName } from "@/components/icon";
 const navigation: { label: string; icon: IconName; anchor?: string; action?: string }[] = [
   { label: "Dashboard", icon: "home", anchor: "/dashboard" },
   { label: "My Profile", icon: "person", anchor: "/profile" },
-  { label: "My CV", icon: "description", action: "my-cv" },
+  { label: "My CV", icon: "description", anchor: "/cv" },
   { label: "Job Description", icon: "business_center", anchor: "#profile" },
   { label: "Interview Room", icon: "videocam", action: "interview-room" },
   { label: "Practice Weaknesses", icon: "track_changes", anchor: "#practice" },
