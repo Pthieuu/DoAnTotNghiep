@@ -48,8 +48,10 @@ TypeScript 6.0 and ESLint 9 satisfy the peer requirements of Next.js's lint tool
 
 - `/`: Aizuchi.AI landing page.
 - `/login`: email/password sign-in and registration through Supabase Auth.
-- `/dashboard`: protected workspace showing the authenticated name/email. Interview metrics, CV, and reports are still sample data.
+- `/dashboard`: protected workspace showing the authenticated name/email and interview sessions saved for that account in Supabase. New accounts see an empty state until sessions are stored.
 
 See [Supabase setup](docs/supabase-setup.md) to create a project, configure `.env.local`, and enable confirmation emails. Auth endpoints use Next.js Route Handlers. Google/GitHub login and password recovery are not connected yet.
+
+Apply the SQL migration in `supabase/migrations/` in your Supabase SQL Editor to create the per-user interview history table and row-level security policies. Interview creation and score generation are not implemented yet, so the real dashboard will remain empty until that feature writes sessions.
 
 Without Supabase configuration, the login page shows setup instructions and protected pages redirect to login. The application can still be built without credentials.

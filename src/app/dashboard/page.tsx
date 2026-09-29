@@ -3,14 +3,27 @@ import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import Icon from "@/components/icon";
 import DashboardShell from "@/components/dashboard-shell";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Dashboard | Aizuchi.AI", description: "Preview your Japanese interview practice, progress, and AI feedback." };
+export const metadata: Metadata = { title: "Dashboard | Aizuchi.AI", description: "Your interview practice and progress." };
+
+type Interview = { id: string; title: string; company: string | null; level: string | null; score: number | null; status: string; completed_at: string | null };
+const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
 
 export default async function DashboardPage() {
   const user = await getUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("interview_sessions")
+    .select("id,title,company,level,score,status,completed_at")
+    .eq("user_id", user.id).order("completed_at", { ascending: false, nullsFirst: false });
+  const sessions = (data || []) as Interview[];
+  const completedSessions = sessions.filter((session) => session.status === "completed");
+  const scoredSessions = completedSessions.filter((session) => session.score !== null);
+  const averageScore = scoredSessions.length ? Math.round(scoredSessions.reduce((total, session) => total + (session.score || 0), 0) / scoredSessions.length) : 0;
+  const scores = [...scoredSessions].sort((a, b) => (a.completed_at || "").localeCompare(b.completed_at || "")).slice(-5);
   return (
     <DashboardShell user={user}>
 <div className="flex flex-col w-full space-y-space-lg">
@@ -43,9 +56,7 @@ export default async function DashboardPage() {
 <p lang="ja" className="mt-1 text-sm text-primary-fixed-dim">ようこそ</p>
 <p className="font-body-md text-body-md text-primary-fixed-dim/90 pt-0.5 flex flex-wrap items-center gap-1.5">
 <span className="inline-flex shrink-0 items-center justify-center text-[18px] text-tertiary-fixed"><Icon name="event_upcoming" /></span>
-            Next interview: 
-            <strong className="text-on-primary font-semibold">Rakuten · Web Engineer · First round</strong>
-            in <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-error text-on-error font-bold text-label-sm tracking-wider shadow-sm">6 days</span>
+            No upcoming interview scheduled
 </p>
 </div>
 </div>
@@ -75,15 +86,15 @@ export default async function DashboardPage() {
 </span>
 </div>
 <div className="mt-2 flex items-baseline gap-2">
-<span className="font-headline-lg text-headline-lg font-bold text-primary">18</span>
+<span className="font-headline-lg text-headline-lg font-bold text-primary">{completedSessions.length}</span>
 <span className="font-label-md text-label-md text-on-surface-variant">sessions</span>
 </div>
 <div className="mt-3 flex items-center justify-between pt-2 bg-surface-container-low/60 rounded px-2 py-1">
 <span className="font-label-sm text-label-sm text-on-tertiary-fixed-variant flex items-center gap-0.5">
 <span className="inline-flex shrink-0 items-center justify-center text-[14px]"><Icon name="trending_up" /></span>
-          +4 this week
+          Saved to your account
         </span>
-<span className="font-label-sm text-label-sm text-on-surface-variant">Goal: 5 / week</span>
+<span className="font-label-sm text-label-sm text-on-surface-variant">Personal history</span>
 </div>
 </div>
 {/* KPI 2 */}
@@ -95,12 +106,12 @@ export default async function DashboardPage() {
 </span>
 </div>
 <div className="mt-2 flex items-baseline gap-2">
-<span className="font-headline-lg text-headline-lg font-bold text-primary">81</span>
+<span className="font-headline-lg text-headline-lg font-bold text-primary">{averageScore}</span>
 <span className="font-body-md text-body-md text-on-surface-variant">/ 100</span>
 </div>
 <div className="mt-3 flex items-center justify-between pt-2 bg-surface-container-low/60 rounded px-2 py-1">
-<span className="font-label-sm text-label-sm text-secondary font-medium">Target benchmark: 75</span>
-<span className="inline-flex items-center px-1.5 py-0.5 rounded bg-tertiary-container text-tertiary-fixed font-label-sm text-label-sm font-semibold">Passed</span>
+<span className="font-label-sm text-label-sm text-secondary font-medium">Based on {scoredSessions.length} scored sessions</span>
+<span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-label-sm font-semibold">—</span>
 </div>
 </div>
 {/* KPI 3 */}
@@ -112,7 +123,7 @@ export default async function DashboardPage() {
 </span>
 </div>
 <div className="mt-2 flex items-baseline gap-2">
-<span className="font-headline-lg text-headline-lg font-bold text-primary">82</span>
+<span className="font-headline-lg text-headline-lg font-bold text-primary">0</span>
 <span className="font-body-md text-body-md text-on-surface-variant">/ 100</span>
 </div>
 <div className="mt-3 flex items-center justify-between pt-2 bg-surface-container-low/60 rounded px-2 py-1">
@@ -129,7 +140,7 @@ export default async function DashboardPage() {
 </span>
 </div>
 <div className="mt-2 flex items-baseline gap-2">
-<span className="font-headline-lg text-headline-lg font-bold text-secondary">78%</span>
+<span className="font-headline-lg text-headline-lg font-bold text-secondary">0%</span>
 <span className="font-label-md text-label-md text-on-tertiary-fixed-variant font-semibold">AI estimate</span>
 </div>
 <div className="mt-3 flex items-center justify-between pt-2 bg-surface-container-low/60 rounded px-2 py-1">
@@ -164,7 +175,7 @@ export default async function DashboardPage() {
 </div>
 {/* SVG Progression Visualization */}
 <div className="relative w-full h-56 pt-4 pb-2">
-<svg role="img" aria-label="Interview scores: 62, 68, 74, 78, 82. Passing benchmark: 75." className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 600 180">
+{scores.length === 0 ? <div className="flex h-56 items-center justify-center text-sm text-on-surface-variant">Your score chart will appear after your first completed interview.</div> : <div className="flex h-56 items-center justify-center gap-3">{scores.map((session) => <div key={session.id} className="flex h-full flex-col items-center justify-end gap-2"><span className="text-xs font-semibold">{session.score}</span><div className="w-8 rounded-t bg-secondary" style={{ height: `${session.score}%` }} /><span className="text-[10px] text-on-surface-variant">{session.completed_at ? new Date(session.completed_at).toLocaleDateString() : "—"}</span></div>)}</div>}{false && <svg role="img" aria-hidden="true" className="hidden" preserveAspectRatio="none" viewBox="0 0 600 180">
 <defs>
 <linearGradient id="areaGradient" x1="0%" x2="0%" y1="0%" y2="100%">
 <stop offset="0%" stopColor="#35618e" stopOpacity="0.25"></stop>
@@ -202,7 +213,7 @@ export default async function DashboardPage() {
 <circle cx="540" cy="79" fill="#1b2a4a" r="6" stroke="#d9e2ff" strokeWidth="3"></circle>
 <text className="font-label-md text-[12px] fill-[#041534] font-bold" textAnchor="middle" x="540" y="66">82 (latest)</text>
 <text className="font-label-sm text-[10px] fill-[#191c1e] font-semibold" textAnchor="middle" x="540" y="175">9/25</text>
-</svg>
+</svg>}
 </div>
 </div>
 
@@ -213,7 +224,7 @@ export default async function DashboardPage() {
 <span className="inline-flex shrink-0 items-center justify-center text-[16px]"><Icon name="verified" /></span>
 </span>
 <p className="font-body-sm text-body-sm text-on-surface">
-<strong>Progress:</strong> <span className="text-secondary font-bold">+20 points</span> since your first session (62). Your technical answers are more structured with PREP.
+<strong>Progress:</strong> <span className="text-secondary font-bold">No data</span> until your first scored interview.
           </p>
 </div>
 <button type="button" className="font-label-sm text-label-sm text-secondary hover:text-primary font-semibold whitespace-nowrap flex items-center" data-mock="progress-analytics">
@@ -230,7 +241,7 @@ export default async function DashboardPage() {
 <span className="inline-flex shrink-0 items-center justify-center text-[20px] text-primary"><Icon name="stacked_bar_chart" /></span>
             Skill Breakdown
           </h2>
-<span className="font-label-sm text-label-sm text-on-surface-variant">4 skill areas</span>
+<span className="font-label-sm text-label-sm text-on-surface-variant">0 assessments</span>
 </div>
 <div className="space-y-space-md">
 {/* Skill 1 */}
@@ -239,12 +250,12 @@ export default async function DashboardPage() {
 <span className="font-label-md text-label-md text-on-surface font-medium flex items-center gap-1">
 <span>Motivation &amp; Self-Promotion</span>
 </span>
-<span className="font-label-md text-label-md font-bold text-primary">84%</span>
+<span className="font-label-md text-label-md font-bold text-primary">0%</span>
 </div>
 <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
-<div className="bg-secondary h-full rounded-full" style={{ width: "84%" }}></div>
+<div className="bg-secondary h-full rounded-full" style={{ width: "0%" }}></div>
 </div>
-<p className="font-furigana text-furigana text-on-surface-variant">Convincing reasons for choosing a Japanese company and Rakuten.</p>
+<p className="font-furigana text-furigana text-on-surface-variant">No assessment data yet.</p>
 </div>
 {/* Skill 2 */}
 <div className="space-y-1">
@@ -252,12 +263,12 @@ export default async function DashboardPage() {
 <span className="font-label-md text-label-md text-on-surface font-medium flex items-center gap-1">
 <span>Technical Explanation (PREP)</span>
 </span>
-<span className="font-label-md text-label-md font-bold text-primary">88%</span>
+<span className="font-label-md text-label-md font-bold text-primary">0%</span>
 </div>
 <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
-<div className="bg-tertiary-container h-full rounded-full" style={{ width: "88%" }}></div>
+<div className="bg-tertiary-container h-full rounded-full" style={{ width: "0%" }}></div>
 </div>
-<p className="font-furigana text-furigana text-on-surface-variant">Strong explanation of technology choices for your VKU payment project.</p>
+<p className="font-furigana text-furigana text-on-surface-variant">No assessment data yet.</p>
 </div>
 {/* Skill 3 */}
 <div className="space-y-1">
@@ -265,12 +276,12 @@ export default async function DashboardPage() {
 <span className="font-label-md text-label-md text-on-surface font-medium flex items-center gap-1">
 <span>Keigo &amp; Business Japanese · <span lang="ja">敬語</span></span>
 </span>
-<span className="font-label-md text-label-md font-bold text-primary">82%</span>
+<span className="font-label-md text-label-md font-bold text-primary">0%</span>
 </div>
 <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
-<div className="bg-secondary h-full rounded-full" style={{ width: "82%" }}></div>
+<div className="bg-secondary h-full rounded-full" style={{ width: "0%" }}></div>
 </div>
-<p className="font-furigana text-furigana text-on-surface-variant">Consistent use of <span lang="ja">「〜でございます」「拝見しました」</span> (polite forms).</p>
+<p className="font-furigana text-furigana text-on-surface-variant">No assessment data yet.</p>
 </div>
 {/* Skill 4 - Focus */}
 <div className="space-y-1 p-2 rounded-lg bg-surface-container-low">
@@ -279,14 +290,14 @@ export default async function DashboardPage() {
 <span>Questions &amp; Communication</span>
 </span>
 <div className="flex items-center gap-1.5">
-<span className="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-[10px] font-bold">Focus area</span>
-<span className="font-label-md text-label-md font-bold text-error">76%</span>
+<span className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-sm text-[10px] font-bold">No data</span>
+<span className="font-label-md text-label-md font-bold text-error">0%</span>
 </div>
 </div>
 <div className="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
-<div className="bg-error h-full rounded-full" style={{ width: "76%" }}></div>
+<div className="bg-error h-full rounded-full" style={{ width: "0%" }}></div>
 </div>
-<p className="font-furigana text-furigana text-error font-medium">Ask more specific technical questions about the engineering team.</p>
+<p className="font-furigana text-furigana text-error font-medium">No assessment data yet.</p>
 </div>
 </div>
 </div>
@@ -319,7 +330,8 @@ export default async function DashboardPage() {
         <span className="inline-flex shrink-0 items-center justify-center text-[16px]"><Icon name="arrow_forward" /></span>
 </button>
 </div>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<div className="rounded-xl bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">No personalized practice recommendations yet.</div>
+<div className="hidden grid-cols-1 md:grid-cols-3 gap-space-md">
 {/* Drill Card 1: High Priority */}
 <div className="relative bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
 <div className="absolute -top-2.5 left-4">
@@ -432,7 +444,8 @@ export default async function DashboardPage() {
           Update CV
         </button>
 </div>
-<div className="mt-space-sm p-space-md rounded-xl bg-surface-container-low space-y-space-md">
+<div className="mt-space-sm rounded-xl bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">No CV or target job has been saved to your account yet.</div>
+<div className="hidden mt-space-sm p-space-md rounded-xl bg-surface-container-low space-y-space-md">
 {/* Target JD Banner */}
 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm bg-surface-container-lowest p-space-md rounded-lg shadow-sm">
 <div className="space-y-1">
@@ -562,7 +575,7 @@ export default async function DashboardPage() {
 <th scope="col" className="py-3 px-space-md text-right rounded-r">Action</th>
 </tr>
 </thead>
-<tbody className="font-body-md text-body-md divide-y divide-surface-container">
+<tbody aria-hidden="true" className="hidden">
 {/* Row 1 */}
 <tr className="hover:bg-surface transition-colors">
 <td className="py-3.5 px-space-md font-label-md text-label-md text-on-surface whitespace-nowrap">
@@ -677,7 +690,16 @@ export default async function DashboardPage() {
 </td>
 </tr>
 </tbody>
+<tbody className="font-body-md text-body-md divide-y divide-surface-container">
+{sessions.map((session) => <tr key={session.id} className="hover:bg-surface transition-colors">
+<td className="py-3.5 px-space-md whitespace-nowrap">{session.completed_at ? dateFormat.format(new Date(session.completed_at)) : "In progress"}</td>
+<td className="py-3.5 px-space-md"><div className="font-semibold text-primary">{session.title}</div>{session.company && <div className="text-xs text-on-surface-variant">{session.company}</div>}</td>
+<td className="py-3.5 px-space-md">{session.level || "—"}</td><td className="py-3.5 px-space-md">{session.score ?? "—"}</td>
+<td className="py-3.5 px-space-md capitalize">{session.status.replaceAll("_", " ")}</td><td className="py-3.5 px-space-md text-right">—</td>
+</tr>)}
+</tbody>
 </table>
+{error ? <p role="alert" className="mt-3 text-sm text-error">Cannot load sessions. Apply the SQL migration in supabase/migrations/.</p> : sessions.length === 0 && <p className="py-8 text-center text-sm text-on-surface-variant">No interviews yet. Saved sessions will appear here.</p>}
 </div>
 </div>
 {/* Inline Micro-interaction Script for Dashboard */}
