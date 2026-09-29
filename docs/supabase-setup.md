@@ -52,12 +52,13 @@ Nếu tắt Confirm email để thử local, đăng ký thành công sẽ vào d
 - `POST /api/auth/login`: xác thực email/mật khẩu.
 - `POST /api/auth/logout`: đăng xuất phiên hiện tại.
 - `GET /auth/confirm`: xác nhận token email.
-- `src/proxy.ts`: làm mới cookie phiên trước khi render `/login` và `/dashboard`.
+- `src/proxy.ts`: làm mới cookie phiên trước khi render `/login`, `/dashboard` và `/profile`.
+- `GET /api/profile`, `PUT /api/profile`: tải và lưu hồ sơ của tài khoản đang đăng nhập.
 - Dashboard gọi `auth.getUser()` trên server để xác thực và chỉ truyền tên/email/id xuống giao diện.
 
 Các POST chỉ chấp nhận Origin trùng với origin ứng dụng. Nếu chạy sau reverse proxy, cấu hình proxy giữ đúng host/protocol của request. Cookie phiên là HttpOnly, SameSite=Lax, Secure trong production. Không lưu token trong localStorage. Supabase cung cấp giới hạn tần suất Auth; cấu hình thêm CAPTCHA/rate limits trong Supabase trước khi mở đăng ký công khai.
 
-Không cần service role key hoặc SQL migration cho luồng này. Khi thêm bảng CV/lịch sử cá nhân, cần RLS gắn với `auth.uid()`.
+Không cần service role key. Để bật lưu hồ sơ, chạy migration `supabase/migrations/202609290002_create_candidate_profiles.sql` trong Supabase SQL Editor. Bảng hồ sơ bật RLS và giới hạn mọi thao tác theo `auth.uid()`.
 
 ## Dữ liệu dashboard
 
