@@ -40,7 +40,7 @@ Khi triển khai, thay Site URL bằng domain HTTPS thật và bổ sung redirec
 1. Mở `/login` → **Create an Account**.
 2. Nhập tên, email nhận được thư và mật khẩu ít nhất 12 ký tự.
 3. Mở email xác nhận. Link sẽ xác nhận tài khoản và đưa về `/dashboard`.
-4. Dashboard hiển thị tên/email của bạn. Các thẻ thống kê, CV và lịch sử vẫn là dữ liệu minh họa.
+4. Dashboard hiển thị tên/email của bạn. Thống kê và lịch sử phỏng vấn lấy từ bảng `interview_sessions` theo đúng tài khoản; tài khoản mới sẽ thấy trạng thái trống.
 5. Nhấn biểu tượng **Sign out** ở cuối sidebar, rồi đăng nhập lại bằng email/mật khẩu.
 6. Thử mật khẩu sai, tải lại dashboard, truy cập dashboard sau đăng xuất, và link xác nhận hết hạn.
 
@@ -58,6 +58,12 @@ Nếu tắt Confirm email để thử local, đăng ký thành công sẽ vào d
 Các POST chỉ chấp nhận Origin trùng với origin ứng dụng. Nếu chạy sau reverse proxy, cấu hình proxy giữ đúng host/protocol của request. Cookie phiên là HttpOnly, SameSite=Lax, Secure trong production. Không lưu token trong localStorage. Supabase cung cấp giới hạn tần suất Auth; cấu hình thêm CAPTCHA/rate limits trong Supabase trước khi mở đăng ký công khai.
 
 Không cần service role key hoặc SQL migration cho luồng này. Khi thêm bảng CV/lịch sử cá nhân, cần RLS gắn với `auth.uid()`.
+
+## Dữ liệu dashboard
+
+Chạy migration `supabase/migrations/202609290001_create_interview_sessions.sql` trong Supabase SQL Editor. Migration tạo bảng buổi phỏng vấn và bật Row Level Security để tài khoản chỉ đọc/sửa dữ liệu có `user_id` bằng `auth.uid()`.
+
+Dashboard tính số buổi hoàn tất và điểm trung bình từ các hàng có `status = 'completed'` cùng `score`. Các buổi chưa hoàn tất được liệt kê nhưng không tính vào KPI. Hiện ứng dụng chưa có tính năng tạo/lưu buổi phỏng vấn; bảng chỉ bắt đầu có dữ liệu khi chức năng đó hoặc một API ghi dữ liệu được bổ sung. Không nhập lại các số liệu demo cũ như thể đó là kết quả thật.
 
 Tài liệu chính thức:
 - https://supabase.com/docs/guides/auth/server-side/creating-a-client
