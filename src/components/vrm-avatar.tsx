@@ -18,10 +18,9 @@ type Props = {
   state: AvatarState;
   className?: string;
   onReady?: (expressions: string[]) => void;
-  horizontalOffset?: number;
 };
 
-export default function VrmAvatar({ state, className, onReady, horizontalOffset = 0 }: Props) {
+export default function VrmAvatar({ state, className, onReady }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -67,6 +66,11 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1;
+      // Keep the canvas CSS box equal to the host. Its drawing-buffer pixels
+      // scale with devicePixelRatio, but must not change its on-screen size.
+      renderer.domElement.style.width = "100%";
+      renderer.domElement.style.height = "100%";
+      renderer.domElement.style.display = "block";
       host.appendChild(renderer.domElement);
     } catch {
       setTimeout(() => {
@@ -82,11 +86,24 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       if (!renderer) return;
       const width = Math.max(host.clientWidth, 1);
       const height = Math.max(host.clientHeight, 1);
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       fitCamera?.();
     };
+    const handlePixelRatioChange = () => {
+      resize();
+      pixelRatioQuery?.removeEventListener("change", handlePixelRatioChange);
+      pixelRatioQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      pixelRatioQuery.addEventListener("change", handlePixelRatioChange);
+    };
+    let pixelRatioQuery: MediaQueryList | null = window.matchMedia(
+      `(resolution: ${window.devicePixelRatio}dppx)`,
+    );
+    pixelRatioQuery.addEventListener("change", handlePixelRatioChange);
+    window.addEventListener("resize", resize);
     const observer = new ResizeObserver(resize);
     observer.observe(host);
     resize();
@@ -118,6 +135,10 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
         // Tăng biên độ để cử động rõ rệt hơn
         const amplitude = activeState === "speaking" ? 0.6 : activeState === "listening" ? 0.3 : 0.15;
         const wave = Math.sin(time * (activeState === "thinking" ? 1.15 : 1.8));
+        // One short greeting when the avatar enters the room, then return to the
+        // regular interview gestures without changing the camera or framing.
+        const greeting = time < 3.6 ? Math.sin((time / 3.6) * Math.PI) : 0;
+        const speakingGesture = activeState === "speaking" ? 0.12 * (0.5 + 0.5 * Math.sin(time * 1.4)) : 0;
         const pose = (name: string, base: [number, number, number], motion: [number, number, number]) => {
           const bone = bodyBones[name];
           const rest = bodyRest[name];
@@ -131,11 +152,11 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
         };
         // Arms (Tăng biên độ cử động tay)
         pose("leftUpperArm", [0, 0, -0.85], [0.2, 0.4, 0.3]);
-        pose("rightUpperArm", [0, 0, 0.85], [0.2, -0.4, -0.3]);
+        pose("rightUpperArm", [0, 0, 0.85 + greeting * 0.78 + speakingGesture], [0.2, -0.4, -0.3]);
         pose("leftLowerArm", [0.12, 0, 0], [0.4, 0.2, 0.3]);
-        pose("rightLowerArm", [0.12, 0, 0], [0.4, -0.2, -0.3]);
+        pose("rightLowerArm", [0.12 + greeting * 0.9 + speakingGesture * 0.5, 0, 0], [0.4, -0.2, -0.3]);
         pose("leftHand", [0, 0, 0], [0.2, 0.1, 0.2]);
-        pose("rightHand", [0, 0, 0], [0.2, -0.1, -0.2]);
+        pose("rightHand", [0, Math.sin(time * 9) * 0.38 * greeting, Math.sin(time * 6) * 0.08 * greeting], [0.2, -0.1, -0.2]);
         // Legs (Tăng biên độ nhún nhảy chân)
         pose("leftUpperLeg", [0, 0, -0.05], [0.1, 0.1, 0]);
         pose("rightUpperLeg", [0, 0, 0.05], [-0.1, 0.1, 0]);
@@ -143,36 +164,39 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
         pose("rightLowerLeg", [0.05, 0, 0], [0.15, 0, 0]);
       };
 
-      // First apply the relaxed pose, then measure the skinned geometry in world
-      // space. Use the actual model bounds and aspect ratio to center and fit a full body view.
+      // Measure after posing so the camera fit follows the visible avatar rather
+      // than the VRM origin or its unposed skeleton.
       applyBodyPose(0, "idle");
       vrm.update(0);
       vrm.scene.updateMatrixWorld(true);
+      const head = humanoid?.getNormalizedBoneNode("head");
+      const face = vrm.scene.getObjectByName("Face");
+      const faceBounds = face ? new THREE.Box3().setFromObject(face, true) : null;
+      const faceCenter = faceBounds && !faceBounds.isEmpty()
+        ? faceBounds.getCenter(new THREE.Vector3())
+        : head?.getWorldPosition(new THREE.Vector3()) ?? new THREE.Vector3();
+
+      // Hiro's VRoid export has an off-center model origin. Move the VRM root
+      // itself so the face is at world X=0; aiming the camera at an offset alone
+      // still makes the body appear pushed to one side in this stage.
+      vrm.scene.position.x -= faceCenter.x;
+      vrm.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
       const center = bounds.getCenter(new THREE.Vector3());
-      const hips = humanoid?.getNormalizedBoneNode("hips");
-      if (hips) {
-        const hipsPos = new THREE.Vector3();
-        hips.getWorldPosition(hipsPos);
-        center.x = hipsPos.x;
-      }
-      const head = humanoid?.getNormalizedBoneNode("head");
       const top = bounds.isEmpty() ? 1.9 : bounds.max.y;
       // Use bounds.min.y to frame the entire body down to the feet
       const bottom = bounds.min.y;
       const frameHeight = Math.max(top - bottom, 0.85);
       const frameWidth = bounds.isEmpty() ? 0.9 : bounds.max.x - bounds.min.x;
-      const target = new THREE.Vector3(center.x, (top + bottom) / 2, center.z);
+      // Keep the stage centered on the avatar's corrected origin. The camera
+      // distance adapts to the available aspect ratio, while this target does not.
+      const target = new THREE.Vector3(0, (top + bottom) / 2, center.z);
       fitCamera = () => {
         const requiredHeight = Math.max(frameHeight, frameWidth / Math.max(camera.aspect, 0.55));
         const distance = requiredHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.08;
-        
-        const targetWithOffset = target.clone();
-        const horizontalHalfView = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
-        targetWithOffset.x += horizontalOffset * distance * horizontalHalfView;
-        
-        camera.position.set(targetWithOffset.x, targetWithOffset.y, targetWithOffset.z + distance);
-        camera.lookAt(targetWithOffset);
+
+        camera.position.set(target.x, target.y, target.z + distance);
+        camera.lookAt(target);
       };
       fitCamera();
       const expressions = Object.keys(vrm.expressionManager?.expressionMap ?? {});
@@ -218,6 +242,8 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       disposed = true;
       cancelAnimationFrame(frame);
       observer.disconnect();
+      window.removeEventListener("resize", resize);
+      pixelRatioQuery?.removeEventListener("change", handlePixelRatioChange);
       if (vrm) {
         scene.remove(vrm.scene);
         VRMUtils.deepDispose(vrm.scene);
@@ -225,7 +251,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       renderer?.dispose();
       renderer?.domElement.remove();
     };
-  }, [horizontalOffset, onReady]);
+  }, [onReady, hostRef]);
 
   return <div className={`relative h-full min-h-[340px] w-full overflow-hidden rounded-2xl ${className ?? ""}`}>
     <div ref={hostRef} className="absolute inset-0" />
