@@ -24,19 +24,19 @@ export default function InterviewRoomClient() {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-48px)] w-full bg-surface space-y-4 p-4 lg:p-6 overflow-hidden">
+    <div className="flex flex-col min-h-screen w-full bg-surface space-y-4 p-4 lg:p-6 overflow-auto">
       <InterviewHeader />
 
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+      <div className="flex flex-col gap-6 flex-1">
         {/* Main Content: AI Interviewer */}
-        <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-surface-container shadow-sm overflow-hidden relative">
+        <div className="h-[60vh] lg:h-[75vh] flex flex-col bg-white rounded-2xl border border-surface-container shadow-sm overflow-hidden relative shrink-0">
           <AIInterviewer aiState={aiState} showTranslation={showTranslation} onToggleTranslation={() => setShowTranslation(!showTranslation)} />
           <CandidateCamera />
           <InterviewControls micActive={micActive} onToggleMic={() => setMicActive(!micActive)} />
         </div>
 
-        {/* Right Side Panel */}
-        <div className="w-full lg:w-[400px] flex flex-col gap-4 min-h-0 shrink-0">
+        {/* Bottom Panel */}
+        <div className="w-full flex flex-col gap-4">
           <InterviewSidePanel />
         </div>
       </div>
