@@ -85,7 +85,7 @@ const paths = {
 
 export type IconName = keyof typeof paths;
 
-export default function Icon({ name }: { name: IconName }) {
+export default function Icon({ name, className }: { name: IconName; className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -99,7 +99,7 @@ export default function Icon({ name }: { name: IconName }) {
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
-      className="shrink-0"
+      className={`shrink-0 ${className ?? ""}`}
     >
       <path d={paths[name]} />
     </svg>
