@@ -73,7 +73,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
   const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
   if (provider === "ollama") {
     const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
-    const model = process.env.OLLAMA_MODEL || "qwen3:8b";
+    const model = process.env.OLLAMA_MODEL || "qwen3:4b";
     let tagsResponse: Response;
     try {
       tagsResponse = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(5000), cache: "no-store" });
@@ -89,10 +89,10 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
         method: "POST", signal: AbortSignal.timeout(165000), headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, stream: false, think: false, format: schema, options: { temperature: 0, num_ctx: 16384, num_predict: 3072 }, messages }),
+        body: JSON.stringify({ model, stream: false, think: false, keep_alive: "30s", format: schema, options: { temperature: 0, num_ctx: 8192, num_predict: 1536 }, messages }),
       });
     } catch (error) {
-      if (error instanceof Error && error.name === "TimeoutError") throw new Error("Ollama đã nhận CV nhưng model mất quá lâu để xử lý. Thử lại khi máy bớt tải hoặc dùng model nhỏ hơn như qwen3:4b.");
+      if (error instanceof Error && error.name === "TimeoutError") throw new Error(`Ollama đã nhận CV nhưng model ${model} mất quá lâu để xử lý. Đóng các tác vụ nặng, dùng model 4B hoặc nhập thông tin thủ công.`);
       throw new Error("Ollama dừng hoặc mất kết nối trong lúc xử lý CV. Mở lại Ollama rồi thử lại.");
     }
     if (!response.ok) throw new Error(`Ollama trả lỗi HTTP ${response.status}. Kiểm tra phiên bản Ollama và model ${model}.`);

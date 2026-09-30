@@ -67,7 +67,7 @@ Không cần service role key. Để bật lưu hồ sơ, chạy các migration 
 3. Cài [Ollama](https://ollama.com/download), mở ứng dụng Ollama, rồi tải model chạy local:
 
 ```sh
-ollama run qwen3:8b
+ollama run qwen3:4b
 ```
 
 Model tải khoảng 5 GB và cần tài nguyên máy tương ứng. Request CV chạy tại máy local, không gửi tới OpenAI và không tính phí API; đổi lại tốc độ phụ thuộc phần cứng. Ollama cung cấp API local và hỗ trợ đầu ra theo JSON Schema.
@@ -77,7 +77,7 @@ Model tải khoảng 5 GB và cần tài nguyên máy tương ứng. Request CV 
 ```dotenv
 CV_AI_PROVIDER=ollama
 OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen3:8b
+OLLAMA_MODEL=qwen3:4b
 # Chỉ cần khi xử lý PDF scan; có thể để trống nếu chỉ dùng PDF có text/DOCX.
 GOOGLE_CLOUD_VISION_API_KEY=...
 ```
