@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Icon from "@/components/icon";
+import VrmAvatar from "@/components/vrm-avatar";
 
 type AIState = "speaking" | "listening" | "thinking";
 
@@ -80,28 +80,22 @@ function AIInterviewer({ aiState, showTranslation, onToggleTranslation }: { aiSt
       </div>
 
       {/* Avatar Area */}
-      <div className="flex-1 relative bg-surface-container overflow-hidden flex items-center justify-center">
-        <Image 
-          src="/japanese_interviewer.jpg" 
-          alt="AI Interviewer"
-          fill
-          className={`object-cover transition-transform duration-700 ${aiState === "speaking" ? "scale-105" : "scale-100"}`}
-          priority
-        />
+      <div className="flex-1 relative bg-[#edf3fb] overflow-hidden flex items-center justify-center">
+        <VrmAvatar state={aiState} horizontalOffset={0.95} className="absolute inset-0 h-full min-h-0 rounded-none" />
         {/* Subtitle Overlay */}
-        <div className="absolute bottom-6 inset-x-0 flex flex-col items-center px-4 lg:px-12">
-           <div className="bg-primary/80 backdrop-blur-md rounded-2xl p-4 lg:p-6 text-center max-w-3xl w-full shadow-lg border border-white/10">
-             <p className="text-white text-headline-sm font-medium leading-relaxed">
-               {aiState === "speaking" ? "「それでは、自己紹介をお願いします。」" : "..."}
+        <div className="absolute bottom-4 left-4 z-10 flex max-w-2xl flex-col items-start">
+           <div className="bg-primary/85 backdrop-blur-md rounded-2xl p-3 lg:p-4 text-left shadow-lg border border-white/10">
+             <p className="text-white text-base lg:text-lg font-medium leading-relaxed">
+               「それでは、自己紹介をお願いします。」
              </p>
              {showTranslation && (
-               <p className="text-secondary-fixed mt-3 text-body-lg">
-                 "Trước tiên, hãy giới thiệu bản thân."
+               <p className="text-secondary-fixed mt-2 text-sm lg:text-base">
+                 &quot;Trước tiên, hãy giới thiệu bản thân.&quot;
                </p>
              )}
              <button 
                onClick={onToggleTranslation}
-               className="mt-4 px-4 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-label-sm font-medium transition-colors"
+               className="mt-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-medium transition-colors"
              >
                {showTranslation ? "Hide Vietnamese Translation" : "Show Vietnamese Translation"}
              </button>
