@@ -1,11 +1,11 @@
 # Interview flow MVP
 
-## Current state
+## Initial implementation state
 
 - CV upload, extraction, editing, and confirmation are implemented in `src/components/cv-workspace.tsx` and `/api/cv`.
 - A confirmed CV stores structured data in `candidate_cvs.confirmed_data`.
 - `interview_sessions` already exists, but currently stores only title, company, level, score, status, and timestamps.
-- Interview Room currently shows a sample question and cycles AI states on a timer. It does not load a session or use CV data.
+- Before Step 4, Interview Room showed a sample question and cycled AI states on a timer. Step 4 connects it to persisted session data.
 
 ## MVP decisions
 
@@ -49,15 +49,17 @@ The setup creates a persisted interview session and a fixed question list before
 - Apply the new Supabase migration before using this flow against the database.
 - Added `202609300003_extend_interview_sessions.sql` for role, language, question count, JD, CV reference/snapshot, and generated questions.
 - Added authenticated `POST /api/interviews`; it verifies the user's confirmed CV, validates setup values, creates questions with the configured Ollama/OpenAI provider, then saves the session.
-- The setup form waits for the request and shows the saved questions on success; failures show actionable errors. Interview Room loading by session ID remains Step 4.
+- The setup form waits for the request and shows the saved questions on success; failures show actionable errors.
 - Question generation must treat JD skills as requirements rather than candidate experience. Specific past-experience questions require a verbatim CV evidence quote; leaked AI instructions and unsupported project/experience premises are rejected before saving.
 - Done when a created session can be fetched with its original config and question list.
 
-### Step 4 — Connect Interview Room
+### Step 4 — Connect Interview Room (implemented)
 
-- Navigate to `/interview-room?sessionId=...` after successful creation.
-- Load and authorize the session; show its generated question, language/level, and progress.
-- Replace the mock timer state and hard-coded sample question with session-driven state.
+- Added a “Bắt đầu luyện tập” link after generation that opens `/interview-room?sessionId=...`.
+- The server loads the session by ID and authenticated user, then supplies the saved questions to the room.
+- Replaced the mock timer, sample question, fake transcript/feedback, and placeholder timer with session title, question/translation, CV evidence, level, and progress.
+- Added previous/next question navigation; the current index survives translation toggles for the loaded page.
+- Visiting the room without a valid session directs the user to set up a practice session.
 - Done when refresh preserves the session and next/previous question controls work.
 
 ### Step 5 — Capture answers
@@ -84,4 +86,4 @@ Prefer a migration that extends `interview_sessions` with setup fields and immut
 
 ## Next implementation boundary
 
-Steps 1–3 are implemented in separate commits. Step 4 is the next task: load an owned session in Interview Room and replace the demo question/state with persisted session data. Apply the database migration and configure an AI provider as described in README before exercising session creation locally.
+Steps 1–4 are implemented in separate commits. Step 5 is the next task: capture and persist user answers against the current question. Apply the database migration and configure an AI provider as described in README before exercising session creation locally.
