@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import DashboardShell from "@/components/dashboard-shell";
 import InterviewRoomClient from "./client-page";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +12,54 @@ export const metadata: Metadata = {
   description: "AI Japanese Interview Practice.",
 };
 
-export default async function InterviewRoomPage() {
+type StoredQuestion = { text: string; translation: string };
+type StoredTurn = { question: StoredQuestion; answer: string };
+type RoomSession = { id: string; title: string; company: string | null; level: string | null; total: number; currentQuestion: StoredQuestion | null; turns: StoredTurn[]; completed: boolean; loadError?: "session" | "answers" };
+
+export default async function InterviewRoomPage({ searchParams }: PageProps<"/interview-room">) {
   const user = await getUser();
   if (!user) redirect("/login");
 
+  const { sessionId } = await searchParams;
+  const supabase = await createClient();
+  let session: RoomSession | null = null;
+  if (typeof sessionId === "string" && sessionId.length <= 64) {
+    const { data, error: sessionError } = await supabase.from("interview_sessions")
+      .select("id,title,company,level,status,questions")
+      .eq("id", sessionId).eq("user_id", user.id).maybeSingle();
+    if (sessionError) {
+      session = { id: sessionId, title: "Interview Room", company: null, level: null, total: 0, currentQuestion: null, turns: [], completed: false, loadError: "session" };
+    } else if (data && Array.isArray(data.questions)) {
+      const { data: answerRows, error: answerError } = await supabase.from("interview_answers")
+        .select("question_index,answer")
+        .eq("session_id", sessionId)
+        .order("question_index", { ascending: true });
+      const questions = data.questions as StoredQuestion[];
+      if (answerError) {
+        session = { id: data.id, title: data.title, company: data.company, level: data.level, total: questions.length, currentQuestion: null, turns: [], completed: false, loadError: "answers" };
+      } else {
+        const answers = answerRows || [];
+        const publicQuestion = (question: StoredQuestion): StoredQuestion => ({ text: question.text, translation: question.translation });
+        const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer }] : []);
+        const completed = data.status === "completed";
+        const currentIndex = answers.length;
+        session = {
+          id: data.id,
+          title: data.title,
+          company: data.company,
+          level: data.level,
+          total: questions.length,
+          currentQuestion: completed || !questions[currentIndex] ? null : publicQuestion(questions[currentIndex]),
+          turns,
+          completed,
+        };
+      }
+    }
+  }
+
   return (
     <DashboardShell user={user} activePage="Interview Room">
-      <InterviewRoomClient />
+      <InterviewRoomClient key={session?.id || "no-session"} session={session} />
     </DashboardShell>
   );
 }
