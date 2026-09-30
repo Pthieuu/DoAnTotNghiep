@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       cv_snapshot: cvSnapshot,
       questions,
       status: "in_progress",
-    }).select("id,title,company,level,status,created_at,questions").single();
+    }).select("id,title,company,level,status,created_at,question_count").single();
 
     if (insertError) {
       console.error("Interview session create failed", { code: insertError.code, message: insertError.message });
