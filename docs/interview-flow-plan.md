@@ -56,16 +56,18 @@ The setup creates a persisted interview session and a fixed question list before
 ### Step 4 — Connect Interview Room (implemented)
 
 - Added a “Bắt đầu luyện tập” link after generation that opens `/interview-room?sessionId=...`.
-- The server loads the session by ID and authenticated user, then supplies the saved questions to the room.
-- Replaced the mock timer, sample question, fake transcript/feedback, and placeholder timer with session title, question/translation, CV evidence, level, and progress.
-- Added previous/next question navigation; the current index survives translation toggles for the loaded page.
+- The server loads the session by ID and authenticated user, but exposes only the first unanswered question and previous conversation turns to the page.
+- The setup confirmation no longer previews question text. The create API returns only session metadata, not the question list.
+- Replaced the mock timer, sample question, fake transcript/feedback, and placeholder timer with a session title, one current question, translation toggle, and progress.
 - Visiting the room without a valid session directs the user to set up a practice session.
-- Done when refresh preserves the session and next/previous question controls work.
+- Done when the correct session is loaded after opening or refreshing the room.
 
-### Step 5 — Capture answers
+### Step 5 — Capture answers (implemented)
 
-- Start with text answers and save each against its session question.
-- Add draft/save states and resume behavior.
+- The candidate replies to the current question in a text box; the next question is returned only after the answer is saved. Optional browser speech synthesis can read the current Japanese question aloud.
+- Persist turns in `interview_answers`, scoped by the session's owner with RLS; restore the transcript and next unanswered question on refresh.
+- After the final answer, mark the session completed. Scoring and feedback remain Step 6.
+- Added `202609300004_create_interview_answers.sql`; apply it before using answer submission.
 - Done when answers survive refresh and remain attached to the right question.
 
 ### Step 6 — Feedback and completion
@@ -86,4 +88,4 @@ Prefer a migration that extends `interview_sessions` with setup fields and immut
 
 ## Next implementation boundary
 
-Steps 1–4 are implemented in separate commits. Step 5 is the next task: capture and persist user answers against the current question. Apply the database migration and configure an AI provider as described in README before exercising session creation locally.
+Steps 1–5 are implemented in separate commits. Step 6 is the next task: provide feedback and a summary for the completed conversation. Apply the database migrations and configure an AI provider as described in README before exercising the flow locally.
