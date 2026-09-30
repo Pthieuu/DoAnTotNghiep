@@ -150,6 +150,12 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       vrm.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
       const center = bounds.getCenter(new THREE.Vector3());
+      const hips = humanoid?.getNormalizedBoneNode("hips");
+      if (hips) {
+        const hipsPos = new THREE.Vector3();
+        hips.getWorldPosition(hipsPos);
+        center.x = hipsPos.x;
+      }
       const head = humanoid?.getNormalizedBoneNode("head");
       const top = bounds.isEmpty() ? 1.9 : bounds.max.y;
       // Use bounds.min.y to frame the entire body down to the feet
@@ -160,12 +166,11 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       fitCamera = () => {
         const requiredHeight = Math.max(frameHeight, frameWidth / Math.max(camera.aspect, 0.55));
         const distance = requiredHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.08;
-        // Hiro's renderable upper body sits to the right of its full-body bounds
-        // center (the arm bind pose skews that center). Bias the camera target using
-        // a responsive fraction of its horizontal field of view.
+        
         const targetWithOffset = target.clone();
         const horizontalHalfView = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
         targetWithOffset.x += horizontalOffset * distance * horizontalHalfView;
+        
         camera.position.set(targetWithOffset.x, targetWithOffset.y, targetWithOffset.z + distance);
         camera.lookAt(targetWithOffset);
       };
