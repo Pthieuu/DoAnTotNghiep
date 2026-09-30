@@ -26,6 +26,16 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
   const stateRef = useRef(state);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const mouseRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   useEffect(() => { stateRef.current = state; }, [state]);
 
@@ -37,8 +47,8 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
     let vrm: VRM | null = null;
     let renderer: THREE.WebGLRenderer | null = null;
     let fitCamera: (() => void) | null = null;
-    const armBones: Partial<Record<"leftUpperArm" | "rightUpperArm" | "leftLowerArm" | "rightLowerArm" | "leftHand" | "rightHand", THREE.Object3D>> = {};
-    const armRest: Partial<Record<keyof typeof armBones, THREE.Quaternion>> = {};
+    const bodyBones: Record<string, THREE.Object3D> = {};
+    const bodyRest: Record<string, THREE.Quaternion> = {};
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#edf3fb");
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -90,22 +100,27 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
       }
       vrm = gltf.userData.vrm as VRM;
       const humanoid = vrm.humanoid;
-      for (const name of ["leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm", "leftHand", "rightHand"] as const) {
+      const boneNames = [
+        "leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm", "leftHand", "rightHand",
+        "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg", "leftFoot", "rightFoot"
+      ] as const;
+      for (const name of boneNames) {
         const bone = humanoid?.getNormalizedBoneNode(name);
         if (bone) {
-          armBones[name] = bone;
-          armRest[name] = bone.quaternion.clone();
+          bodyBones[name] = bone;
+          bodyRest[name] = bone.quaternion.clone();
         }
       }
       scene.add(vrm.scene);
       VRMUtils.rotateVRM0(vrm);
 
-      const applyArmPose = (time: number, activeState: AvatarState) => {
-        const amplitude = activeState === "speaking" ? 0.22 : activeState === "listening" ? 0.13 : 0.07;
+      const applyBodyPose = (time: number, activeState: AvatarState) => {
+        // Tăng biên độ để cử động rõ rệt hơn
+        const amplitude = activeState === "speaking" ? 0.6 : activeState === "listening" ? 0.3 : 0.15;
         const wave = Math.sin(time * (activeState === "thinking" ? 1.15 : 1.8));
-        const pose = (name: keyof typeof armBones, base: [number, number, number], motion: [number, number, number]) => {
-          const bone = armBones[name];
-          const rest = armRest[name];
+        const pose = (name: string, base: [number, number, number], motion: [number, number, number]) => {
+          const bone = bodyBones[name];
+          const rest = bodyRest[name];
           if (!bone || !rest) return;
           const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(
             base[0] + motion[0] * wave * amplitude,
@@ -114,27 +129,31 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
           ));
           bone.quaternion.copy(rest).multiply(offset);
         };
-        pose("leftUpperArm", [0, 0, -0.85], [0.08, 0.16, 0.12]);
-        pose("rightUpperArm", [0, 0, 0.85], [0.08, -0.16, -0.12]);
-        pose("leftLowerArm", [0.12, 0, 0], [0.2, 0.08, 0.12]);
-        pose("rightLowerArm", [0.12, 0, 0], [0.2, -0.08, -0.12]);
-        pose("leftHand", [0, 0, 0], [0.1, 0.08, 0.12]);
-        pose("rightHand", [0, 0, 0], [0.1, -0.08, -0.12]);
+        // Arms (Tăng biên độ cử động tay)
+        pose("leftUpperArm", [0, 0, -0.85], [0.2, 0.4, 0.3]);
+        pose("rightUpperArm", [0, 0, 0.85], [0.2, -0.4, -0.3]);
+        pose("leftLowerArm", [0.12, 0, 0], [0.4, 0.2, 0.3]);
+        pose("rightLowerArm", [0.12, 0, 0], [0.4, -0.2, -0.3]);
+        pose("leftHand", [0, 0, 0], [0.2, 0.1, 0.2]);
+        pose("rightHand", [0, 0, 0], [0.2, -0.1, -0.2]);
+        // Legs (Tăng biên độ nhún nhảy chân)
+        pose("leftUpperLeg", [0, 0, -0.05], [0.1, 0.1, 0]);
+        pose("rightUpperLeg", [0, 0, 0.05], [-0.1, 0.1, 0]);
+        pose("leftLowerLeg", [0.05, 0, 0], [0.15, 0, 0]);
+        pose("rightLowerLeg", [0.05, 0, 0], [0.15, 0, 0]);
       };
 
       // First apply the relaxed pose, then measure the skinned geometry in world
-      // space. Use the actual model bounds and aspect ratio to center and fit a bust view.
-      applyArmPose(0, "idle");
+      // space. Use the actual model bounds and aspect ratio to center and fit a full body view.
+      applyBodyPose(0, "idle");
       vrm.update(0);
       vrm.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
       const center = bounds.getCenter(new THREE.Vector3());
       const head = humanoid?.getNormalizedBoneNode("head");
-      const chest = humanoid?.getNormalizedBoneNode("upperChest") ?? humanoid?.getNormalizedBoneNode("chest");
-      const chestPosition = new THREE.Vector3();
-      chest?.getWorldPosition(chestPosition);
       const top = bounds.isEmpty() ? 1.9 : bounds.max.y;
-      const bottom = chest ? chestPosition.y - 0.28 : (bounds.min.y + (bounds.max.y - bounds.min.y) * 0.62);
+      // Use bounds.min.y to frame the entire body down to the feet
+      const bottom = bounds.min.y;
       const frameHeight = Math.max(top - bottom, 0.85);
       const frameWidth = bounds.isEmpty() ? 0.9 : bounds.max.x - bounds.min.x;
       const target = new THREE.Vector3(center.x, (top + bottom) / 2, center.z);
@@ -171,10 +190,13 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
           if (manager.getExpression("aa")) manager.setValue("aa", activeState === "speaking" ? 0.22 + 0.16 * (0.5 + 0.5 * Math.sin(time * 9)) : 0);
         }
         if (head) {
-          head.rotation.y = 0.035 * Math.sin(time * 0.65) + (activeState === "thinking" ? 0.08 : 0);
-          head.rotation.x = 0.018 * Math.sin(time * 0.9);
+          const targetX = mouseRef.current.y * 0.4 + 0.018 * Math.sin(time * 0.9);
+          const targetY = -mouseRef.current.x * 0.5 + 0.035 * Math.sin(time * 0.65) + (activeState === "thinking" ? 0.08 : 0);
+          
+          head.rotation.x += (targetX - head.rotation.x) * 0.1;
+          head.rotation.y += (targetY - head.rotation.y) * 0.1;
         }
-        applyArmPose(time, activeState);
+        applyBodyPose(time, activeState);
         vrm.scene.position.y = 0.012 * Math.sin(time * 1.15);
         vrm.update(delta);
         renderer.render(scene, camera);

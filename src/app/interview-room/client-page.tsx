@@ -81,7 +81,7 @@ function AIInterviewer({ aiState, showTranslation, onToggleTranslation }: { aiSt
 
       {/* Avatar Area */}
       <div className="flex-1 relative bg-[#edf3fb] overflow-hidden flex items-center justify-center">
-        <VrmAvatar state={aiState} horizontalOffset={0.95} className="absolute inset-0 h-full min-h-0 rounded-none" />
+        <VrmAvatar state={aiState} horizontalOffset={0} className="absolute inset-0 h-full min-h-0 rounded-none" />
         {/* Subtitle Overlay */}
         <div className="absolute bottom-4 left-4 z-10 flex max-w-2xl flex-col items-start">
            <div className="bg-primary/85 backdrop-blur-md rounded-2xl p-3 lg:p-4 text-left shadow-lg border border-white/10">
