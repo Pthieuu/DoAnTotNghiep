@@ -60,6 +60,34 @@ Các POST chỉ chấp nhận Origin trùng với origin ứng dụng. Nếu ch�
 
 Không cần service role key. Để bật lưu hồ sơ, chạy các migration `202609290002_create_candidate_profiles.sql` và `202609290003_expand_candidate_profile.sql` trong Supabase SQL Editor theo thứ tự. Migration thứ ba bổ sung lĩnh vực quan tâm, ngôn ngữ, học vấn/kinh nghiệm và kỹ năng công nghệ. Bảng hồ sơ bật RLS và giới hạn mọi thao tác theo `auth.uid()`.
 
+## My CV: file, AI và OCR
+
+1. Cài dependencies bằng `npm install` (hoặc `npm ci` sau khi lockfile đã cập nhật).
+2. Chạy `supabase/migrations/202609300001_create_candidate_cvs.sql` trong SQL Editor. Migration tạo bảng có RLS và bucket riêng tư giới hạn 15 MB; file được lưu trong thư mục UUID của tài khoản.
+3. Cài [Ollama](https://ollama.com/download), mở ứng dụng Ollama, rồi tải model chạy local:
+
+```sh
+ollama run qwen3:8b
+```
+
+Model tải khoảng 5 GB và cần tài nguyên máy tương ứng. Request CV chạy tại máy local, không gửi tới OpenAI và không tính phí API; đổi lại tốc độ phụ thuộc phần cứng. Ollama cung cấp API local và hỗ trợ đầu ra theo JSON Schema.
+
+4. Thêm vào `.env.local`:
+
+```dotenv
+CV_AI_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen3:8b
+# Chỉ cần khi xử lý PDF scan; có thể để trống nếu chỉ dùng PDF có text/DOCX.
+GOOGLE_CLOUD_VISION_API_KEY=...
+```
+
+Sau đó khởi động lại Next.js. Không cần `OPENAI_API_KEY` khi dùng Ollama. Nếu muốn dùng OpenAI API trả phí, đổi `CV_AI_PROVIDER=openai` và cấu hình `OPENAI_API_KEY` cùng `OPENAI_CV_MODEL`.
+
+Khóa dịch vụ chỉ được đọc trong Route Handler phía máy chủ. PDF có text được trích xuất bằng `pdf-parse`, DOCX bằng `mammoth`; PDF scan gửi OCR qua Google Cloud Vision. Thiếu cấu hình provider hoặc OCR key cần thiết sẽ tạo trạng thái lỗi có lý do, không báo thành công giả. Upload mới không xóa bản đã dùng trước đó cho đến khi trích xuất thành công. Tệp/Dữ liệu được phục vụ theo tài khoản đã đăng nhập và link tải có thời hạn 5 phút.
+
+`POST /api/cv`, `GET/PUT/DELETE /api/cv` và `POST /api/cv/[id]/process` là API CV. Dữ liệu AI, bản đã xác nhận và ghi chú được lưu riêng; My Profile không bị sửa. Hiện chưa có API tạo buổi phỏng vấn/câu hỏi để gắn CV vào lịch sử phỏng vấn.
+
 ## Dữ liệu dashboard
 
 Chạy migration `supabase/migrations/202609290001_create_interview_sessions.sql` trong Supabase SQL Editor. Migration tạo bảng buổi phỏng vấn và bật Row Level Security để tài khoản chỉ đọc/sửa dữ liệu có `user_id` bằng `auth.uid()`.
