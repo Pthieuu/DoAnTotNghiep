@@ -50,6 +50,7 @@ The setup creates a persisted interview session and a fixed question list before
 - Added `202609300003_extend_interview_sessions.sql` for role, language, question count, JD, CV reference/snapshot, and generated questions.
 - Added authenticated `POST /api/interviews`; it verifies the user's confirmed CV, validates setup values, creates questions with the configured Ollama/OpenAI provider, then saves the session.
 - The setup form waits for the request and shows the saved questions on success; failures show actionable errors. Interview Room loading by session ID remains Step 4.
+- Question generation must treat JD skills as requirements rather than candidate experience. Specific past-experience questions require a verbatim CV evidence quote; leaked AI instructions and unsupported project/experience premises are rejected before saving.
 - Done when a created session can be fetched with its original config and question list.
 
 ### Step 4 — Connect Interview Room
