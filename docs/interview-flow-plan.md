@@ -32,12 +32,13 @@ The setup creates a persisted interview session and a fixed question list before
 - Record how session configuration and generated questions will be stored.
 - Done when the setup payload, validation rules, and persistence plan are documented.
 
-### Step 2 — Interview setup screen
+### Step 2 — Interview setup screen (implemented)
 
 - Added `/interview-setup`, reachable from dashboard actions, the workspace header, profile, and navigation.
 - The server loads only the signed-in user's confirmed CV; the page links to My CV when none is available.
 - The form validates the required role and limits, and collects optional company/JD, JLPT level, and question count.
-- The setup form validates the inputs. Submission will be connected to session creation in Step 3.
+- The form validates role, company and JD limits and collects the selected JLPT level and question count.
+- Setup currently confirms valid values locally; saving the session is Step 3.
 - Done when valid input can be submitted and invalid/missing CV is handled clearly.
 
 ### Step 3 — Session persistence and question generation

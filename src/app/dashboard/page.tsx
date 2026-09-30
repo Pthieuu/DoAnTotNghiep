@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import Icon from "@/components/icon";
 import DashboardShell from "@/components/dashboard-shell";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -62,10 +63,10 @@ export default async function DashboardPage() {
 </div>
 {/* Action Cluster */}
 <div className="flex flex-wrap items-center gap-space-sm flex-shrink-0 w-full sm:w-auto">
-<button type="button" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-space-lg py-3 rounded-lg bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-surface-container-low transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" data-mock="interview-room">
+<Link href="/interview-setup" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-space-lg py-3 rounded-lg bg-surface-container-lowest text-primary font-label-lg text-label-lg font-bold shadow-lg hover:bg-surface-container-low transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
 <span className="inline-flex shrink-0 items-center justify-center text-[20px] text-secondary"><Icon name="rocket_launch" /></span>
 <span>Start New Interview</span>
-</button>
+</Link>
 <button type="button" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-space-md py-3 rounded-lg bg-surface-container-lowest/15 hover:bg-surface-container-lowest/25 text-on-primary backdrop-blur-md font-label-lg text-label-lg font-medium transition-all" data-mock="practice-weaknesses">
 <span className="inline-flex shrink-0 items-center justify-center text-[18px] text-tertiary-fixed"><Icon name="bolt" /></span>
 <span>Quick Practice (5 min)</span>
@@ -538,10 +539,10 @@ export default async function DashboardPage() {
 </div>
 </div>
 <div className="pt-space-md">
-<button type="button" className="w-full inline-flex items-center justify-center gap-2 py-3 px-space-md rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-lg text-label-lg font-bold transition-all shadow-md" data-mock="interview-room">
+<Link href="/interview-setup" className="w-full inline-flex items-center justify-center gap-2 py-3 px-space-md rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-lg text-label-lg font-bold transition-all shadow-md">
 <span className="inline-flex shrink-0 items-center justify-center text-[20px]"><Icon name="videocam" /></span>
           Start Mock Interview
-        </button>
+        </Link>
 </div>
 </div>
 </div>
