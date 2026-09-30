@@ -86,13 +86,13 @@ Sau đó khởi động lại Next.js. Không cần `OPENAI_API_KEY` khi dùng O
 
 Khóa dịch vụ chỉ được đọc trong Route Handler phía máy chủ. PDF có text được trích xuất bằng `pdf-parse`, DOCX bằng `mammoth`; PDF scan gửi OCR qua Google Cloud Vision. Thiếu cấu hình provider hoặc OCR key cần thiết sẽ tạo trạng thái lỗi có lý do, không báo thành công giả. Upload mới không xóa bản đã dùng trước đó cho đến khi trích xuất thành công. Tệp/Dữ liệu được phục vụ theo tài khoản đã đăng nhập và link tải có thời hạn 5 phút.
 
-`POST /api/cv`, `GET/PUT/DELETE /api/cv` và `POST /api/cv/[id]/process` là API CV. Dữ liệu AI gốc (`extracted_data`), bản nháp (`edited_data`) và bản đã xác nhận (`confirmed_data`) được lưu riêng; nút xác nhận chỉ báo thành công sau khi Supabase ghi xong, và My Profile không bị sửa. Hiện chưa có API tạo buổi phỏng vấn/câu hỏi để gắn CV vào lịch sử phỏng vấn.
+`POST /api/cv`, `GET/PUT/DELETE /api/cv` và `POST /api/cv/[id]/process` là API CV. Dữ liệu AI gốc (`extracted_data`), bản nháp (`edited_data`) và bản đã xác nhận (`confirmed_data`) được lưu riêng; nút xác nhận chỉ báo thành công sau khi Supabase ghi xong, và My Profile không bị sửa.
 
 ## Dữ liệu dashboard
 
-Chạy migration `supabase/migrations/202609290001_create_interview_sessions.sql` trong Supabase SQL Editor. Migration tạo bảng buổi phỏng vấn và bật Row Level Security để tài khoản chỉ đọc/sửa dữ liệu có `user_id` bằng `auth.uid()`.
+Chạy migration `supabase/migrations/202609290001_create_interview_sessions.sql` trong Supabase SQL Editor để tạo bảng buổi phỏng vấn. Để tạo buổi mới từ CV, chạy theo thứ tự các migration CV `202609300001_create_candidate_cvs.sql`, `202609300002_extend_candidate_cvs.sql`, sau đó `202609300003_extend_interview_sessions.sql`. Migration cuối thêm cấu hình vai trò/JD, số câu hỏi, snapshot CV và danh sách câu hỏi. Các bảng bật Row Level Security để tài khoản chỉ thao tác dữ liệu của chính mình.
 
-Dashboard tính số buổi hoàn tất và điểm trung bình từ các hàng có `status = 'completed'` cùng `score`. Các buổi chưa hoàn tất được liệt kê nhưng không tính vào KPI. Hiện ứng dụng chưa có tính năng tạo/lưu buổi phỏng vấn; bảng chỉ bắt đầu có dữ liệu khi chức năng đó hoặc một API ghi dữ liệu được bổ sung. Không nhập lại các số liệu demo cũ như thể đó là kết quả thật.
+Dashboard tính số buổi hoàn tất và điểm trung bình từ các hàng có `status = 'completed'` cùng `score`. Các buổi chưa hoàn tất được liệt kê nhưng không tính vào KPI. `/interview-setup` yêu cầu người dùng đăng nhập và có CV ở trạng thái `confirmed`. Khi gửi cấu hình, `POST /api/interviews` tạo câu hỏi bằng `CV_AI_PROVIDER` rồi lưu cấu hình và snapshot CV vào `interview_sessions`. Nếu migration chưa được áp dụng, API trả thông báo yêu cầu chạy `202609300003_extend_interview_sessions.sql`. Interview Room chưa tải session đã tạo; tích hợp đó thuộc bước triển khai tiếp theo.
 
 Tài liệu chính thức:
 - https://supabase.com/docs/guides/auth/server-side/creating-a-client

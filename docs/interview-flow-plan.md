@@ -41,12 +41,15 @@ The setup creates a persisted interview session and a fixed question list before
 - Setup currently confirms valid values locally; saving the session is Step 3.
 - Done when valid input can be submitted and invalid/missing CV is handled clearly.
 
-### Step 3 — Session persistence and question generation
+### Step 3 — Session persistence and question generation (implemented)
 
 - Extend session persistence for role, language, question count, JD, CV snapshot, and generated questions.
 - Add an authenticated route that verifies CV ownership and confirmation, validates input, generates questions, then saves the session.
 - Show the saved questions after successful creation and useful errors on failure.
 - Apply the new Supabase migration before using this flow against the database.
+- Added `202609300003_extend_interview_sessions.sql` for role, language, question count, JD, CV reference/snapshot, and generated questions.
+- Added authenticated `POST /api/interviews`; it verifies the user's confirmed CV, validates setup values, creates questions with the configured Ollama/OpenAI provider, then saves the session.
+- The setup form waits for the request and shows the saved questions on success; failures show actionable errors. Interview Room loading by session ID remains Step 4.
 - Done when a created session can be fetched with its original config and question list.
 
 ### Step 4 — Connect Interview Room
@@ -80,4 +83,4 @@ Prefer a migration that extends `interview_sessions` with setup fields and immut
 
 ## Next implementation boundary
 
-Step 1 is planning only. Step 2 begins application changes after this data contract is reviewed. Database migrations and AI provider behavior are part of Step 3, not prerequisites for reviewing the setup fields.
+Steps 1–3 are implemented in separate commits. Step 4 is the next task: load an owned session in Interview Room and replace the demo question/state with persisted session data. Apply the database migration and configure an AI provider as described in README before exercising session creation locally.
