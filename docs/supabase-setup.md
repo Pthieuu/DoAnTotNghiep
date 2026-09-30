@@ -63,7 +63,7 @@ Không cần service role key. Để bật lưu hồ sơ, chạy các migration 
 ## My CV: file, AI và OCR
 
 1. Cài dependencies bằng `npm install` (hoặc `npm ci` sau khi lockfile đã cập nhật).
-2. Chạy `supabase/migrations/202609300001_create_candidate_cvs.sql` trong SQL Editor. Migration tạo bảng có RLS và bucket riêng tư giới hạn 15 MB; file được lưu trong thư mục UUID của tài khoản.
+2. Chạy `supabase/migrations/202609300001_create_candidate_cvs.sql`, sau đó `supabase/migrations/202609300002_extend_candidate_cvs.sql` trong SQL Editor. Migration tạo bảng có RLS và bucket riêng tư giới hạn 15 MB; file được lưu trong thư mục UUID của tài khoản. Migration mở rộng bổ sung bản chỉnh sửa chưa xác nhận và hỗ trợ CV nhập thủ công không cần file.
 3. Cài [Ollama](https://ollama.com/download), mở ứng dụng Ollama, rồi tải model chạy local:
 
 ```sh
@@ -86,7 +86,7 @@ Sau đó khởi động lại Next.js. Không cần `OPENAI_API_KEY` khi dùng O
 
 Khóa dịch vụ chỉ được đọc trong Route Handler phía máy chủ. PDF có text được trích xuất bằng `pdf-parse`, DOCX bằng `mammoth`; PDF scan gửi OCR qua Google Cloud Vision. Thiếu cấu hình provider hoặc OCR key cần thiết sẽ tạo trạng thái lỗi có lý do, không báo thành công giả. Upload mới không xóa bản đã dùng trước đó cho đến khi trích xuất thành công. Tệp/Dữ liệu được phục vụ theo tài khoản đã đăng nhập và link tải có thời hạn 5 phút.
 
-`POST /api/cv`, `GET/PUT/DELETE /api/cv` và `POST /api/cv/[id]/process` là API CV. Dữ liệu AI, bản đã xác nhận và ghi chú được lưu riêng; My Profile không bị sửa. Hiện chưa có API tạo buổi phỏng vấn/câu hỏi để gắn CV vào lịch sử phỏng vấn.
+`POST /api/cv`, `GET/PUT/DELETE /api/cv` và `POST /api/cv/[id]/process` là API CV. Dữ liệu AI gốc (`extracted_data`), bản nháp (`edited_data`) và bản đã xác nhận (`confirmed_data`) được lưu riêng; nút xác nhận chỉ báo thành công sau khi Supabase ghi xong, và My Profile không bị sửa. Hiện chưa có API tạo buổi phỏng vấn/câu hỏi để gắn CV vào lịch sử phỏng vấn.
 
 ## Dữ liệu dashboard
 

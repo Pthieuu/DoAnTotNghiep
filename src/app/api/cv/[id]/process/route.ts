@@ -25,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const file = new File([blob], row.file_name, { type: row.file_name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     const result = await processCv(file);
     const notes = [...result.notes, ...analysisNotes(result.data)];
-    const { data: updated, error: updateError } = await supabase.from("candidate_cvs").update({ status: "parsed", extracted_data: result.data, confirmed_data: null, extraction_notes: notes, error_message: null, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id).select("id,status,extracted_data,confirmed_data,extraction_notes").single();
+    const { data: updated, error: updateError } = await supabase.from("candidate_cvs").update({ status: "parsed", extracted_data: result.data, edited_data: null, confirmed_data: null, extraction_notes: notes, error_message: null, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id).select("id,status,extracted_data,edited_data,confirmed_data,extraction_notes").single();
     if (updateError) return json({ error: "Không thể lưu kết quả trích xuất." }, 500);
     const { data: previous } = await supabase.from("candidate_cvs").select("id,file_path").eq("user_id", user.id).neq("id", id).neq("status", "error");
     if (previous?.length) {

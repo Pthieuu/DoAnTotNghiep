@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEv
 import Icon from "@/components/icon";
 import type { CvData } from "@/lib/cv-schema";
 
-type Cv = { id: string; file_name: string; file_size: number; status: "processing" | "parsed" | "confirmed" | "error"; error_message: string | null; extracted_data: CvData | null; confirmed_data: CvData | null; extraction_notes: { type: string; section?: string; message: string; evidence?: { text: string; page: number | null }[] }[]; created_at: string; downloadUrl?: string | null };
+type Cv = { id: string; file_name: string; file_size: number | null; status: "processing" | "parsed" | "confirmed" | "error"; error_message: string | null; source?: "upload" | "manual"; extracted_data: CvData | null; edited_data?: CvData | null; confirmed_data: CvData | null; extraction_notes: { type: string; section?: string; message: string; evidence?: { text: string; page: number | null }[] }[]; created_at: string; downloadUrl?: string | null };
 const empty: CvData = { fullName: null, summary: null, motivation: null, motivationEvidence: [], expectations: null, expectationsEvidence: [], education: [], experience: [], projects: [], skills: [], languages: [], certificates: [] };
 const button = "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold transition-colors";
 const card = "rounded-2xl border border-surface-container bg-white shadow-sm";
@@ -27,6 +27,7 @@ export default function CvWorkspace() {
   const [aiConfigured, setAiConfigured] = useState<boolean | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [error, setError] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const refresh = useCallback(async () => {
@@ -36,9 +37,10 @@ export default function CvWorkspace() {
       if (!response.ok) throw new Error(result.error || "Không tải được CV.");
       setAiConfigured(result.aiConfigured ?? null);
       setCv(result.cv);
-      if (result.cv) setData(normalizeCv(result.cv.confirmed_data || result.cv.extracted_data));
+      if (result.cv) setData(normalizeCv(result.cv.edited_data || result.cv.confirmed_data || result.cv.extracted_data));
       else setData(empty);
       setError("");
+      setSavedMessage("");
     } catch (e) { setError(e instanceof Error ? e.message : "Không tải được CV."); }
     finally { setLoading(false); }
   }, []);
@@ -77,10 +79,20 @@ export default function CvWorkspace() {
       const response = await fetch("/api/cv", { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không tải được tệp.");
-      const uploaded: Cv = { ...result.cv, error_message: null, extracted_data: null, confirmed_data: null, extraction_notes: [], created_at: result.cv.created_at };
+      const uploaded: Cv = { ...result.cv, error_message: null, extracted_data: null, edited_data: null, confirmed_data: null, extraction_notes: [], created_at: result.cv.created_at };
       setCv(uploaded); setData(empty); setUploadProgress(null);
       void process(uploaded.id);
     } catch (e) { setError(e instanceof Error ? e.message : "Không tải được tệp."); setUploadProgress(null); }
+    finally { setWorking(false); }
+  }
+  async function createManual() {
+    setWorking(true); setError(""); setSavedMessage("");
+    try {
+      const response = await fetch("/api/cv", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ manual: true }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Không tạo được CV thủ công.");
+      setCv(result.cv); setData(empty);
+    } catch (e) { setError(e instanceof Error ? e.message : "Không tạo được CV thủ công."); }
     finally { setWorking(false); }
   }
   function onFileChange(event: ChangeEvent<HTMLInputElement>) { void acceptFile(event.target.files?.[0]); event.target.value = ""; }
@@ -89,10 +101,11 @@ export default function CvWorkspace() {
     if (!cv) return;
     setWorking(true); setError("");
     try {
-      const response = await fetch("/api/cv", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cv.id, data }) });
+      const response = await fetch("/api/cv", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: cv.id, data, confirmed }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error || "Không lưu được CV.");
-      setCv({ ...cv, status: "confirmed", confirmed_data: result.cv.confirmed_data });
-      if (!confirmed) setError("Thông tin đã được lưu. Trạng thái xác nhận được cập nhật sau khi lưu thành công.");
+      setCv({ ...cv, ...result.cv });
+      setData(normalizeCv(confirmed ? result.cv.confirmed_data : result.cv.edited_data));
+      setSavedMessage(confirmed ? "Đã xác nhận và lưu thông tin CV vào cơ sở dữ liệu." : "Đã lưu bản chỉnh sửa. Cần xác nhận trước khi dùng cho buổi phỏng vấn.");
     } catch (e) { setError(e instanceof Error ? e.message : "Không lưu được CV."); }
     finally { setWorking(false); }
   }
@@ -117,13 +130,14 @@ export default function CvWorkspace() {
   return <div className="mx-auto max-w-6xl space-y-6 pb-16">
     <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="mb-2 flex items-center gap-2 text-[11px] text-on-surface-variant"><span>Workspace</span><Icon name="chevron_right" /><span className="font-semibold text-primary">My CV</span></div><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-xl bg-secondary-fixed text-primary"><Icon name="description" /></span><div><h1 className="text-2xl font-bold tracking-tight text-primary">My CV</h1><p className="mt-1 text-sm text-on-surface-variant">Chuẩn bị hồ sơ để AI hiểu kinh nghiệm và cá nhân hóa buổi phỏng vấn.</p></div></div></div><span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-low px-3 py-1.5 text-[11px] font-medium text-on-surface-variant"><span className={`size-2 rounded-full ${state === "confirmed" ? "bg-emerald-500" : state === "parsed" ? "bg-amber-500" : state === "processing" ? "animate-pulse bg-secondary" : state === "error" ? "bg-red-500" : "bg-outline"}`} />{state === "confirmed" ? "CV đã xác nhận" : state === "parsed" ? "Chờ bạn kiểm tra" : state === "processing" ? "Đang xử lý" : state === "error" ? "Cần xử lý lại" : loading ? "Đang tải" : "Chưa có CV"}</span></div>
     {error && <p role="alert" className="rounded-lg bg-error-container px-4 py-3 text-xs text-on-error-container">{error}</p>}
+    {savedMessage && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-900">{savedMessage}</p>}
     {aiConfigured === false && state === "empty" && <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">AI trích xuất CV chưa được cấu hình trên máy chủ. Thêm <code>OPENAI_API_KEY</code> vào biến môi trường backend để tự động đọc CV; bạn vẫn có thể nhập thông tin thủ công.</p>}
-    {state === "empty" && <section className={`${card} p-5 sm:p-8`}><div onClick={() => input.current?.click()} onDrop={onDrop} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} className={`flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center transition-colors ${dragging ? "border-secondary bg-secondary-fixed/30" : "border-outline-variant hover:border-secondary hover:bg-surface-container-low/60"}`}><span className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-secondary-fixed text-primary"><Icon name="cloud_upload" /></span><h2 className="text-base font-semibold text-primary">Kéo và thả tệp CV của bạn vào đây</h2><p className="mt-1 text-sm text-on-surface-variant">hoặc nhấn để duyệt tệp từ máy tính</p><span className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-container-low px-3 py-2 text-xs text-on-surface-variant"><Icon name="info" />Định dạng hỗ trợ: <strong>PDF, DOCX</strong> · Tối đa 15MB</span><button type="button" disabled={working} onClick={(e) => { e.stopPropagation(); input.current?.click(); }} className={`${button} mt-5 bg-primary text-white hover:bg-secondary disabled:opacity-50`}><Icon name="upload_file" />{working ? "Đang tải lên…" : "Chọn tệp CV tải lên"}</button><input ref={input} onChange={onFileChange} accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" type="file" aria-label="Chọn tệp CV" /></div><div className="mt-6 border-t border-surface-container pt-5"><h3 className="text-sm font-semibold text-primary">Chưa có CV hoàn chỉnh?</h3><p className="mt-1 text-xs text-on-surface-variant">Bạn có thể nhập thông tin thủ công để lưu bản CV.</p><button className={`${button} mt-3 border border-outline-variant`} onClick={() => { setCv({ id: "manual", file_name: "Nhập thủ công", file_size: 0, status: "parsed", error_message: null, extracted_data: empty, confirmed_data: null, extraction_notes: [], created_at: new Date().toISOString() }); setData(empty); }}>Nhập thông tin thủ công</button></div></section>}
+    {state === "empty" && <section className={`${card} p-5 sm:p-8`}><div onClick={() => input.current?.click()} onDrop={onDrop} onDragOver={(e) => { e.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} className={`flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-5 py-8 text-center transition-colors ${dragging ? "border-secondary bg-secondary-fixed/30" : "border-outline-variant hover:border-secondary hover:bg-surface-container-low/60"}`}><span className="mb-4 flex size-16 items-center justify-center rounded-2xl bg-secondary-fixed text-primary"><Icon name="cloud_upload" /></span><h2 className="text-base font-semibold text-primary">Kéo và thả tệp CV của bạn vào đây</h2><p className="mt-1 text-sm text-on-surface-variant">hoặc nhấn để duyệt tệp từ máy tính</p><span className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-surface-container-low px-3 py-2 text-xs text-on-surface-variant"><Icon name="info" />Định dạng hỗ trợ: <strong>PDF, DOCX</strong> · Tối đa 15MB</span><button type="button" disabled={working} onClick={(e) => { e.stopPropagation(); input.current?.click(); }} className={`${button} mt-5 bg-primary text-white hover:bg-secondary disabled:opacity-50`}><Icon name="upload_file" />{working ? "Đang tải lên…" : "Chọn tệp CV tải lên"}</button><input ref={input} onChange={onFileChange} accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" type="file" aria-label="Chọn tệp CV" /></div><div className="mt-6 border-t border-surface-container pt-5"><h3 className="text-sm font-semibold text-primary">Chưa có CV hoàn chỉnh?</h3><p className="mt-1 text-xs text-on-surface-variant">Bạn có thể nhập thông tin thủ công để lưu bản CV.</p><button disabled={working} className={`${button} mt-3 border border-outline-variant`} onClick={() => void createManual()}>Nhập thông tin thủ công</button></div></section>}
     {uploadProgress !== null && <p className="text-xs text-on-surface-variant">Đang gửi tệp lên…</p>}
     {state === "processing" && cv && <section className={`${card} p-6`}><div className="flex items-center gap-3"><span className="animate-pulse text-secondary"><Icon name="autorenew" /></span><div><h2 className="text-sm font-semibold text-primary">Đang trích xuất thông tin CV</h2><p className="mt-1 text-xs text-on-surface-variant">{cv.file_name} · trạng thái từ máy chủ</p></div></div><p className="mt-5 text-xs text-on-surface-variant">Quá trình có thể mất một lúc. Trang sẽ tự cập nhật khi xử lý xong.</p></section>}
     {state === "error" && cv && <section className={`${card} space-y-4 p-6`}><h2 className="font-semibold text-primary">Chưa đọc được CV</h2><p className="text-sm text-on-surface-variant">{cv.error_message || "Đã xảy ra lỗi khi xử lý."}</p>{(cv.error_message || "").includes("OPENAI_API_KEY") && <div className="rounded-lg bg-amber-50 p-4 text-xs leading-relaxed text-amber-950"><strong>AI chưa được cấu hình trên máy chủ.</strong><ol className="ml-4 mt-2 list-decimal space-y-1"><li>Thêm <code>OPENAI_API_KEY=...</code> vào file <code>.env.local</code> ở thư mục dự án (hoặc Environment Variables trên nơi deploy).</li><li>Khởi động lại ứng dụng sau khi lưu biến môi trường.</li><li>Quay lại đây và bấm “Thử lại”.</li></ol><p className="mt-2">Không đưa khóa vào mã frontend hoặc tên biến <code>NEXT_PUBLIC_*</code>.</p></div>}<div className="flex gap-2"><button disabled={working} className={`${button} bg-primary text-white`} onClick={() => void process(cv.id)}>Thử lại</button><button className={`${button} border`} onClick={() => { setCv({ ...cv, status: "parsed" }); setData(cv.extracted_data || empty); }}>Nhập thủ công</button><button disabled={working} className={`${button} border`} onClick={() => void remove()}>Xóa CV</button></div></section>}
     {(state === "parsed" || state === "confirmed") && cv && <>
-      <section className={`${card} flex flex-wrap items-center justify-between gap-3 p-4`}><div><strong className="text-sm text-primary">{cv.file_name}</strong><p className="mt-1 text-xs text-on-surface-variant">{cv.file_size ? `${(cv.file_size / 1024 / 1024).toFixed(2)} MB` : "Nhập thủ công"} · {new Date(cv.created_at).toLocaleString("vi-VN")}</p></div><div className="flex flex-wrap gap-2">{cv.downloadUrl && <a className={`${button} border`} href={cv.downloadUrl} target="_blank" rel="noreferrer">Xem / tải file</a>}{cv.file_size > 0 && cv.id !== "manual" && <button disabled={working} className={`${button} border`} onClick={() => void process(cv.id, true)}>Đọc lại bằng AI</button>}<button disabled={working} className={`${button} border`} onClick={() => input.current?.click()}>Thay CV</button><button disabled={working} className={`${button} border text-error`} onClick={() => void remove()}>Xóa</button><input ref={input} onChange={onFileChange} accept=".pdf,.docx" className="hidden" type="file" /></div></section>
+      <section className={`${card} flex flex-wrap items-center justify-between gap-3 p-4`}><div><strong className="text-sm text-primary">{cv.file_name}</strong><p className="mt-1 text-xs text-on-surface-variant">{cv.file_size ? `${(cv.file_size / 1024 / 1024).toFixed(2)} MB` : "Nhập thủ công"} · {new Date(cv.created_at).toLocaleString("vi-VN")}</p></div><div className="flex flex-wrap gap-2">{cv.downloadUrl && <a className={`${button} border`} href={cv.downloadUrl} target="_blank" rel="noreferrer">Xem / tải file</a>}{cv.file_size !== null && cv.file_size > 0 && cv.id !== "manual" && <button disabled={working} className={`${button} border`} onClick={() => void process(cv.id, true)}>Đọc lại bằng AI</button>}<button disabled={working} className={`${button} border`} onClick={() => input.current?.click()}>Thay CV</button><button disabled={working} className={`${button} border text-error`} onClick={() => void remove()}>Xóa</button><input ref={input} onChange={onFileChange} accept=".pdf,.docx" className="hidden" type="file" /></div></section>
       {state === "confirmed" && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">CV đã được xác nhận và lưu cho tài khoản của bạn.</div>}
       {cv.extraction_notes?.length > 0 && <section className={`${card} p-4`}><h2 className="mb-2 text-sm font-semibold text-primary">Ghi chú khi đọc CV</h2>{cv.extraction_notes.map((n, i) => <p className="mt-2 text-xs text-on-surface-variant" key={i}>{n.message}{n.evidence?.map((e) => ` “${e.text}”${e.page ? ` (trang ${e.page})` : ""}`).join("")}</p>)}</section>}
       <div className="grid gap-4 md:grid-cols-2">
