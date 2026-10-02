@@ -1,145 +1,398 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
 import Icon from "@/components/icon";
 import VrmAvatar from "@/components/vrm-avatar";
 
-type InterviewQuestion = { text: string; translation: string };
-type InterviewTurn = { question: InterviewQuestion; answer: string };
-type InterviewSession = {
-  id: string;
-  title: string;
-  company: string | null;
-  level: string | null;
-  total: number;
-  currentQuestion: InterviewQuestion | null;
-  turns: InterviewTurn[];
-  completed: boolean;
-  loadError?: "session" | "answers";
-};
+type AIState = "speaking" | "listening" | "thinking";
 
-export default function InterviewRoomClient({ session }: { session: InterviewSession | null }) {
-  const [turns, setTurns] = useState(session?.turns || []);
-  const [currentQuestion, setCurrentQuestion] = useState(session?.currentQuestion || null);
-  const [answer, setAnswer] = useState("");
+export default function InterviewRoomClient() {
+  const [aiState, setAiState] = useState<AIState>("speaking");
   const [showTranslation, setShowTranslation] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [aiSpeaking, setAiSpeaking] = useState(false);
-  const [error, setError] = useState("");
-  const [completed, setCompleted] = useState(session?.completed || false);
+  const [micActive, setMicActive] = useState(false);
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
-
-  function speakQuestion() {
-    if (!currentQuestion || !window.speechSynthesis) {
-      setError("Trình duyệt này chưa hỗ trợ phát giọng nói. Bạn vẫn có thể đọc câu hỏi trên màn hình.");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(currentQuestion.text);
-    utterance.lang = "ja-JP";
-    utterance.rate = 0.9;
-    utterance.onstart = () => setAiSpeaking(true);
-    utterance.onend = () => setAiSpeaking(false);
-    utterance.onerror = () => setAiSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  }
-
-  async function submitAnswer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!session || !currentQuestion || busy || !answer.trim()) return;
-    setBusy(true);
-    setError("");
-    try {
-      window.speechSynthesis?.cancel();
-      setAiSpeaking(false);
-      const response = await fetch(`/api/interviews/${encodeURIComponent(session.id)}/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionIndex: turns.length, answer: answer.trim() }),
+  // Mock interval to switch AI states for demo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAiState((prev) => {
+        if (prev === "speaking") return "listening";
+        if (prev === "listening") return "thinking";
+        return "speaking";
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Không gửi được câu trả lời.");
-      setTurns((previous) => [...previous, { question: currentQuestion, answer: answer.trim() }]);
-      setAnswer("");
-      setShowTranslation(false);
-      if (result.completed) {
-        setCurrentQuestion(null);
-        setCompleted(true);
-      } else {
-        setCurrentQuestion(result.nextQuestion);
-      }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không gửi được câu trả lời. Hãy thử lại.");
-    } finally {
-      setBusy(false);
-    }
-  }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
-  if (!session) {
-    return <section className="mx-auto max-w-2xl rounded-2xl border border-surface-container bg-white p-6 shadow-sm sm:p-8">
-      <span className="flex size-12 items-center justify-center rounded-xl bg-secondary-fixed text-primary"><Icon name="videocam" /></span>
-      <h1 className="mt-4 text-xl font-bold text-primary">Chưa có buổi phỏng vấn để bắt đầu</h1>
-      <p className="mt-2 text-sm leading-6 text-on-surface-variant">Hãy thiết lập buổi luyện tập trước.</p>
-      <Link href="/interview-setup" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-secondary">Thiết lập buổi phỏng vấn <Icon name="arrow_forward" /></Link>
-    </section>;
-  }
+  return (
+    <div className="flex flex-col min-h-screen w-full bg-surface space-y-4 p-4 lg:p-6 overflow-auto">
+      <InterviewHeader />
 
-  if (session.loadError) {
-    const migration = session.loadError === "answers" ? "202609300004_create_interview_answers.sql" : "202609300003_extend_interview_sessions.sql";
-    return <section role="alert" className="mx-auto max-w-2xl rounded-2xl border border-error/20 bg-white p-6 shadow-sm"><h1 className="text-lg font-bold text-primary">Không tải được buổi phỏng vấn</h1><p className="mt-2 text-sm text-on-surface-variant">Cơ sở dữ liệu có thể chưa được cập nhật cho luồng phỏng vấn này. Hãy nhờ quản lý dự án chạy migration <code className="rounded bg-surface-container px-1.5 py-0.5">{migration}</code> trong Supabase, sau đó tải lại trang.</p><Link href="/dashboard" className="mt-4 inline-flex items-center gap-2 rounded-lg border border-outline-variant px-3 py-2 text-sm font-semibold text-primary hover:bg-surface-container-low"><Icon name="arrow_forward" className="rotate-180" />Về trang chính</Link></section>;
-  }
+      <div className="flex flex-col gap-6 flex-1">
+        {/* Main Content: AI Interviewer */}
+        <div className="h-[60vh] lg:h-[75vh] flex flex-col bg-white rounded-2xl border border-surface-container shadow-sm overflow-hidden relative shrink-0">
+          <AIInterviewer
+            aiState={aiState}
+            showTranslation={showTranslation}
+            onToggleTranslation={() => setShowTranslation(!showTranslation)}
+          />
+          <CandidateCamera />
+          <InterviewControls
+            micActive={micActive}
+            onToggleMic={() => setMicActive(!micActive)}
+          />
+        </div>
 
-  const visibleQuestionNumber = completed ? session.total : Math.min(turns.length + 1, session.total);
-  const progress = Math.round((visibleQuestionNumber / Math.max(session.total, 1)) * 100);
-  return <div className="mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-7xl flex-col gap-4 bg-surface p-4 lg:h-[calc(100vh-48px)] lg:min-h-0 lg:overflow-hidden lg:p-6">
-    <header className="flex shrink-0 items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="truncate text-2xl font-bold text-primary">{session.title}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-primary-container px-2 py-0.5 text-[10px] font-semibold tracking-wide text-on-primary">Phỏng vấn tiếng Nhật</span>
-          {session.company && <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold text-on-surface-variant">{session.company}</span>}
-          {session.level && <span className="rounded-full bg-surface-container-high px-2 py-0.5 text-[10px] font-semibold text-on-surface-variant">JLPT {session.level}</span>}
+        {/* Bottom Panel */}
+        <div className="w-full flex flex-col gap-4">
+          <InterviewSidePanel />
         </div>
       </div>
-      <div className="w-28 shrink-0"><div className="mb-1 flex justify-between text-[10px] font-medium text-on-surface-variant"><span>Câu hỏi</span><span>{visibleQuestionNumber}/{session.total}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div></div>
-    </header>
 
-    <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="flex min-h-[650px] flex-col overflow-hidden rounded-2xl border border-surface-container bg-white shadow-sm lg:min-h-0">
-        <div className="relative min-h-[300px] flex-1 overflow-hidden bg-[#edf3fb]">
-          <VrmAvatar state={aiSpeaking ? "speaking" : "idle"} className="absolute inset-0 h-full min-h-0 rounded-none" />
-          <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-primary/80 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md">面接官 / Interviewer</div>
-          <div className="absolute bottom-4 left-4 right-4 z-10 sm:right-auto sm:max-w-2xl">
-            {currentQuestion ? <div aria-live="polite" aria-atomic="true" className="rounded-2xl border border-white/10 bg-primary/85 p-4 text-left shadow-lg backdrop-blur-md">
-              <p lang="ja" className="text-base font-medium leading-relaxed text-white lg:text-lg">{currentQuestion.text}</p>
-              {showTranslation && <p className="mt-2 text-sm text-secondary-fixed">{currentQuestion.translation}</p>}
-              <div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={speakQuestion} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"><Icon name="volume_up" />Nghe câu hỏi</button><button type="button" onClick={() => setShowTranslation((value) => !value)} className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20">{showTranslation ? "Ẩn bản dịch" : "Xem bản dịch"}</button></div>
-            </div> : <div className="rounded-2xl bg-primary/85 p-4 text-white shadow-lg"><p className="font-semibold">Cảm ơn bạn. Buổi phỏng vấn đã kết thúc.</p><p className="mt-1 text-sm text-white/80">Bạn đã trả lời tất cả câu hỏi.</p></div>}
+      <InterviewProgress />
+    </div>
+  );
+}
+
+function InterviewHeader() {
+  return (
+    <div className="flex items-center justify-between shrink-0">
+      <div>
+        <h1 className="text-headline-md font-bold text-primary">
+          Interview Room
+        </h1>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className="px-2 py-0.5 rounded-full bg-primary-container text-on-primary text-[10px] font-semibold tracking-wide">
+            AI Japanese Interview Practice
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-semibold">
+            N3–N2
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-semibold">
+            Practice Mode
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-surface-container shadow-sm shrink-0">
+        <Icon name="history" />
+        <span className="text-label-lg font-semibold tabular-nums text-primary">
+          12:43 / 20:00
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function AIInterviewer({
+  aiState,
+  showTranslation,
+  onToggleTranslation,
+}: {
+  aiState: AIState;
+  showTranslation: boolean;
+  onToggleTranslation: () => void;
+}) {
+  return (
+    <div className="relative flex-1 flex flex-col bg-surface-container-lowest">
+      {/* AI Status */}
+      <div className="absolute top-4 left-4 z-10">
+        <AIStatus aiState={aiState} />
+      </div>
+
+      {/* Avatar Area */}
+      <div className="flex-1 relative bg-[#edf3fb] overflow-hidden flex items-center justify-center">
+        <VrmAvatar
+          state={aiState}
+          className="absolute inset-0 h-full min-h-0 rounded-none"
+        />
+        {/* Subtitle Overlay */}
+        <div className="absolute bottom-4 left-4 z-10 flex max-w-2xl flex-col items-start">
+          <div className="bg-primary/85 backdrop-blur-md rounded-2xl p-3 lg:p-4 text-left shadow-lg border border-white/10">
+            <p className="text-white text-base lg:text-lg font-medium leading-relaxed">
+              「それでは、自己紹介をお願いします。」
+            </p>
+            {showTranslation && (
+              <p className="text-secondary-fixed mt-2 text-sm lg:text-base">
+                &quot;Trước tiên, hãy giới thiệu bản thân.&quot;
+              </p>
+            )}
+            <button
+              onClick={onToggleTranslation}
+              className="mt-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-medium transition-colors"
+            >
+              {showTranslation
+                ? "Hide Vietnamese Translation"
+                : "Show Vietnamese Translation"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AIStatus({ aiState }: { aiState: AIState }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-md text-white border border-white/10 shadow-sm">
+      <div className="relative flex items-center justify-center size-3">
+        {aiState === "speaking" && (
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#a4f2e5] opacity-75 animate-ping"></span>
+        )}
+        <span
+          className={`relative inline-flex rounded-full size-2 ${aiState === "speaking" ? "bg-[#a4f2e5]" : aiState === "thinking" ? "bg-[#f2caa4]" : "bg-[#a4cbff]"}`}
+        ></span>
+      </div>
+      <span className="text-label-sm font-semibold tracking-wide">
+        {aiState === "speaking"
+          ? "AI Speaking"
+          : aiState === "listening"
+            ? "Listening..."
+            : "Thinking..."}
+      </span>
+      {aiState === "speaking" && (
+        <div className="flex gap-0.5 ml-1 h-3 items-end">
+          <div className="w-[2px] bg-white h-full animate-pulse"></div>
+          <div
+            className="w-[2px] bg-white h-2/3 animate-pulse"
+            style={{ animationDelay: "100ms" }}
+          ></div>
+          <div
+            className="w-[2px] bg-white h-1/2 animate-pulse"
+            style={{ animationDelay: "200ms" }}
+          ></div>
+          <div
+            className="w-[2px] bg-white h-4/5 animate-pulse"
+            style={{ animationDelay: "300ms" }}
+          ></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CandidateCamera() {
+  return (
+    <div className="absolute bottom-[104px] right-6 w-32 h-24 lg:w-48 lg:h-32 bg-surface-container-highest rounded-xl border-2 border-white/20 shadow-xl overflow-hidden flex flex-col z-10">
+      <div className="flex-1 flex items-center justify-center text-on-surface-variant bg-surface">
+        <Icon name="person" />
+      </div>
+      <div className="absolute bottom-1.5 left-2 bg-primary/70 text-white text-[10px] px-1.5 py-0.5 rounded font-medium backdrop-blur-sm">
+        あなた / You
+      </div>
+    </div>
+  );
+}
+
+function InterviewControls({
+  micActive,
+  onToggleMic,
+}: {
+  micActive: boolean;
+  onToggleMic: () => void;
+}) {
+  return (
+    <div className="shrink-0 h-20 bg-white border-t border-surface-container flex items-center justify-between px-4 lg:px-6">
+      <div className="flex-1 flex items-center gap-1 lg:gap-3">
+        <button
+          className="p-2.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+          title="Toggle Speaker"
+        >
+          <Icon name="tune" />
+        </button>
+        <button
+          className="p-2.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+          title="Repeat Question"
+        >
+          <Icon name="autorenew" />
+        </button>
+        <button
+          className="p-2.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors lg:hidden"
+          title="Show Transcript"
+        >
+          <Icon name="edit_document" />
+        </button>
+      </div>
+
+      <div className="flex flex-col items-center justify-center shrink-0 w-32 lg:w-48 gap-1">
+        <button
+          onClick={onToggleMic}
+          className={`p-4 rounded-full transition-colors flex items-center justify-center ${micActive ? "bg-error text-white shadow-lg shadow-error/30" : "bg-primary text-white shadow-md hover:bg-primary-container"}`}
+        >
+          <Icon name="mic" />
+        </button>
+        <span
+          className={`text-[10px] font-medium ${micActive ? "text-error" : "text-on-surface-variant"}`}
+        >
+          {micActive ? "Listening to you..." : "Click to answer"}
+        </span>
+      </div>
+
+      <div className="flex-1 flex items-center justify-end gap-1 lg:gap-3">
+        <button
+          className="p-2.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+          title="Pause Interview"
+        >
+          <Icon name="record_voice_over" />
+        </button>
+        <button className="px-3 lg:px-4 py-2 bg-error/10 text-error hover:bg-error hover:text-white rounded-lg font-semibold text-label-sm transition-colors border border-error/20 whitespace-nowrap">
+          End Interview
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InterviewProgress() {
+  return (
+    <div className="shrink-0 pt-2 pb-4">
+      <div className="flex justify-between items-center mb-1 text-label-sm text-on-surface-variant font-medium px-1">
+        <span>Question 1 of 10</span>
+        <span>10%</span>
+      </div>
+      <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+        <div
+          className="bg-primary h-full rounded-full transition-all"
+          style={{ width: "10%" }}
+        ></div>
+      </div>
+    </div>
+  );
+}
+
+function InterviewSidePanel() {
+  return (
+    <div className="flex-1 flex flex-col bg-white border border-surface-container rounded-2xl shadow-sm overflow-hidden h-full">
+      <div className="px-4 py-3 border-b border-surface-container bg-surface-container-lowest shrink-0 flex items-center gap-2">
+        <Icon name="analytics" className="text-secondary" />
+        <h2 className="text-title font-semibold text-primary">
+          Live Interview
+        </h2>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* PREP Card */}
+        <div className="bg-primary-fixed border border-primary-fixed-dim rounded-xl p-4">
+          <h3 className="text-label-sm font-semibold text-primary mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+            <Icon name="lightbulb" /> Interview Guide
+          </h3>
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] text-on-surface-variant mb-0.5">
+                Current Question
+              </p>
+              <p className="text-body-md font-medium text-on-surface">
+                Self Introduction
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <span className="bg-white/50 text-primary-fixed-variant px-2 py-0.5 rounded text-[10px] font-semibold">
+                Introduction
+              </span>
+              <span className="bg-white/50 text-primary-fixed-variant px-2 py-0.5 rounded text-[10px] font-semibold">
+                N3–N2
+              </span>
+            </div>
+            <div className="bg-white/50 rounded-lg p-2.5 mt-2">
+              <p className="text-[10px] font-semibold text-primary mb-1">
+                Tips:
+              </p>
+              <ul className="text-[11px] text-on-surface-variant space-y-1 list-disc pl-4">
+                <li>Speak clearly</li>
+                <li>Keep your answer concise</li>
+                <li>Use polite Japanese (Keigo)</li>
+                <li>Maintain confidence</li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        {currentQuestion && <form onSubmit={submitAnswer} className="shrink-0 space-y-3 border-t border-surface-container p-4 lg:p-5">
-          <label htmlFor="interview-answer" className="block text-sm font-semibold text-primary">Câu trả lời của bạn</label>
-          <textarea id="interview-answer" value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={10000} rows={4} required placeholder="Trả lời bằng tiếng Nhật…" className="w-full resize-y rounded-xl border border-outline-variant bg-white p-3 text-sm text-primary outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" />
-          {error && <p role="alert" className="rounded-lg bg-error-container px-3 py-2 text-xs text-on-error-container">{error}</p>}
-          <div className="flex items-center justify-between gap-3"><span className="text-[11px] text-on-surface-variant">{answer.length.toLocaleString("vi-VN")} / 10.000</span><button type="submit" disabled={busy || !answer.trim()} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white hover:bg-secondary disabled:cursor-wait disabled:opacity-50">{busy ? "Đang gửi…" : "Gửi câu trả lời"}<Icon name="arrow_forward" /></button></div>
-        </form>}
-        {!currentQuestion && <div className="flex shrink-0 justify-end border-t border-surface-container p-4"><Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-secondary">Về trang chính <Icon name="arrow_forward" /></Link></div>}
-      </section>
-
-      <aside className="flex min-h-64 flex-col overflow-hidden rounded-2xl border border-surface-container bg-white shadow-sm lg:min-h-0">
-        <div className="flex shrink-0 items-center gap-2 border-b border-surface-container px-4 py-3"><Icon name="forum" className="text-secondary" /><h2 className="font-semibold text-primary">Cuộc trò chuyện</h2></div>
-        <div className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
-          {turns.length === 0 && <p className="text-xs leading-5 text-on-surface-variant">Nhà tuyển dụng sẽ hỏi từng câu. Hãy trả lời để tiếp tục cuộc trò chuyện.</p>}
-          {turns.map((turn, index) => <div key={index} className="space-y-2 border-b border-surface-container pb-4 last:border-0">
-            <div className="flex flex-col items-start gap-1"><span className="text-[10px] font-semibold text-secondary">面接官</span><p lang="ja" className="max-w-[95%] rounded-2xl rounded-tl-sm bg-surface-container-low px-3 py-2 text-xs leading-5 text-on-surface">{turn.question.text}</p></div>
-            <div className="flex flex-col items-end gap-1"><span className="text-[10px] font-semibold text-primary">Bạn</span><p className="max-w-[95%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-primary px-3 py-2 text-xs leading-5 text-white">{turn.answer}</p></div>
-          </div>)}
-          {completed && <p className="rounded-lg bg-emerald-50 p-3 text-xs text-emerald-900">Cuộc trò chuyện đã hoàn tất.</p>}
+        {/* Live Transcript */}
+        <div>
+          <h3 className="text-label-sm font-semibold text-primary mb-3">
+            Live Transcript
+          </h3>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1 items-start">
+              <span className="text-[10px] font-semibold text-secondary">
+                AI Interviewer
+              </span>
+              <div className="bg-surface-container-low text-on-surface px-3 py-2 rounded-2xl rounded-tl-sm text-body-sm shadow-sm max-w-[90%] leading-relaxed">
+                それでは、自己紹介をお願いします。
+              </div>
+            </div>
+            <div className="flex flex-col gap-1 items-end">
+              <span className="text-[10px] font-semibold text-primary">
+                You
+              </span>
+              <div className="bg-primary text-white px-3 py-2 rounded-2xl rounded-tr-sm text-body-sm shadow-sm max-w-[90%] leading-relaxed">
+                はい。こんにちは。私は...
+              </div>
+            </div>
+          </div>
         </div>
-      </aside>
+
+        {/* AI Feedback */}
+        <div>
+          <h3 className="text-label-sm font-semibold text-primary mb-3">
+            Real-time Feedback
+          </h3>
+          <div className="space-y-2">
+            <FeedbackItem
+              label="Japanese Grammar"
+              status="Good"
+              color="text-[#005049]"
+              bg="bg-[#a4f2e5]"
+            />
+            <FeedbackItem
+              label="Pronunciation"
+              status="Good"
+              color="text-[#005049]"
+              bg="bg-[#a4f2e5]"
+            />
+            <FeedbackItem
+              label="Answer Content"
+              status="Needs improvement"
+              color="text-[#93000a]"
+              bg="bg-[#ffdad6]"
+            />
+            <FeedbackItem
+              label="Confidence"
+              status="Good"
+              color="text-[#005049]"
+              bg="bg-[#a4f2e5]"
+            />
+            <FeedbackItem
+              label="Speaking Speed"
+              status="Good"
+              color="text-[#005049]"
+              bg="bg-[#a4f2e5]"
+            />
+          </div>
+        </div>
+      </div>
     </div>
-  </div>;
+  );
+}
+
+function FeedbackItem({
+  label,
+  status,
+  color,
+  bg,
+}: {
+  label: string;
+  status: string;
+  color: string;
+  bg: string;
+}) {
+  return (
+    <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-lowest border border-surface-container">
+      <span className="text-label-sm text-on-surface-variant font-medium">
+        {label}
+      </span>
+      <span
+        className={`px-2 py-0.5 rounded text-[10px] font-bold ${color} ${bg}`}
+      >
+        {status}
+      </span>
+    </div>
+  );
 }

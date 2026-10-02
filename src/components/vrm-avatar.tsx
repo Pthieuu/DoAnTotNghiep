@@ -18,9 +18,10 @@ type Props = {
   state: AvatarState;
   className?: string;
   onReady?: (expressions: string[]) => void;
+  horizontalOffset?: number;
 };
 
-export default function VrmAvatar({ state, className, onReady }: Props) {
+export default function VrmAvatar({ state, className, onReady, horizontalOffset = 0 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -183,20 +184,28 @@ export default function VrmAvatar({ state, className, onReady }: Props) {
       vrm.scene.updateMatrixWorld(true);
       const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
       const center = bounds.getCenter(new THREE.Vector3());
-      const top = bounds.isEmpty() ? 1.9 : bounds.max.y;
-      // Use bounds.min.y to frame the entire body down to the feet
-      const bottom = bounds.min.y;
+      
+      const chest = humanoid?.getNormalizedBoneNode("upperChest") ?? humanoid?.getNormalizedBoneNode("chest");
+      const chestPosition = new THREE.Vector3();
+      chest?.getWorldPosition(chestPosition);
+      
+      // Thêm 0.25 khoảng không phía trên đỉnh đầu (headroom)
+      const top = (bounds.isEmpty() ? 1.9 : bounds.max.y) + 0.25;
+      const bottom = chest ? chestPosition.y - 0.25 : (bounds.min.y + (bounds.max.y - bounds.min.y) * 0.62);
       const frameHeight = Math.max(top - bottom, 0.85);
       const frameWidth = bounds.isEmpty() ? 0.9 : bounds.max.x - bounds.min.x;
-      // Keep the stage centered on the avatar's corrected origin. The camera
-      // distance adapts to the available aspect ratio, while this target does not.
       const target = new THREE.Vector3(0, (top + bottom) / 2, center.z);
+      
       fitCamera = () => {
         const requiredHeight = Math.max(frameHeight, frameWidth / Math.max(camera.aspect, 0.55));
         const distance = requiredHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.08;
-
-        camera.position.set(target.x, target.y, target.z + distance);
-        camera.lookAt(target);
+        
+        const targetWithOffset = target.clone();
+        const horizontalHalfView = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect;
+        targetWithOffset.x += horizontalOffset * distance * horizontalHalfView;
+        
+        camera.position.set(targetWithOffset.x, targetWithOffset.y, targetWithOffset.z + distance);
+        camera.lookAt(targetWithOffset);
       };
       fitCamera();
       const expressions = Object.keys(vrm.expressionManager?.expressionMap ?? {});
@@ -251,7 +260,7 @@ export default function VrmAvatar({ state, className, onReady }: Props) {
       renderer?.dispose();
       renderer?.domElement.remove();
     };
-  }, [onReady, hostRef]);
+  }, [horizontalOffset, onReady, hostRef]);
 
   return <div className={`relative h-full min-h-[340px] w-full overflow-hidden rounded-2xl ${className ?? ""}`}>
     <div ref={hostRef} className="absolute inset-0" />

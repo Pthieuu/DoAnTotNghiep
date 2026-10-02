@@ -6,9 +6,9 @@ import Icon from "@/components/icon";
 import { useState, type FormEvent } from "react";
 
 const highlights = [
-  { icon: "psychology", title: "AI Adaptive Simulation", badge: "CV×求人票", detail: "職務経歴書と志望企業のJDに基づいた本番同様の深掘り質問" },
-  { icon: "groups", title: "Real-time Voice Keigo", badge: "講評・敬語指導", detail: "音声解析による発話スピード（mora/s）と敬語運用を即時修正" },
-  { icon: "fact_check", title: "Enterprise Benchmarking", badge: "日本基準", detail: "メガベンチャー・大手SIerの採用水準と合格率を予測判定" },
+  { icon: "psychology", title: "AI Adaptive Simulation", badge: "CV×JD", detail: "In-depth questions based on your resume and the target company's JD, just like the real interview." },
+  { icon: "groups", title: "Real-time Voice Keigo", badge: "Feedback & Keigo", detail: "Real-time correction of speaking speed (mora/s) and Keigo usage via voice analysis." },
+  { icon: "fact_check", title: "Enterprise Benchmarking", badge: "Japan Standards", detail: "Predicts your pass rate based on the hiring standards of major Japanese IT companies." },
 ] as const;
 
 export default function LoginForm({ configured, confirmationError }: { configured: boolean; confirmationError: boolean }) {
@@ -45,7 +45,7 @@ export default function LoginForm({ configured, confirmationError }: { configure
     <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-4 py-10 sm:px-8 sm:py-16">
       <div className="grid w-full max-w-[1140px] overflow-hidden rounded-lg bg-white shadow-[0_16px_28px_-12px_rgba(15,23,42,0.28)] md:grid-cols-[5fr_7fr]">
         <aside className="flex flex-col bg-[linear-gradient(115deg,#14294b_0%,#061432_55%,#122749_100%)] p-7 text-white sm:p-10">
-          <Link href="/" className="mb-5 flex w-fit items-center gap-2.5" aria-label="Aizuchi.AI — Trang chủ">
+          <Link href="/" className="mb-5 flex w-fit items-center gap-2.5" aria-label="Aizuchi.AI — Home">
             <svg aria-hidden="true" viewBox="0 0 36 40" fill="none" className="h-10 w-9 shrink-0">
               <rect x="2" y="4" width="32" height="32" rx="8" fill="#1b2a4a" />
               <path d="M10 24L18 10L26 24" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -55,7 +55,7 @@ export default function LoginForm({ configured, confirmationError }: { configure
             </svg>
             <span>
               <span className="block text-xl font-semibold tracking-tight">Aizuchi.AI</span>
-              <span className="block text-[10px] tracking-wider text-slate-400">AI日本面接トレーナー</span>
+              <span className="block text-[10px] tracking-wider text-slate-400">AI Japanese Interview Trainer</span>
             </span>
           </Link>
 
@@ -63,12 +63,12 @@ export default function LoginForm({ configured, confirmationError }: { configure
             <span className="mr-1 inline-block size-1.5 rounded-full bg-teal-300" />
             VKU &amp; VN Engineers Career Fast-Track
           </span>
-          <h1 lang="ja" className="text-[28px] leading-snug font-bold tracking-tight lg:text-[32px]">
-            日本のIT企業内定への<br />
-            <span className="text-blue-200">最短ルート</span>を切り拓く。
+          <h1 className="text-[28px] leading-snug font-bold tracking-tight lg:text-[32px]">
+            Paving the <span className="text-blue-200">shortest route</span><br />
+            to a Japanese IT job offer.
           </h1>
-          <p lang="ja" className="mt-3 text-[13px] leading-relaxed text-slate-400">
-            VN IT人材専用のAI面接シミュレーター。敬語の誤り、助詞の脱落、論理構成を即時スコアリング。
+          <p className="mt-3 text-[13px] leading-relaxed text-slate-400">
+            An AI interview simulator for IT professionals. Real-time scoring for honorific errors, missing particles, and logical structure.
           </p>
 
           <div className="my-6 space-y-3">
@@ -80,7 +80,7 @@ export default function LoginForm({ configured, confirmationError }: { configure
                     {item.title}{" "}
                     <span className={`whitespace-nowrap rounded-sm px-1 py-0.5 text-[9px] font-medium ${index === 1 ? "bg-teal-900/50 text-teal-200" : "bg-blue-300/20 text-blue-200"}`}>{item.badge}</span>
                   </h2>
-                  <p lang="ja" className="mt-0.5 text-[10px] leading-relaxed text-slate-400">{item.detail}</p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-slate-400">{item.detail}</p>
                 </div>
               </div>
             ))}
@@ -89,7 +89,7 @@ export default function LoginForm({ configured, confirmationError }: { configure
           <figure className="mt-auto rounded-sm bg-white/5 p-4">
             <div className="mb-2 flex items-center justify-between">
               <span aria-label="5 out of 5 stars" className="text-sm tracking-[3px] text-blue-200">★★★★★</span>
-              <span className="rounded-sm bg-teal-950 px-2 py-0.5 text-[10px] text-teal-200">内定実績</span>
+              <span className="rounded-sm bg-teal-950 px-2 py-0.5 text-[10px] text-teal-200">Proven Track Record</span>
             </div>
             <blockquote className="text-xs leading-relaxed italic text-slate-200">
               &ldquo;Aizuchi.AI helped me pass Rakuten &amp; LINE Yahoo technical interviews with complete confidence!&rdquo;
@@ -102,17 +102,7 @@ export default function LoginForm({ configured, confirmationError }: { configure
         </aside>
 
         <section aria-labelledby="login-heading" className="flex flex-col p-7 sm:p-10">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-[10px]">
-            <span className="flex items-center gap-1 text-on-surface-variant">
-              <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[14px] text-secondary"><Icon name="verified_user" /></span>
-              Powered by Supabase Auth
-            </span>
-            <div aria-label="Ngôn ngữ giao diện (mock)" className="flex gap-1 rounded-full bg-surface-container-high p-1">
-              {["日本語", "Tiếng Việt", "EN"].map((language, index) => (
-                <button key={language} type="button" aria-pressed={index === 0} onClick={showMockNotice} className={`rounded-full px-2 py-0.5 ${index === 0 ? "bg-white font-semibold text-primary shadow-sm" : "text-on-surface-variant"}`}>{language}</button>
-              ))}
-            </div>
-          </div>
+
 
           <div className="mx-auto w-full max-w-[440px]">
             <h2 id="login-heading" className="text-2xl font-bold text-primary">{mode === "login" ? "Sign In" : "Create Account"}</h2>
@@ -134,24 +124,24 @@ export default function LoginForm({ configured, confirmationError }: { configure
               </button>
             </div>
 
-            <div className="my-4 flex items-center gap-3 text-[10px] text-on-surface-variant"><span className="h-px flex-1 bg-surface-container" />またはメールアドレスでログイン<span className="h-px flex-1 bg-surface-container" /></div>
+            <div className="my-4 flex items-center gap-3 text-[10px] text-on-surface-variant"><span className="h-px flex-1 bg-surface-container" />Or continue with email<span className="h-px flex-1 bg-surface-container" /></div>
 
             <form onSubmit={submit} className="space-y-3" aria-busy={pending}>
               <fieldset disabled={pending || !configured} className="space-y-3 disabled:opacity-60">
               {mode === "signup" && <div><label htmlFor="name" className="mb-1 block text-[11px] text-primary">Full name</label><input id="name" name="name" autoComplete="name" required minLength={2} maxLength={80} className="w-full rounded-sm bg-surface-container-low p-3 text-[13px]" /></div>}
               <div>
-                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="email" className="text-primary">メールアドレス (Email)</label><span className="text-[10px] text-on-surface-variant">VKU / Đại học / Work</span></div>
+                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="email" className="text-primary">Email Address</label><span className="text-[10px] text-on-surface-variant">University / Work</span></div>
                 <div className="relative">
                   <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="mail" /></span>
                   <input id="email" name="email" type="email" maxLength={254} autoComplete="email" placeholder="hieu.pham@vku.udn.vn" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
                 </div>
               </div>
               <div>
-                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="password" className="text-primary">パスワード (Password)</label><button type="button" onClick={showMockNotice} className="text-[10px] text-secondary hover:underline">パスワードをお忘れですか？</button></div>
+                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="password" className="text-primary">Password</label><button type="button" onClick={showMockNotice} className="text-[10px] text-secondary hover:underline">Forgot your password?</button></div>
                 <div className="relative">
                   <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="lock" /></span>
                   <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : undefined} maxLength={128} placeholder="••••••••••••" required className="w-full rounded-sm bg-surface-container-low py-3 pr-11 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
-                  <button type="button" aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)} className="absolute top-1/2 right-2 flex size-8 -translate-y-1/2 items-center justify-center text-outline"><span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name={showPassword ? "visibility_off" : "visibility"} /></span></button>
+                  <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)} className="absolute top-1/2 right-2 z-10 flex size-8 -translate-y-1/2 items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer"><span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name={showPassword ? "visibility_off" : "visibility"} /></span></button>
                 </div>
               </div>
               <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-container">{pending ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In to Workspace"}<span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name="arrow_forward" /></span></button>

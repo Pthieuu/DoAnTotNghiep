@@ -93,13 +93,15 @@ export default function DashboardShell({ children, user, activePage = "Dashboard
             const content = <><span className="text-[20px]"><Icon name={item.icon} /></span><span>{item.label}</span>{item.action === "interview-room" && <span className="ml-auto rounded bg-secondary-fixed px-1.5 py-0.5 text-[9px] font-bold text-primary">DEMO</span>}</>;
             return item.anchor ? <Link key={item.label} href={item.anchor} aria-current={isActive ? "page" : undefined} onClick={() => setMenuOpen(false)} className={className}>{content}</Link> : <button key={item.label} type="button" data-mock={item.action} className={className}>{content}</button>;
           })}
+          <button type="button" onClick={signOut} disabled={signingOut} className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] transition-colors text-on-surface-variant hover:bg-surface-container-low hover:text-error disabled:opacity-50">
+            <span className="text-[20px]"><Icon name="logout" /></span><span>{signingOut ? "Signing out..." : "Logout"}</span>
+          </button>
+          {logoutError && <p role="alert" className="mt-2 px-3 text-xs text-error">{logoutError}</p>}
         </nav>
         <div className="m-3 flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary-fixed font-semibold text-primary">{user.name.trim().split(/\s+/).at(-1)?.[0]?.toUpperCase()}</span>
           <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{user.name}</p><p className="mt-0.5 text-[10px] text-on-surface-variant" title={user.email}>{user.email}</p></div>
-          <button type="button" onClick={signOut} disabled={signingOut} aria-label="Sign out" title="Sign out" className="p-1.5 text-outline hover:text-error disabled:opacity-50"><Icon name="logout" /></button>
         </div>
-        {logoutError && <p role="alert" className="px-4 pb-3 text-xs text-error">{logoutError}</p>}
       </aside>
       <div className="lg:pl-64">
         <header className="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-surface-container bg-white/95 px-4 py-3 backdrop-blur-xl sm:px-6">
