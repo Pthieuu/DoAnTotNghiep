@@ -13,7 +13,8 @@ const highlights = [
 
 export default function LoginForm({ configured, confirmationError }: { configured: boolean; confirmationError: boolean }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot_password" | "verify_otp">("login");
+  const [resetEmail, setResetEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(confirmationError ? "This confirmation link is invalid or expired. Please sign in or request a new confirmation by registering again." : "");
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -23,14 +24,41 @@ export default function LoginForm({ configured, confirmationError }: { configure
     setError("");
     setNotice("");
     try {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password"), name: form.get("name") }),
-      });
-      const result = await response.json();
-      if (!response.ok) setError(result.error || "Unable to sign in. Please try again.");
-      else if (result.redirect) { router.replace("/dashboard"); router.refresh(); return; }
-      else setNotice(result.message);
+      if (mode === "forgot_password") {
+        const email = form.get("email") as string;
+        const response = await fetch(`/api/auth/reset-password`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        const result = await response.json();
+        if (!response.ok) setError(result.error || "Unable to send reset code.");
+        else {
+          setNotice("Verification code sent to your email.");
+          setResetEmail(email);
+          setMode("verify_otp");
+        }
+      } else if (mode === "verify_otp") {
+        const response = await fetch(`/api/auth/update-password-otp`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: resetEmail, otp: form.get("otp"), password: form.get("password") }),
+        });
+        const result = await response.json();
+        if (!response.ok) setError(result.error || "Unable to update password.");
+        else {
+          router.replace("/dashboard");
+          router.refresh();
+          return;
+        }
+      } else {
+        const response = await fetch(`/api/auth/${mode}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: form.get("email"), password: form.get("password"), name: form.get("name") }),
+        });
+        const result = await response.json();
+        if (!response.ok) setError(result.error || "Unable to sign in. Please try again.");
+        else if (result.redirect) { router.replace("/dashboard"); router.refresh(); return; }
+        else setNotice(result.message);
+      }
     } catch { setError("Cannot connect. Check your connection and try again."); }
     setPending(false);
   }
@@ -39,6 +67,12 @@ export default function LoginForm({ configured, confirmationError }: { configure
 
   function showMockNotice() {
     setNotice("This feature is not connected yet. Please use email and password.");
+  }
+
+  function handleForgotPassword() {
+    setMode("forgot_password");
+    setError("");
+    setNotice("");
   }
 
   return (
@@ -105,52 +139,75 @@ export default function LoginForm({ configured, confirmationError }: { configure
 
 
           <div className="mx-auto w-full max-w-[440px]">
-            <h2 id="login-heading" className="text-2xl font-bold text-primary">{mode === "login" ? "Sign In" : "Create Account"}</h2>
-            <p className="mt-2 text-[13px] text-on-surface-variant">Enter your credentials to access your interview workspace.</p>
+            <h2 id="login-heading" className="text-2xl font-bold text-primary">
+              {mode === "login" ? "Sign In" : mode === "signup" ? "Create Account" : mode === "forgot_password" ? "Reset Password" : "Enter Verification Code"}
+            </h2>
+            <p className="mt-2 text-[13px] text-on-surface-variant">
+              {mode === "forgot_password" ? "Enter your email and we will send you a verification code." : mode === "verify_otp" ? "Enter the verification code sent to your email and your new password." : "Enter your credentials to access your interview workspace."}
+            </p>
 
             {!configured && <p role="status" className="mt-5 rounded bg-amber-50 p-3 text-xs text-amber-900">Supabase setup is required. Add your project URL and publishable key to .env.local, then restart the app. See docs/supabase-setup.md.</p>}
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={showMockNotice} className="flex items-center justify-center gap-1.5 rounded-sm bg-surface-container py-2 text-xs font-medium">
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0">
-                  <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.36Z" />
-                  <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.05.97-3.38.97-2.61 0-4.83-1.76-5.62-4.13H3.04v2.59A10 10 0 0 0 12 22Z" />
-                  <path fill="#FBBC05" d="M6.38 13.92a6 6 0 0 1 0-3.84V7.49H3.04a10 10 0 0 0 0 9.02l3.34-2.59Z" />
-                  <path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.96 5.49l3.34 2.59A5.98 5.98 0 0 1 12 5.95Z" />
-                </svg>Google
-              </button>
-              <button type="button" onClick={showMockNotice} className="flex items-center justify-center gap-1.5 rounded-sm bg-surface-container py-2 text-xs font-medium">
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="size-3.5"><path d="M12 .75a11.25 11.25 0 0 0-3.56 21.92c.56.1.77-.24.77-.54v-2.1c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.68.08-.68 1.13.08 1.73 1.16 1.73 1.16 1 1.72 2.64 1.22 3.28.93.1-.73.39-1.22.71-1.5-2.5-.28-5.13-1.25-5.13-5.56 0-1.23.44-2.23 1.16-3.02-.12-.28-.5-1.43.11-2.98 0 0 .95-.3 3.1 1.15a10.8 10.8 0 0 1 5.63 0c2.15-1.45 3.1-1.15 3.1-1.15.61 1.55.23 2.7.11 2.98.72.79 1.16 1.79 1.16 3.02 0 4.32-2.64 5.28-5.15 5.56.4.35.76 1.03.76 2.08v3.09c0 .3.2.65.77.54A11.25 11.25 0 0 0 12 .75Z" /></svg>GitHub
-              </button>
-            </div>
+            {(mode === "login" || mode === "signup") && (
+              <>
+                <div className="mt-4 grid grid-cols-1 gap-2">
+                  <a href="/api/auth/google" className="flex items-center justify-center gap-1.5 rounded-sm bg-surface-container py-2 text-xs font-medium hover:bg-surface-container-high transition-colors">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0">
+                      <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.36Z" />
+                      <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.05.97-3.38.97-2.61 0-4.83-1.76-5.62-4.13H3.04v2.59A10 10 0 0 0 12 22Z" />
+                      <path fill="#FBBC05" d="M6.38 13.92a6 6 0 0 1 0-3.84V7.49H3.04a10 10 0 0 0 0 9.02l3.34-2.59Z" />
+                      <path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.83 1.5l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.96 5.49l3.34 2.59A5.98 5.98 0 0 1 12 5.95Z" />
+                    </svg>Continue with Google
+                  </a>
+                </div>
 
-            <div className="my-4 flex items-center gap-3 text-[10px] text-on-surface-variant"><span className="h-px flex-1 bg-surface-container" />Or continue with email<span className="h-px flex-1 bg-surface-container" /></div>
+                <div className="my-4 flex items-center gap-3 text-[10px] text-on-surface-variant"><span className="h-px flex-1 bg-surface-container" />Or continue with email<span className="h-px flex-1 bg-surface-container" /></div>
+              </>
+            )}
 
             <form onSubmit={submit} className="space-y-3" aria-busy={pending}>
               <fieldset disabled={pending || !configured} className="space-y-3 disabled:opacity-60">
-              {mode === "signup" && <div><label htmlFor="name" className="mb-1 block text-[11px] text-primary">Full name</label><input id="name" name="name" autoComplete="name" required minLength={2} maxLength={80} className="w-full rounded-sm bg-surface-container-low p-3 text-[13px]" /></div>}
-              <div>
-                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="email" className="text-primary">Email Address</label><span className="text-[10px] text-on-surface-variant">University / Work</span></div>
-                <div className="relative">
-                  <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="mail" /></span>
-                  <input id="email" name="email" type="email" maxLength={254} autoComplete="email" placeholder="hieu.pham@vku.udn.vn" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
-                </div>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="password" className="text-primary">Password</label><button type="button" onClick={showMockNotice} className="text-[10px] text-secondary hover:underline">Forgot your password?</button></div>
-                <div className="relative">
-                  <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="lock" /></span>
-                  <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? 12 : undefined} maxLength={128} placeholder="••••••••••••" required className="w-full rounded-sm bg-surface-container-low py-3 pr-11 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
-                  <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)} className="absolute top-1/2 right-2 z-10 flex size-8 -translate-y-1/2 items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer"><span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name={showPassword ? "visibility_off" : "visibility"} /></span></button>
-                </div>
-              </div>
-              <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-container">{pending ? "Please wait…" : mode === "signup" ? "Create Account" : "Sign In to Workspace"}<span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name="arrow_forward" /></span></button>
-              {mode === "signup" && <p className="text-xs text-on-surface-variant">Use at least 12 characters. You may need to confirm your email before signing in.</p>}
+                {mode === "signup" && <div><label htmlFor="name" className="mb-1 block text-[11px] text-primary">Full name</label><input id="name" name="name" autoComplete="name" required minLength={2} maxLength={80} className="w-full rounded-sm bg-surface-container-low p-3 text-[13px]" /></div>}
+                {(mode !== "verify_otp") && (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="email" className="text-primary">Email Address</label></div>
+                    <div className="relative">
+                      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="mail" /></span>
+                      <input id="email" name="email" type="email" maxLength={254} autoComplete="email" placeholder="hieu.pham@vku.udn.vn" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
+                    </div>
+                  </div>
+                )}
+                {mode === "verify_otp" && (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="otp" className="text-primary">Verification Code</label></div>
+                    <div className="relative">
+                      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="pin_invoke" /></span>
+                      <input id="otp" name="otp" type="text" maxLength={8} placeholder="12345678" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary tracking-widest" />
+                    </div>
+                  </div>
+                )}
+                {mode !== "forgot_password" && (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="password" className="text-primary">{mode === "verify_otp" ? "New Password" : "Password"}</label>{mode === "login" && <button type="button" onClick={handleForgotPassword} className="text-[10px] text-secondary hover:underline">Forgot your password?</button>}</div>
+                    <div className="relative">
+                      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="lock" /></span>
+                      <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : mode === "verify_otp" ? "new-password" : "current-password"} minLength={(mode === "signup" || mode === "verify_otp") ? 12 : undefined} maxLength={128} placeholder="••••••••••••" required className="w-full rounded-sm bg-surface-container-low py-3 pr-11 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary" />
+                      <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)} className="absolute top-1/2 right-2 z-10 flex size-8 -translate-y-1/2 items-center justify-center text-outline hover:text-primary transition-colors cursor-pointer"><span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name={showPassword ? "visibility_off" : "visibility"} /></span></button>
+                    </div>
+                  </div>
+                )}
+                <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-sm bg-primary py-3.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-primary-container">{pending ? "Please wait…" : mode === "signup" ? "Create Account" : mode === "forgot_password" ? "Send Verification Code" : mode === "verify_otp" ? "Update Password" : "Sign In to Workspace"}<span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle text-[18px]"><Icon name="arrow_forward" /></span></button>
+                {(mode === "signup" || mode === "verify_otp") && <p className="text-xs text-on-surface-variant">Use at least 12 characters.</p>}
               </fieldset>
               {error && <p role="alert" className="text-sm text-error">{error}</p>}
             </form>
 
-            <p className="mt-7 text-center text-xs text-on-surface-variant">{mode === "login" ? "New to Aizuchi.AI? " : "Already have an account? "}<button type="button" disabled={pending} onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setNotice(""); }} className="font-semibold text-secondary hover:underline">{mode === "login" ? "Create an Account" : "Sign In"}</button></p>
+            <p className="mt-7 text-center text-xs text-on-surface-variant">
+              {(mode === "forgot_password" || mode === "verify_otp") ? "Remembered your password? " : mode === "login" ? "New to Aizuchi.AI? " : "Already have an account? "}
+              <button type="button" disabled={pending} onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setNotice(""); }} className="font-semibold text-secondary hover:underline">
+                {(mode === "forgot_password" || mode === "verify_otp") ? "Back to Sign In" : mode === "login" ? "Create an Account" : "Sign In"}
+              </button>
+            </p>
             <p role="status" className="mt-3 text-center text-xs text-secondary">{notice}</p>
           </div>
           <p className="mx-auto mt-auto max-w-[510px] pt-7 text-center text-[10px] leading-relaxed tracking-wide text-on-surface-variant">Your account is managed by Supabase Auth. Interview statistics and reports currently use sample data.</p>
