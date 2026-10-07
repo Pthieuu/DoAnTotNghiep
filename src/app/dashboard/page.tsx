@@ -696,7 +696,20 @@ export default async function DashboardPage() {
 <td className="py-3.5 px-space-md whitespace-nowrap">{session.completed_at ? dateFormat.format(new Date(session.completed_at)) : "In progress"}</td>
 <td className="py-3.5 px-space-md"><div className="font-semibold text-primary">{session.title}</div>{session.company && <div className="text-xs text-on-surface-variant">{session.company}</div>}</td>
 <td className="py-3.5 px-space-md">{session.level || "—"}</td><td className="py-3.5 px-space-md">{session.score ?? "—"}</td>
-<td className="py-3.5 px-space-md capitalize">{session.status.replaceAll("_", " ")}</td><td className="py-3.5 px-space-md text-right">—</td>
+<td className="py-3.5 px-space-md capitalize">{session.status.replaceAll("_", " ")}</td>
+<td className="py-3.5 px-space-md text-right">
+  {session.status === "completed" ? (
+    <Link href={`/summary?sessionId=${session.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-secondary hover:text-on-secondary text-primary font-label-md text-label-md font-semibold transition-all">
+      <span>Xem kết quả</span>
+      <Icon name="chevron_right" />
+    </Link>
+  ) : (
+    <Link href={`/interview-room?sessionId=${session.id}`} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-secondary font-label-md text-label-md font-semibold transition-all">
+      <span>Tiếp tục</span>
+      <Icon name="play_arrow" />
+    </Link>
+  )}
+</td>
 </tr>)}
 </tbody>
 </table>

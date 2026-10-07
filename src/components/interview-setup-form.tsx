@@ -15,6 +15,8 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
   const [jobDescription, setJobDescription] = useState("");
   const [level, setLevel] = useState("N3");
   const [questionCount, setQuestionCount] = useState("6");
+  const [interviewType, setInterviewType] = useState("mixed");
+  const [interviewLanguage, setInterviewLanguage] = useState("vi");
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
@@ -36,7 +38,7 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
       const response = await fetch("/api/interviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: cleanRole, company: company.trim(), jobDescription: jobDescription.trim(), level, questionCount: Number(questionCount) }),
+        body: JSON.stringify({ role: cleanRole, company: company.trim(), jobDescription: jobDescription.trim(), level, questionCount: Number(questionCount), interviewType, interviewLanguage }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không thể tạo buổi phỏng vấn.");
@@ -63,12 +65,23 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
         <div><label htmlFor="role" className="text-sm font-semibold text-primary">Vị trí ứng tuyển <span className="text-error">*</span></label><input id="role" className={field} value={role} onChange={(e) => { setRole(e.target.value); setSaved(false); }} maxLength={160} required placeholder="Ví dụ: Backend Engineer" /><p className="mt-1 text-xs text-on-surface-variant">Dùng làm tiêu đề buổi phỏng vấn.</p></div>
         <div><label htmlFor="company" className="text-sm font-semibold text-primary">Công ty <span className="font-normal text-on-surface-variant">(không bắt buộc)</span></label><input id="company" className={field} value={company} onChange={(e) => { setCompany(e.target.value); setSaved(false); }} maxLength={160} placeholder="Ví dụ: Công ty bạn đang ứng tuyển" /></div>
         <div><label htmlFor="job-description" className="text-sm font-semibold text-primary">Mô tả công việc (JD) <span className="font-normal text-on-surface-variant">(không bắt buộc)</span></label><textarea id="job-description" className={field} value={jobDescription} onChange={(e) => { setJobDescription(e.target.value); setSaved(false); }} maxLength={12000} rows={6} placeholder="Dán yêu cầu và mô tả công việc để câu hỏi sát vị trí hơn." /><p className="mt-1 text-right text-xs text-on-surface-variant">{jobDescription.length.toLocaleString("vi-VN")} / 12.000</p></div>
-        <div className="grid gap-5 sm:grid-cols-2"><div><label htmlFor="level" className="text-sm font-semibold text-primary">Trình độ tiếng Nhật</label><select id="level" className={field} value={level} onChange={(e) => { setLevel(e.target.value); setSaved(false); }}>{["N5", "N4", "N3", "N2", "N1"].map((item) => <option key={item}>{item}</option>)}</select></div><div><label htmlFor="question-count" className="text-sm font-semibold text-primary">Số câu hỏi</label><select id="question-count" className={field} value={questionCount} onChange={(e) => { setQuestionCount(e.target.value); setSaved(false); }}>{[4, 6, 8].map((count) => <option key={count} value={count}>{count} câu</option>)}</select></div></div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div><label htmlFor="interview-type" className="text-sm font-semibold text-primary">Loại phỏng vấn</label><select id="interview-type" className={field} value={interviewType} onChange={(e) => { setInterviewType(e.target.value); setSaved(false); }}>
+            <option value="mixed">Tổng hợp (Mixed)</option>
+            <option value="technical">Kỹ thuật (Technical)</option>
+            <option value="behavioral">Kỹ năng mềm (Behavioral)</option>
+          </select></div>
+          <div><label htmlFor="interview-language" className="text-sm font-semibold text-primary">Ngôn ngữ</label><select id="interview-language" className={field} value={interviewLanguage} onChange={(e) => { setInterviewLanguage(e.target.value); setSaved(false); }}>
+            <option value="vi">Tiếng Việt</option>
+            <option value="ja">Tiếng Nhật</option>
+          </select></div>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2"><div><label htmlFor="level" className="text-sm font-semibold text-primary">Trình độ tiếng Nhật (dùng cho CV & format)</label><select id="level" className={field} value={level} onChange={(e) => { setLevel(e.target.value); setSaved(false); }}>{["N5", "N4", "N3", "N2", "N1"].map((item) => <option key={item}>{item}</option>)}</select></div><div><label htmlFor="question-count" className="text-sm font-semibold text-primary">Số câu hỏi</label><select id="question-count" className={field} value={questionCount} onChange={(e) => { setQuestionCount(e.target.value); setSaved(false); }}>{[4, 5, 6, 8, 10, 15].map((count) => <option key={count} value={count}>{count} câu</option>)}</select></div></div>
         {error && <p role="alert" className="rounded-lg bg-error-container px-4 py-3 text-sm text-on-error-container">{error}</p>}
         {saved && created && <section role="status" className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><div><p className="text-sm font-semibold text-emerald-950">Buổi luyện tập đã sẵn sàng</p><p className="mt-1 text-xs text-emerald-900">{created.title} · {created.question_count} câu hỏi. Hãy bắt đầu để gặp người phỏng vấn.</p></div><Link href={`/interview-room?sessionId=${encodeURIComponent(created.id)}`} className={`${button} bg-primary text-white hover:bg-secondary`}>Bắt đầu luyện tập <Icon name="arrow_forward" /></Link></section>}
         <div className="flex flex-wrap justify-end gap-3 border-t border-surface-container pt-5"><Link href="/cv" className={`${button} border border-outline-variant text-primary`}>Quay lại CV</Link><button disabled={working || !cv} className={`${button} bg-primary text-white hover:bg-secondary disabled:cursor-wait disabled:opacity-60`} type="submit">{working ? <><Icon name="autorenew" />Đang tạo câu hỏi…</> : <>Tạo bộ câu hỏi <Icon name="arrow_forward" /></>}</button></div>
       </form>
-      <p className="text-xs text-on-surface-variant">Ngôn ngữ phỏng vấn hiện đặt mặc định là tiếng Nhật. Việc tạo câu hỏi có thể mất một lúc khi AI đang xử lý.</p>
+      <p className="text-xs text-on-surface-variant">Việc tạo câu hỏi có thể mất một lúc khi AI đang phân tích CV và xử lý.</p>
     </>}
   </div>;
 }

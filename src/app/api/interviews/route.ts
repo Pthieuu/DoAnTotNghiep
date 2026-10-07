@@ -15,8 +15,17 @@ export async function POST(request: Request) {
   const jobDescriptionInput = typeof body?.jobDescription === "string" ? body.jobDescription.trim() : "";
   const level = body?.level;
   const questionCount = body?.questionCount;
-  if (!body || !role || role.length > 160 || companyInput.length > 160 || jobDescriptionInput.length > 12000 || !["N5", "N4", "N3", "N2", "N1"].includes(String(level)) || ![4, 6, 8].includes(Number(questionCount))) {
+  const interviewType = body?.interviewType || "mixed";
+  const interviewLanguage = body?.interviewLanguage || "vi";
+
+  if (!body || !role || role.length > 160 || companyInput.length > 160 || jobDescriptionInput.length > 12000 || !["N5", "N4", "N3", "N2", "N1"].includes(String(level)) || ![4, 5, 6, 8, 10, 15].includes(Number(questionCount))) {
     return json({ error: "Cấu hình không hợp lệ. Kiểm tra vị trí, công ty, JD, trình độ và số câu hỏi." }, 400);
+  }
+  if (!["technical", "behavioral", "mixed"].includes(String(interviewType))) {
+    return json({ error: "Loại phỏng vấn không hợp lệ." }, 400);
+  }
+  if (!["ja", "vi"].includes(String(interviewLanguage))) {
+    return json({ error: "Ngôn ngữ không hợp lệ." }, 400);
   }
 
   try {
@@ -39,6 +48,8 @@ export async function POST(request: Request) {
       jobDescription: jobDescriptionInput || null,
       level: String(level),
       count: Number(questionCount),
+      interviewType: String(interviewType),
+      interviewLanguage: String(interviewLanguage)
     });
 
     const { data: session, error: insertError } = await supabase.from("interview_sessions").insert({
@@ -49,7 +60,8 @@ export async function POST(request: Request) {
       target_role: role,
       job_description: jobDescriptionInput || null,
       question_count: Number(questionCount),
-      interview_language: "ja",
+      interview_type: String(interviewType),
+      interview_language: String(interviewLanguage),
       cv_id: cvRow.id,
       cv_snapshot: cvSnapshot,
       questions,
