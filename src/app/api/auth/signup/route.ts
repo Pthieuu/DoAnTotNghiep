@@ -14,7 +14,10 @@ export async function POST(request: Request) {
       email: input.email, password: input.password,
       options: { data: { full_name: input.name } },
     });
-    if (error) return json({ error: error.status === 429 ? "Too many attempts. Please try again later." : "Unable to create your account. Try signing in or use another email and a stronger password." }, error.status === 429 ? 429 : 400);
+    if (error) {
+      console.error("Signup error from Supabase:", error);
+      return json({ error: error.status === 429 ? "Too many attempts. Please try again later." : error.message || "Unable to create your account. Try signing in or use another email and a stronger password." }, error.status === 429 ? 429 : 400);
+    }
     if (data.session) return json({ redirect: "/dashboard" });
     return json({ message: "Check your inbox to confirm your email. If you already have an account, sign in instead." });
   } catch {

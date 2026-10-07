@@ -4,7 +4,7 @@ import { emptyCv, validateCv } from "@/lib/cv-schema";
 
 function aiConfigured() {
   const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
-  return provider === "ollama" || (provider === "openai" && Boolean(process.env.OPENAI_API_KEY));
+  return provider === "ollama" || (provider === "openai" && Boolean(process.env.OPENAI_API_KEY)) || (provider === "gemini" && Boolean(process.env.GOOGLE_API_KEY));
 }
 
 function storageErrorMessage(error: { message?: string; statusCode?: string; name?: string }) {

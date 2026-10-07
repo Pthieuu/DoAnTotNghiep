@@ -116,8 +116,37 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     }
     const payload = await response.json();
     outputText = payload.choices?.[0]?.message?.content || "";
+  } else if (provider === "gemini") {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) throw new Error("Chưa cấu hình GOOGLE_API_KEY trên backend để trích xuất CV.");
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`, {
+      method: "POST", signal: AbortSignal.timeout(60000), headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: `${messages[0].content}\n\nFormat required: JSON matching this schema:\n${JSON.stringify(schema)}\n\n${messages[1].content}` }] }],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" }
+      })
+    });
+    if (!response.ok) throw new Error(`Gemini trả lỗi HTTP ${response.status} khi trích xuất CV.`);
+    const payload = await response.json();
+    outputText = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  } else if (provider === "groq") {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để trích xuất CV.");
+    const groqModel = process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST", signal: AbortSignal.timeout(45000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: groqModel, temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: messages[0].content + `\n\nReturn ONLY a JSON object matching this schema:\n${JSON.stringify(schema)}` }, messages[1]]
+      })
+    });
+    if (!response.ok) throw new Error(`Groq trả lỗi HTTP ${response.status}.`);
+    const payload = await response.json();
+    outputText = payload.choices?.[0]?.message?.content || "";
   } else {
-    throw new Error("CV_AI_PROVIDER chỉ nhận giá trị `ollama` hoặc `openai`.");
+    throw new Error("CV_AI_PROVIDER chỉ nhận giá trị `ollama`, `openai`, `gemini`, hoặc `groq`.");
   }
   let output: unknown;
   try { output = JSON.parse(outputText); } catch { throw new Error("AI trả về dữ liệu không đọc được. Hãy thử lại."); }
