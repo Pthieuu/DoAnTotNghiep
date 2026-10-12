@@ -131,7 +131,6 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             onToggleTranslation={() => setShowTranslation(!showTranslation)}
             isCompleted={!!isCompleted}
           />
-          <CandidateCamera />
           <InterviewControls
             isCompleted={!!isCompleted}
             micActive={isListening}
@@ -204,7 +203,10 @@ function AIInterviewer({
       </div>
 
       {/* Avatar Area */}
-      <div className="flex-1 relative bg-[#edf3fb] flex items-center justify-center">
+      <div 
+        className="flex-1 relative flex items-center justify-center bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/interview-bg.jpg')" }}
+      >
         <VrmAvatar
           state={aiState === "idle" ? "idle" : aiState}
           className="absolute inset-0 h-full min-h-0 rounded-none"
