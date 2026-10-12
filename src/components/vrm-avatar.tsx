@@ -50,7 +50,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
     const bodyBones: Record<string, THREE.Object3D> = {};
     const bodyRest: Record<string, THREE.Quaternion> = {};
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#edf3fb");
+    scene.background = null;
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
     scene.add(new THREE.HemisphereLight(0xe8f3ff, 0x71809a, 2.2));
     const key = new THREE.DirectionalLight(0xffedd8, 2.6);
@@ -62,7 +62,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
     const clock = new THREE.Clock();
 
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
