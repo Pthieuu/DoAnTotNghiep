@@ -5,7 +5,7 @@ import { evaluateAnswer } from "@/lib/interview-evaluation";
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score?: number };
 
-export const maxDuration = 60; // Allow enough time for AI evaluation
+export const maxDuration = 150; // Allow enough time for AI evaluation
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const failure = checkRequest(request);
@@ -26,7 +26,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!user) return json({ error: "Vui lòng đăng nhập để lưu câu trả lời." }, 401);
 
     const { data: session, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,status,questions,cv_snapshot,interview_type,question_count")
+      .select("id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language")
       .eq("id", id).eq("user_id", user.id).maybeSingle();
     if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
@@ -61,6 +61,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       try {
         evaluationResult = await evaluateAnswer({
           cvText,
+          targetRole: session.target_role,
+          jobDescription: session.job_description,
+          language: session.interview_language || "ja",
           interviewType,
           question: currentQuestion.text,
           questionType,
@@ -79,6 +82,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         question_index: index, 
         answer,
         score: evaluationResult.score,
+        rubric_json: evaluationResult.rubric,
         feedback: evaluationResult.feedback,
         suggestion: evaluationResult.suggestion,
         question_text: currentQuestion.text,

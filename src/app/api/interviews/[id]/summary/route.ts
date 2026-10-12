@@ -2,8 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { generateSummary, type SummaryResult } from "@/lib/interview-summary";
 
+import type { RubricResult } from "@/lib/interview-rubric";
+
 type Question = { text: string; translation: string; focus?: string };
-type AnswerRow = { question_index: number; answer: string; score: number; feedback: string };
+type AnswerRow = { question_index: number; answer: string; score: number | null; rubric_json: RubricResult | null; feedback: string };
 
 export const maxDuration = 80;
 
@@ -35,7 +37,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     const { data: previousAnswers, error: answersError } = await supabase.from("interview_answers")
-      .select("question_index,answer,score,feedback")
+      .select("question_index,answer,score,feedback,rubric_json")
       .eq("session_id", id)
       .order("question_index", { ascending: true });
       
@@ -58,6 +60,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         question_type: q.focus || "behavioral",
         answer: a.answer,
         score: a.score,
+        rubric: a.rubric_json,
         feedback: a.feedback
       };
     });
@@ -77,7 +80,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     // Save summary to database
     // Note: the original score column expects integer 0-100.
-    const overallScore = Math.round(summaryResult.totalScore);
+    const overallScore = summaryResult.totalScore === null || summaryResult.provisional ? null : Math.round(summaryResult.totalScore);
     const { error: updateError } = await supabase.from("interview_sessions")
       .update({ 
         summary_json: summaryResult,

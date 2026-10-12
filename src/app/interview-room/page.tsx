@@ -1,3 +1,4 @@
+import type { RubricResult } from "@/lib/interview-rubric";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 type StoredQuestion = { text: string; translation: string; focus?: string };
-type StoredTurn = { question: StoredQuestion; answer: string; score?: number; feedback?: string };
+type StoredTurn = { question: StoredQuestion; answer: string; score?: number | null; feedback?: string; rubric?: RubricResult | null };
 type RoomSession = {
   id: string; title: string; company: string | null; level: string | null;
   interviewType: string; interviewLanguage: string;
@@ -36,7 +37,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
       session = { id: sessionId, title: "Interview Room", company: null, level: null, interviewType: "mixed", interviewLanguage: "vi", total: 0, currentQuestion: null, turns: [], completed: false, loadError: "session" };
     } else if (data && Array.isArray(data.questions)) {
       const { data: answerRows, error: answerError } = await supabase.from("interview_answers")
-        .select("question_index,answer,score,feedback")
+        .select("question_index,answer,score,feedback,rubric_json")
         .eq("session_id", sessionId)
         .order("question_index", { ascending: true });
       const questions = data.questions as StoredQuestion[];
@@ -45,7 +46,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
       } else {
         const answers = answerRows || [];
         const publicQuestion = (question: StoredQuestion): StoredQuestion => ({ text: question.text, translation: question.translation, focus: question.focus });
-        const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer, score: item.score, feedback: item.feedback }] : []);
+        const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer, score: item.score, feedback: item.feedback, rubric: item.rubric_json }] : []);
         const completed = data.status === "completed";
         const currentIndex = answers.length;
         session = {
