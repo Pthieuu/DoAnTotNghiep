@@ -1,7 +1,11 @@
 import "server-only";
+import { parseRubric, rubricSchema, RUBRIC_PROMPT, LOCAL_RUBRIC_PROMPT, localRubricSchema, type RubricResult } from "./interview-rubric";
 
 type EvaluationInput = {
   cvText: string;
+  targetRole?: string | null;
+  jobDescription?: string | null;
+  language: string;
   interviewType: string;
   question: string;
   questionType: string;
@@ -11,21 +15,13 @@ type EvaluationInput = {
 };
 
 export type EvaluationResult = {
-  score: number;
+  score: number | null;
+  rubric: RubricResult;
   feedback: string;
   suggestion: string | null;
 };
 
-const evaluationSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["score", "feedback", "suggestion"],
-  properties: {
-    score: { type: "number" },
-    feedback: { type: "string" },
-    suggestion: { type: ["string", "null"] },
-  },
-};
+const evaluationSchema = rubricSchema;
 
 export async function evaluateAnswer(input: EvaluationInput): Promise<EvaluationResult> {
   const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
@@ -37,37 +33,16 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
         ? process.env.GROQ_MODEL || "llama-3.1-70b-versatile"
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
 
+  const localSchema = provider === "ollama" ? localRubricSchema(input.userAnswer) : evaluationSchema;
   const messages = [
-    {
-      role: "system",
-      content: `Bạn là một AI Interviewer chuyên nghiệp đang chấm điểm câu trả lời phỏng vấn.
-
-THÔNG TIN CV CỦA ỨNG VIÊN:
-${input.cvText}
-
-LOẠI PHỎNG VẤN: ${input.interviewType}
-
-QUY TẮC CHẤM ĐIỂM:
-1. Chấm điểm 0–10 dựa trên: độ chính xác, độ sâu, ví dụ cụ thể, cấu trúc câu trả lời.
-2. Câu hỏi technical: Đánh giá kiến thức kỹ thuật, khả năng giải thích, và ví dụ thực tế.
-3. Câu hỏi behavioral: Đánh giá phương pháp STAR (Situation, Task, Action, Result).
-4. Phản hồi mang tính xây dựng, thân thiện và chuyên nghiệp.
-5. Nếu câu trả lời dưới 7/10, BẮT BUỘC phải đưa ra gợi ý cải thiện (suggestion).
-6. Nếu câu trả lời từ 7/10 trở lên, suggestion = null.
-
-NGÔN NGỮ: Trả lời bằng tiếng Việt.
-Return JSON only.`,
-    },
-    {
-      role: "user",
-      content: `CÂU HỎI (${input.questionType}, câu ${input.questionIndex + 1}/${input.totalQuestions}):
-${input.question}
-
-CÂU TRẢ LỜI CỦA ỨNG VIÊN:
-${input.userAnswer}
-
-Hãy chấm điểm và phản hồi.`,
-    },
+    { role: "system", content: provider === "ollama" ? LOCAL_RUBRIC_PROMPT : `${RUBRIC_PROMPT}\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}` },
+    { role: "user", content: JSON.stringify({
+      cv: input.cvText, targetRole: input.targetRole, jobDescription: input.jobDescription,
+      responseLanguage: "Vietnamese (vi): reason, strengths, weaknesses, practice. Only evidence is quoted in original Japanese.",
+      language: input.language, interviewType: input.interviewType,
+      question: input.question, questionType: input.questionType, answer: input.userAnswer,
+      questionIndex: input.questionIndex, totalQuestions: input.totalQuestions,
+    }) },
   ];
 
   let response: Response;
@@ -76,16 +51,16 @@ Hãy chấm điểm và phản hồi.`,
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
         method: "POST",
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(120000),
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
           stream: false,
           think: false,
-          keep_alive: "30s",
-          format: evaluationSchema,
-          options: { temperature: 0.3, num_ctx: 8192, num_predict: 1024 },
+          keep_alive: "5m",
+          format: localSchema,
+          options: { temperature: 0.3, num_ctx: 8192, num_predict: 4096 },
           messages,
         }),
       });
@@ -194,7 +169,17 @@ Hãy chấm điểm và phản hồi.`,
     };
     text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
   } else if (provider === "ollama") {
-    const payload = (await response.json()) as { message?: { content?: string } };
+    const payload = (await response.json()) as {
+      message?: { content?: string }; done_reason?: string;
+      total_duration?: number; load_duration?: number; prompt_eval_count?: number; eval_count?: number;
+    };
+    // Log performance only, never CVs, answers, or model feedback.
+    console.info("Ollama evaluation timing", {
+      model, totalMs: typeof payload.total_duration === "number" ? Math.round(payload.total_duration / 1e6) : undefined,
+      loadMs: typeof payload.load_duration === "number" ? Math.round(payload.load_duration / 1e6) : undefined,
+      inputTokens: payload.prompt_eval_count, outputTokens: payload.eval_count, doneReason: payload.done_reason,
+    });
+    if (payload.done_reason === "length") throw new Error("AI chưa hoàn thành bảng chấm trong giới hạn đầu ra. Hãy thử lại.");
     text = payload.message?.content;
   } else if (provider === "groq") {
     const payload = (await response.json()) as { choices?: { message?: { content?: string } }[] };
@@ -213,14 +198,17 @@ Hãy chấm điểm và phản hồi.`,
     throw new Error("AI trả về kết quả chấm điểm không đọc được. Hãy thử lại.");
   }
 
-  const data = result as Record<string, unknown>;
-  const score = Number(data.score);
-  if (isNaN(score) || score < 0 || score > 10)
-    throw new Error("AI trả về điểm số không hợp lệ.");
-
+  const rubric = parseRubric(result, { answer: input.userAnswer, language: input.language, targetRole: input.targetRole });
+  const structureLabel = rubric.structure.status === "passed" ? "Đạt chuẩn cấu trúc" : rubric.structure.status === "failed" ? "Chưa đạt chuẩn cấu trúc" : "Chưa đủ dữ liệu cấu trúc";
   return {
-    score: Math.round(score * 10) / 10,
-    feedback: typeof data.feedback === "string" ? data.feedback : "Không có phản hồi.",
-    suggestion: typeof data.suggestion === "string" ? data.suggestion : null,
+    score: rubric.totalScore === null ? null : rubric.totalScore / 10,
+    rubric,
+    feedback: [
+      `${rubric.provisional ? "Điểm tạm tính" : "Điểm checklist"}: ${rubric.totalScore ?? "Chưa đủ dữ liệu"}${rubric.totalScore === null ? "" : "/100"} (${rubric.assessedCount}/5 tiêu chí).`,
+      `${rubric.structure.method}: ${structureLabel}.`,
+      ...rubric.strengths.map(s => `Làm tốt: ${s}`),
+      ...rubric.weaknesses.map(s => `Cần cải thiện: ${s}`),
+    ].join("\n"),
+    suggestion: rubric.practice,
   };
 }

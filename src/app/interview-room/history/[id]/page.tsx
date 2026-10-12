@@ -5,6 +5,8 @@ import DashboardShell from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import Icon from "@/components/icon";
 import Link from "next/link";
+import RubricDetails from "@/components/rubric-details";
+import type { RubricResult } from "@/lib/interview-rubric";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 type StoredQuestion = { text: string; translation: string; focus?: string };
-type AnswerRow = { question_index: number; answer: string; score: number; feedback: string; suggestion: string | null };
+type AnswerRow = { question_index: number; answer: string; score: number | null; rubric_json: RubricResult | null; feedback: string; suggestion: string | null };
 
 export default async function HistoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getUser();
@@ -33,7 +35,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
   if (error || !session) redirect("/dashboard");
 
   const { data: answerRows } = await supabase.from("interview_answers")
-    .select("question_index, answer, score, feedback, suggestion")
+    .select("question_index, answer, score, feedback, suggestion, rubric_json")
     .eq("session_id", id)
     .order("question_index", { ascending: true });
 
@@ -59,10 +61,10 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
           {answers.map((ans, idx) => {
             const q = questions[ans.question_index];
             if (!q) return null;
-            
-            const scoreColor = ans.score >= 8 ? "text-emerald-600 bg-emerald-50 border-emerald-200" : 
-                              ans.score >= 6 ? "text-blue-600 bg-blue-50 border-blue-200" : 
-                              ans.score >= 4 ? "text-amber-600 bg-amber-50 border-amber-200" : 
+
+            const scoreColor = (ans.score ?? 0) >= 8 ? "text-emerald-600 bg-emerald-50 border-emerald-200" :
+                              (ans.score ?? 0) >= 6 ? "text-blue-600 bg-blue-50 border-blue-200" :
+                              (ans.score ?? 0) >= 4 ? "text-amber-600 bg-amber-50 border-amber-200" :
                               "text-error bg-error-container border-error";
 
             return (
@@ -76,11 +78,12 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                     <p className="text-sm text-on-surface-variant mt-1">{q.translation}</p>
                   </div>
                   <div className={`shrink-0 flex items-center justify-center px-4 py-2 rounded-xl border font-bold text-xl ${scoreColor}`}>
-                    {ans.score} / 10
+                    {ans.rubric_json?.provisional ? "Tạm tính: " : ""}{ans.score === null ? "Chưa chấm" : `${Math.round(ans.score * 100) / 100} / 10`}
                   </div>
                 </div>
 
                 <div className="p-5 space-y-4">
+                  {ans.rubric_json && <RubricDetails rubric={ans.rubric_json} />}
                   <div>
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-1.5">
                       <Icon name="person" className="text-on-surface-variant" /> Câu trả lời của bạn
@@ -94,7 +97,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-1.5">
                       <Icon name="psychology" className="text-indigo-600" /> Nhận xét từ AI
                     </h4>
-                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-indigo-900 leading-relaxed text-sm">
+                    <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-indigo-900 leading-relaxed text-sm whitespace-pre-line">
                       {ans.feedback}
                     </div>
                   </div>
@@ -114,7 +117,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
             );
           })}
         </div>
-        
+
         {answers.length === 0 && (
           <div className="text-center p-12 bg-white rounded-2xl border border-surface-container">
             <p className="text-on-surface-variant">Chưa có câu trả lời nào được lưu.</p>

@@ -4,13 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/icon";
 
-type SummaryResult = {
-  totalScore: number;
-  grade: string;
-  strengths: string[];
-  weaknesses: string[];
-  improvementTips: string[];
-};
+import type { SummaryResult } from "@/lib/interview-summary";
 
 export default function SummaryClient({ 
   sessionId, 
@@ -91,7 +85,7 @@ export default function SummaryClient({
 
   if (!summary) return null;
 
-  const scoreColor = summary.totalScore >= 80 ? "text-emerald-600" : summary.totalScore >= 65 ? "text-blue-600" : summary.totalScore >= 50 ? "text-amber-600" : "text-error";
+  const scoreColor = summary.totalScore === null ? "text-on-surface-variant" : (summary.totalScore ?? 0) >= 80 ? "text-emerald-600" : (summary.totalScore ?? 0) >= 65 ? "text-blue-600" : (summary.totalScore ?? 0) >= 50 ? "text-amber-600" : "text-error";
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -105,11 +99,12 @@ export default function SummaryClient({
           <div className="relative size-40 md:size-48 flex items-center justify-center mx-auto">
             <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" className="text-surface-container-high" />
-              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${(summary.totalScore / 100) * 283} 283`} className={`${scoreColor} transition-all duration-1000 ease-out`} />
+              <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={`${((summary.totalScore ?? 0) / 100) * 283} 283`} className={`${scoreColor} transition-all duration-1000 ease-out`} />
             </svg>
             <div className="relative flex flex-col items-center">
-              <span className={`text-5xl md:text-6xl font-black ${scoreColor}`}>{summary.totalScore}</span>
+              <span className={`text-5xl md:text-6xl font-black ${scoreColor}`}>{summary.totalScore ?? "—"}</span>
               <span className="text-sm font-semibold text-on-surface-variant">/ 100</span>
+              {summary.provisional && <span className="text-sm text-amber-700">Điểm tạm tính</span>}
             </div>
           </div>
         </div>
@@ -118,12 +113,14 @@ export default function SummaryClient({
           <div className="bg-surface-container-lowest p-5 rounded-2xl border border-surface-container">
             <div className="flex items-center gap-3 mb-2">
               <div className={`size-10 rounded-full flex items-center justify-center font-bold text-lg ${scoreColor} bg-opacity-10 bg-current`}>
-                {summary.grade}
+                {["A", "B", "C", "D"].includes(summary.grade) ? summary.grade : "—"}
               </div>
               <div>
                 <h3 className="font-bold text-primary text-lg">Xếp loại: {summary.grade}</h3>
                 <p className="text-sm text-on-surface-variant">
-                  {summary.grade === 'A' ? 'Tuyệt vời! Bạn hoàn toàn sẵn sàng cho vị trí này.' :
+                  {summary.totalScore === null ? 'Chưa đủ dữ liệu cùng phạm vi để tính điểm chung. Xem chi tiết từng câu.' :
+                   summary.provisional ? 'Chưa chấm đủ tiêu chí; xem phạm vi đánh giá ở từng câu.' :
+                   summary.grade === 'A' ? 'Bài luyện đạt kết quả tốt theo phạm vi đã đánh giá.' :
                    summary.grade === 'B' ? 'Khá tốt. Bạn có nền tảng vững nhưng cần cải thiện một số điểm.' :
                    summary.grade === 'C' ? 'Cần cố gắng hơn. Hãy xem kỹ phần gợi ý cải thiện bên dưới.' :
                    'Kết quả chưa tốt. Đừng nản lòng, hãy luyện tập thêm nhé!'}
@@ -133,6 +130,8 @@ export default function SummaryClient({
           </div>
         </div>
       </div>
+
+      <p className="text-sm text-on-surface-variant">Điểm luyện tập không dự đoán khả năng đậu phỏng vấn. Chỉ so sánh các lần luyện có cùng phạm vi đánh giá.</p>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 h-full">

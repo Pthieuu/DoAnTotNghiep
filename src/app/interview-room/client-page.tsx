@@ -6,11 +6,14 @@ import VrmAvatar from "@/components/vrm-avatar";
 import { useGeminiLiveInterview } from "@/hooks/useGeminiLiveInterview";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import RubricDetails from "@/components/rubric-details";
+import type { RubricResult } from "@/lib/interview-rubric";
 
 type AIState = "idle" | "speaking" | "listening" | "thinking";
 
 type StoredQuestion = { text: string; translation: string; focus?: string };
-type StoredTurn = { question: StoredQuestion; answer: string; score?: number; feedback?: string };
+
+type StoredTurn = { question: StoredQuestion; answer: string; score?: number | null; feedback?: string; rubric?: RubricResult | null };
 type RoomSession = { 
   id: string; title: string; company: string | null; level: string | null; 
   interviewType: string; interviewLanguage: string;
@@ -383,12 +386,13 @@ function InterviewSidePanel({ session, transcript, interviewerTranscript }: { se
         {lastTurn && (
           <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 animate-in fade-in">
             <h3 className="text-label-sm font-semibold text-emerald-800 mb-2 flex items-center gap-1.5">
-              <Icon name="check_circle" className="text-[16px]" /> Điểm câu trước: <span className="text-lg">{lastTurn.score}/10</span>
+              <Icon name="check_circle" className="text-[16px]" /> Điểm câu trước: <span className="text-lg">{lastTurn.score == null ? "Chưa chấm" : `${Math.round(lastTurn.score * 100) / 100}/10`}{lastTurn.rubric?.provisional ? " (tạm tính)" : ""}</span>
             </h3>
             <div className="space-y-2 text-sm text-emerald-900">
               <p className="font-medium bg-white/50 p-2 rounded-lg">&ldquo;{lastTurn.answer}&rdquo;</p>
               <div className="pt-2 border-t border-emerald-200/50">
-                <p><strong>Nhận xét:</strong> {lastTurn.feedback}</p>
+                <p className="whitespace-pre-line"><strong>Nhận xét:</strong> {lastTurn.feedback}</p>
+                {lastTurn.rubric && <details><summary className="cursor-pointer">Xem chi tiết tiêu chí</summary><RubricDetails rubric={lastTurn.rubric} /><p>Luyện lại: {lastTurn.rubric.practice}</p></details>}
               </div>
             </div>
           </div>

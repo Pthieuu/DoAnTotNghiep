@@ -59,3 +59,53 @@ Interview question generation uses the configured server-side AI provider. It tr
 The setup page creates interview questions but shows only a confirmation, not the question list. Choose **Bắt đầu luyện tập** to enter the Interview Room. The room uses Gemini Live for real-time spoken interviewer responses and adaptive follow-up questions. Add `GEMINI_API_KEY` to `.env.local`; the server issues a short-lived token for the browser and keeps the API key private. Start the microphone conversation, then stop and submit the candidate transcript to save and score the current planned question. The next planned question begins when you start the microphone again.
 
 Without Supabase configuration, the login page shows setup instructions and protected pages redirect to login. The application can still be built without credentials.
+
+### Chấm điểm theo checklist phỏng vấn (v1.1)
+
+Bộ chấm trong `src/lib/interview-rubric.ts` dựa trên hai tài liệu
+`Checklist_cham_diem.xlsx` và `Checklist_luyen_phong_van.docx` (12/10/2026).
+Model trả mức 0–4, bằng chứng và lý do cho C01–C05, có trọng số lần lượt
+30/25/20/15/10. Backend kiểm tra kết quả và tính điểm /100; cột điểm từng câu
+hiện có vẫn lưu thang /10. PREP/STAR phải đủ bốn bước đúng thứ tự; lỗi thuần
+cấu trúc chỉ ảnh hưởng C03. Phản hồi gồm tối đa hai điểm mạnh, hai điểm cần
+cải thiện và một việc luyện lại, kể cả khi điểm cao.
+
+**Trước khi chạy code mới**, áp dụng migration
+`supabase/migrations/202610120001_interview_scoring_rubric.sql` vào Supabase
+(ví dụ qua SQL Editor của đúng project). Migration chỉ thêm cột JSON nullable
+`interview_answers.rubric_json`, không sửa dữ liệu cũ hoặc chính sách truy cập.
+Chưa áp dụng migration thì các truy vấn mới sẽ báo lỗi thiếu cột. Không cần
+thay đổi biến môi trường hoặc cài thêm dependency. Migration chưa được tự động
+áp dụng vào database từ task này.
+
+Kết quả cũ có `rubric_json = null` vẫn hiển thị theo định dạng cũ; tổng kết đã
+lưu không bị tính lại. Phiên đang luyện có cả kết quả cũ và mới không tính điểm
+chung vì khác phạm vi đánh giá. Muốn nhận kết quả hoàn toàn theo checklist,
+hãy tạo phiên luyện mới.
+
+Không áp dụng/chưa đủ dữ liệu không được đổi thành 0. Phiên tiếng Việt không
+chấm C05; thiếu vị trí ứng tuyển không chấm C04. Chưa đủ năm tiêu chí thì hiển
+thị điểm tạm tính và số tiêu chí đã chấm. Điểm tổng kết là trung bình các điểm
+/100 chỉ khi cùng phạm vi tiêu chí; chưa đầy đủ thì không xếp loại. Điểm tạm tính
+không ghi vào `interview_sessions.score`, do đó không lẫn vào biểu đồ/điểm trung
+bình dashboard. Tác phong không cộng vào điểm nội dung. Bản chấm hiện dùng văn
+bản, không đánh giá phát âm hoặc hành vi video và không dự đoán khả năng đậu.
+
+Kiểm tra logic và mô phỏng bốn nhà cung cấp AI (không gọi API tính phí):
+
+```sh
+node --test tests/interview-rubric.test.mjs
+npm run typecheck
+npm run lint
+```
+
+Cần kiểm thử thêm một phiên thực tế tiếng Nhật và tiếng Việt sau khi áp dụng
+migration, với provider đã cấu hình, để xác nhận chất lượng nhận xét và thời
+gian phản hồi. Kiểm thử mô phỏng không thay thế đánh giá độ chính xác của model.
+
+Ollama chấm từng câu dùng lời nhắc gọn tương đương checklist, giữ model trong
+bộ nhớ 5 phút để giảm tải lại giữa các câu và chờ tối đa 120 giây. Route trả lời
+cho phép 150 giây (nền tảng hosting vẫn có giới hạn riêng). Log
+`Ollama evaluation timing` chỉ chứa thời gian tải/chạy và số token, không chứa
+CV hay câu trả lời. Nếu model hết giới hạn token trước khi hoàn tất JSON,
+hệ thống báo lỗi thay vì lưu điểm chưa hoàn chỉnh.
