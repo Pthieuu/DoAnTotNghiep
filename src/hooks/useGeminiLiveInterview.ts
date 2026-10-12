@@ -3,11 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type LiveState = "idle" | "connecting" | "listening" | "speaking" | "error";
 type GeminiLiveServerMessage = {
   setupComplete?: unknown;
+  error?: { message?: string; code?: number; status?: string };
   serverContent?: {
     inputTranscription?: { text?: string };
     outputTranscription?: { text?: string };
     modelTurn?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
     turnComplete?: boolean;
+    interrupted?: boolean;
   };
 };
 
@@ -50,7 +52,7 @@ async function websocketFrameToText(data: string | Blob | ArrayBuffer) {
   return new TextDecoder().decode(data);
 }
 
-export function useGeminiLiveInterview(sessionId: string | undefined) {
+export function useGeminiLiveInterview(sessionId: string | undefined, questionIndex: number, questionText: string | undefined) {
   const [state, setState] = useState<LiveState>("idle");
   const [candidateTranscript, setCandidateTranscript] = useState("");
   const [interviewerTranscript, setInterviewerTranscript] = useState("");
@@ -63,24 +65,60 @@ export function useGeminiLiveInterview(sessionId: string | undefined) {
   const nextPlayTimeRef = useRef(0);
   const transcriptRef = useRef("");
   const activeRef = useRef(false);
+  const generationRef = useRef(0);
+  const tokenAbortRef = useRef<AbortController | null>(null);
+  const playbackRef = useRef(new Set<AudioBufferSourceNode>());
+
+  const clearPlayback = useCallback(() => {
+    for (const source of playbackRef.current) {
+      source.onended = null;
+      source.stop();
+      source.disconnect();
+    }
+    playbackRef.current.clear();
+    nextPlayTimeRef.current = 0;
+  }, []);
 
   const stop = useCallback(() => {
     activeRef.current = false;
+    generationRef.current += 1;
+    tokenAbortRef.current?.abort();
+    tokenAbortRef.current = null;
+    clearPlayback();
+    if (processorRef.current) processorRef.current.onaudioprocess = null;
     processorRef.current?.disconnect();
     sourceRef.current?.disconnect();
     streamRef.current?.getTracks().forEach((track) => track.stop());
-    socketRef.current?.close();
-    void contextRef.current?.close();
+    if (socketRef.current) {
+      socketRef.current.onopen = null;
+      socketRef.current.onmessage = null;
+      socketRef.current.onerror = null;
+      socketRef.current.onclose = null;
+      socketRef.current.close();
+    }
+    void contextRef.current?.close().catch(() => {});
     processorRef.current = null;
     sourceRef.current = null;
     streamRef.current = null;
     socketRef.current = null;
     contextRef.current = null;
     setState("idle");
-  }, []);
+  }, [clearPlayback]);
 
   const start = useCallback(async () => {
-    if (!sessionId || activeRef.current) return;
+    if (!sessionId || !questionText || activeRef.current) return;
+    // Reserve the connection before the first await, including permission/token waits.
+    activeRef.current = true;
+    const generation = ++generationRef.current;
+    const isCurrent = () => activeRef.current && generationRef.current === generation;
+    const abort = new AbortController();
+    tokenAbortRef.current = abort;
+    const fail = (message: string) => {
+      if (!isCurrent()) return;
+      stop();
+      setError(message);
+      setState("error");
+    };
     setError("");
     setCandidateTranscript("");
     setInterviewerTranscript("");
@@ -88,60 +126,110 @@ export function useGeminiLiveInterview(sessionId: string | undefined) {
     setState("connecting");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      if (!isCurrent()) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
-      const tokenResponse = await fetch(`/api/interviews/${sessionId}/live-token`, { method: "POST" });
+      const tokenResponse = await fetch(`/api/interviews/${sessionId}/live-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionIndex, questionText }),
+        signal: abort.signal,
+      });
       const tokenData = await tokenResponse.json();
+      if (!isCurrent()) return;
       if (!tokenResponse.ok) throw new Error(tokenData.error || "Không thể kết nối Gemini Live.");
+
+      if (tokenData.questionIndex !== questionIndex || tokenData.questionText !== questionText) {
+        throw new Error("Câu hỏi không còn đồng bộ. Hãy tải lại trang để tiếp tục.");
+      }
 
       const audioContext = new AudioContext();
       contextRef.current = audioContext;
       await audioContext.resume();
+      if (!isCurrent()) return;
       const socket = new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=${encodeURIComponent(tokenData.token)}`);
       socket.binaryType = "arraybuffer";
       socketRef.current = socket;
-      activeRef.current = true;
 
       socket.onopen = () => {
+        if (!isCurrent()) return;
         socket.send(JSON.stringify({ setup: { model: tokenData.model } }));
       };
+      let setupReceived = false;
+      let modelTurnActive = true;
+      let micReadyAt = Infinity;
+      const finishPlayback = () => {
+        if (!isCurrent() || modelTurnActive || playbackRef.current.size) return;
+        // Leave a short tail so room/speaker echo is not captured as a new answer.
+        micReadyAt = audioContext.currentTime + 0.25;
+        setState("listening");
+      };
+      const beginMicInput = () => {
+        const input = audioContext.createMediaStreamSource(stream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        sourceRef.current = input;
+        processorRef.current = processor;
+        processor.onaudioprocess = (audioEvent) => {
+          audioEvent.outputBuffer.getChannelData(0).fill(0);
+          if (!isCurrent() || socket.readyState !== WebSocket.OPEN) return;
+          const samples = downsampleTo16k(audioEvent.inputBuffer.getChannelData(0), audioContext.sampleRate);
+          // Keep the input clock/VAD running with silence while the interviewer speaks.
+          if (modelTurnActive || playbackRef.current.size || audioContext.currentTime < micReadyAt) samples.fill(0);
+          socket.send(JSON.stringify({ realtimeInput: { audio: { data: pcm16Base64(samples), mimeType: "audio/pcm;rate=16000" } } }));
+        };
+        input.connect(processor);
+        processor.connect(audioContext.destination);
+      };
+
       socket.onmessage = async (event) => {
         let message: GeminiLiveServerMessage;
         try {
           message = JSON.parse(await websocketFrameToText(event.data)) as GeminiLiveServerMessage;
         } catch (cause) {
           console.error("Could not decode Gemini Live WebSocket frame", cause);
-          setError("Gemini Live gửi phản hồi không đọc được. Hãy thử kết nối lại.");
-          setState("error");
+          fail("Gemini Live gửi phản hồi không đọc được. Hãy thử kết nối lại.");
           return;
         }
-        if (!activeRef.current) return;
-        if (message.setupComplete) {
-          const input = audioContext.createMediaStreamSource(stream);
-          const processor = audioContext.createScriptProcessor(4096, 1, 1);
-          sourceRef.current = input;
-          processorRef.current = processor;
-          processor.onaudioprocess = (audioEvent) => {
-            audioEvent.outputBuffer.getChannelData(0).fill(0);
-            if (!activeRef.current || socket.readyState !== WebSocket.OPEN) return;
-            const samples = downsampleTo16k(audioEvent.inputBuffer.getChannelData(0), audioContext.sampleRate);
-            socket.send(JSON.stringify({ realtimeInput: { audio: { data: pcm16Base64(samples), mimeType: "audio/pcm;rate=16000" } } }));
-          };
-          input.connect(processor);
-          processor.connect(audioContext.destination);
-          socket.send(JSON.stringify({ realtimeInput: { text: "Begin the interview now by greeting me and asking the first planned question." } }));
-          setState("listening");
+        if (!isCurrent()) return;
+        if (message.error) {
+          const detail = message.error.message || message.error.status || "Lỗi từ Gemini Live.";
+          console.error("Gemini Live server error", { code: message.error.code, detail });
+          fail(`Gemini Live: ${detail}`);
+          return;
+        }
+        if (message.setupComplete && !setupReceived) {
+          setupReceived = true;
+          beginMicInput();
+          socket.send(JSON.stringify({
+            clientContent: {
+              turns: [{ role: "user", parts: [{ text: `Read this current interview question verbatim, without adding any other question or introduction, then wait for my answer: ${JSON.stringify(tokenData.questionText)}` }] }],
+              turnComplete: true,
+            },
+          }));
         }
 
         const serverContent = message.serverContent;
+        if (serverContent?.interrupted) {
+          clearPlayback();
+          modelTurnActive = false;
+          finishPlayback();
+        }
+        if (serverContent?.modelTurn && !serverContent.interrupted) {
+          modelTurnActive = true;
+          micReadyAt = Infinity;
+        }
         if (serverContent?.inputTranscription?.text) {
           const next = `${transcriptRef.current}${serverContent.inputTranscription.text}`;
           transcriptRef.current = next;
           setCandidateTranscript(next);
         }
-        if (serverContent?.outputTranscription?.text) {
-          setInterviewerTranscript((previous) => previous + serverContent.outputTranscription.text);
+        const outputText = serverContent?.outputTranscription?.text;
+        if (outputText) {
+          setInterviewerTranscript((previous) => previous + outputText);
         }
-        const parts = serverContent?.modelTurn?.parts || [];
+        const parts = serverContent?.interrupted ? [] : serverContent?.modelTurn?.parts || [];
         for (const part of parts) {
           if (!part.inlineData?.data || !part.inlineData.mimeType?.startsWith("audio/pcm")) continue;
           const raw = atob(part.inlineData.data);
@@ -154,32 +242,31 @@ export function useGeminiLiveInterview(sessionId: string | undefined) {
           source.buffer = buffer;
           source.connect(audioContext.destination);
           const startAt = Math.max(audioContext.currentTime, nextPlayTimeRef.current);
+          playbackRef.current.add(source);
           source.start(startAt);
           nextPlayTimeRef.current = startAt + buffer.duration;
           setState("speaking");
-          source.onended = () => { if (activeRef.current && audioContext.currentTime >= nextPlayTimeRef.current) setState("listening"); };
+          source.onended = () => {
+            source.disconnect();
+            if (!isCurrent()) return;
+            playbackRef.current.delete(source);
+            finishPlayback();
+          };
         }
-        if (serverContent?.turnComplete && activeRef.current && !parts.some((part: { inlineData?: { data?: string } }) => part.inlineData?.data)) setState("listening");
-      };
-      socket.onerror = () => {
-        setError("Kết nối Gemini Live bị lỗi. Hãy thử lại.");
-        setState("error");
-      };
-      socket.onclose = () => {
-        if (activeRef.current) {
-          setError("Gemini Live đã ngắt kết nối.");
-          setState("error");
+        if (serverContent?.turnComplete) {
+          modelTurnActive = false;
+          finishPlayback();
         }
       };
+      socket.onerror = () => fail("Kết nối Gemini Live bị lỗi. Hãy thử lại.");
+      socket.onclose = () => fail("Gemini Live đã ngắt kết nối.");
     } catch (cause) {
-      stop();
       const message = cause instanceof Error ? cause.message : "Không thể bắt đầu hội thoại giọng nói.";
-      setError(message);
-      setState("error");
+      fail(message);
     }
-  }, [sessionId, stop]);
+  }, [sessionId, questionIndex, questionText, stop, clearPlayback]);
 
-  useEffect(() => stop, [stop]);
+  useEffect(() => stop, [sessionId, questionIndex, questionText, stop]);
 
   return { state, candidateTranscript, interviewerTranscript, error, start, stop };
 }

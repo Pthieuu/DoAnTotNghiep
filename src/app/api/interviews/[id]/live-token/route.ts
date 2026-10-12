@@ -31,6 +31,14 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     const question = questions[index];
     if (!question) return json({ error: "Không còn câu hỏi nào trong buổi phỏng vấn." }, 409);
 
+    const requested = await _request.json().catch(() => null) as { questionIndex?: unknown; questionText?: unknown } | null;
+    if (!requested || !Number.isInteger(requested.questionIndex) || typeof requested.questionText !== "string") {
+      return json({ error: "Thiếu thông tin câu hỏi đang hiển thị. Hãy tải lại trang." }, 400);
+    }
+    if (requested.questionIndex !== index || requested.questionText !== question.text) {
+      return json({ error: "Tiến độ phỏng vấn đã thay đổi. Hãy tải lại trang để nhận câu hỏi hiện tại." }, 409);
+    }
+
     const language = session.interview_language === "ja" ? "Japanese" : "Vietnamese";
     const priorContext = (answerRows || []).map((row, i) => {
       const previousQuestion = questions[row.question_index];
@@ -41,9 +49,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       `Speak only in ${language}. Keep every spoken response concise and natural.`,
       `Interview: ${session.title}. Role: ${session.title}. Company: ${session.company || "unspecified"}. Level: ${session.level || "unspecified"}. Type: ${session.interview_type || "general"}.`,
       priorContext ? `Earlier interview context:\n${priorContext}` : "This is the beginning of the interview.",
-      `The current planned question is: ${question.text}`,
-      "Start by greeting the candidate briefly and asking the current planned question in your own natural spoken phrasing.",
-      "Listen to the candidate, acknowledge what they said, and ask relevant short follow-up questions when useful. Do not reveal evaluation scores or coaching during the interview.",
+      `The only current question (number ${index + 1}) is this exact text: ${JSON.stringify(question.text)}`,
+      "Your opening response must read the current question verbatim, exactly once. Do not add a greeting, introduction, translation, paraphrase, or another question. Then wait for the candidate to answer.",
+      "Listen to the candidate and briefly acknowledge their answer without asking follow-up questions or introducing new topics. If asked to repeat the question, read the same exact text again. Do not reveal evaluation scores or coaching during the interview.",
       "When the candidate says they are done, thank them and close this question. Do not move to a different planned question; the app handles the next question.",
     ].join("\n");
     const liveConfig = {
@@ -77,6 +85,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }
     return json({
       token: tokenBody.name,
+      questionIndex: index,
+      questionText: question.text,
       model: "models/gemini-3.8-live",
     });
   } catch (error) {

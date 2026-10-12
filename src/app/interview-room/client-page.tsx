@@ -25,7 +25,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const live = useGeminiLiveInterview(session?.id);
+  const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
   const transcript = live.candidateTranscript;
   const isListening = live.state === "listening" || live.state === "speaking" || live.state === "connecting";
 

@@ -66,7 +66,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
 
   return (
     <DashboardShell user={user} activePage="Interview Room">
-      <InterviewRoomClient key={session?.id || "no-session"} session={session} />
+      <InterviewRoomClient key={session ? `${session.id}:${session.turns.length}:${session.completed}` : "no-session"} session={session} />
     </DashboardShell>
   );
 }
