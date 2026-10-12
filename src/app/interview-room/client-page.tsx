@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import Icon from "@/components/icon";
 import VrmAvatar from "@/components/vrm-avatar";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useGeminiLiveInterview } from "@/hooks/useGeminiLiveInterview";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -21,59 +20,39 @@ type RoomSession = {
 
 export default function InterviewRoomClient({ session }: { session: RoomSession | null }) {
   const router = useRouter();
-  const [aiState, setAiState] = useState<AIState>("idle");
   const [showTranslation, setShowTranslation] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const { speak, cancel: cancelSpeak, isSpeaking } = useSpeechSynthesis();
-  const { transcript, isListening, startListening, stopListening, resetTranscript, error: micError } = useSpeechRecognition(session?.interviewLanguage || "vi");
+  const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
+  const transcript = live.candidateTranscript;
+  const isListening = live.state === "listening" || live.state === "speaking" || live.state === "connecting";
 
   // Keep track of current state
   const currentQuestionIndex = session ? session.turns.length : 0;
   const isCompleted = session?.completed;
   
-  useEffect(() => {
-    if (session?.loadError) {
-      setError("Không thể tải dữ liệu phỏng vấn. Vui lòng thử lại.");
-    }
-  }, [session]);
-
-  // Handle AI speaking state
-  useEffect(() => {
-    if (isSpeaking) {
-      setAiState("speaking");
-    } else if (aiState === "speaking") {
-      setAiState("idle");
-    }
-  }, [isSpeaking]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-read first question when entering
-  const hasSpokenRef = useRef(false);
-  useEffect(() => {
-    if (session?.currentQuestion && !isCompleted && !hasSpokenRef.current && !session.loadError) {
-      hasSpokenRef.current = true;
-      speak(session.currentQuestion.text, session.interviewLanguage || "vi");
-    }
-  }, [session, isCompleted, speak]);
+  const aiState: AIState = isSubmitting
+    ? "thinking"
+    : live.state === "speaking"
+      ? "speaking"
+      : live.state === "listening" || live.state === "connecting"
+        ? "listening"
+        : "idle";
 
   const toggleMic = () => {
     if (isListening) {
-      stopListening();
+      live.stop();
     } else {
-      // Cancel AI speech if user interrupts
-      cancelSpeak();
-      startListening();
-      setAiState("listening");
+      void live.start();
     }
   };
 
   const submitAnswer = async () => {
     if (!session || !session.currentQuestion || !transcript.trim()) return;
     
-    stopListening();
-    setAiState("thinking");
+    live.stop();
     setIsSubmitting(true);
     setError("");
 
@@ -92,19 +71,15 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         throw new Error(data.error || "Có lỗi xảy ra khi gửi câu trả lời.");
       }
 
-      resetTranscript();
-      
       if (data.completed) {
         router.refresh();
         router.push(`/summary?sessionId=${session.id}`);
       } else {
-        router.refresh(); // Reload to get the new session data with feedback
-        hasSpokenRef.current = false; // Reset to allow auto-speaking the next question
+        router.refresh();
       }
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
-      setAiState("idle");
     } finally {
       setIsSubmitting(false);
     }
@@ -118,8 +93,8 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     <div className="flex flex-col min-h-[calc(100vh-2rem)] w-full bg-surface space-y-4 p-4 lg:p-6 overflow-hidden">
       <InterviewHeader session={session} currentQuestionIndex={currentQuestionIndex} />
 
-      {error && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{error}</div>}
-      {micError && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{micError}</div>}
+      {(error || session.loadError) && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{error || "Không thể tải dữ liệu phỏng vấn. Vui lòng thử lại."}</div>}
+      {live.error && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{live.error}</div>}
 
       <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         {/* Main Content: AI Interviewer */}
@@ -144,7 +119,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
         {/* Bottom Panel / Side Panel */}
         <div className="w-full lg:w-96 flex flex-col gap-4 shrink-0">
-          <InterviewSidePanel session={session} transcript={transcript} />
+          <InterviewSidePanel session={session} transcript={transcript} interviewerTranscript={live.interviewerTranscript} />
         </div>
       </div>
 
@@ -366,7 +341,7 @@ function InterviewProgress({ current, total }: { current: number, total: number 
   );
 }
 
-function InterviewSidePanel({ session, transcript }: { session: RoomSession, transcript: string }) {
+function InterviewSidePanel({ session, transcript, interviewerTranscript }: { session: RoomSession, transcript: string, interviewerTranscript: string }) {
   const currentQ = session.currentQuestion;
   const turns = session.turns;
   const lastTurn = turns[turns.length - 1];
@@ -376,10 +351,21 @@ function InterviewSidePanel({ session, transcript }: { session: RoomSession, tra
       <div className="px-4 py-3 border-b border-surface-container bg-surface-container-lowest shrink-0 flex items-center gap-2">
         <Icon name="analytics" className="text-secondary" />
         <h2 className="text-title font-semibold text-primary">
-          Live Assistant
+          Hội thoại trực tiếp
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+        {interviewerTranscript && (
+          <div>
+            <h3 className="text-label-sm font-semibold text-secondary mb-3 flex items-center gap-1.5">
+              <Icon name="record_voice_over" className="text-[14px]" /> Phỏng vấn viên
+            </h3>
+            <div className="bg-surface-container-low px-3 py-2 rounded-2xl rounded-tl-sm text-body-sm shadow-sm leading-relaxed">
+              {interviewerTranscript}
+            </div>
+          </div>
+        )}
         
         {/* Current Answer Draft */}
         {transcript && (
@@ -400,7 +386,7 @@ function InterviewSidePanel({ session, transcript }: { session: RoomSession, tra
               <Icon name="check_circle" className="text-[16px]" /> Điểm câu trước: <span className="text-lg">{lastTurn.score}/10</span>
             </h3>
             <div className="space-y-2 text-sm text-emerald-900">
-              <p className="font-medium bg-white/50 p-2 rounded-lg">"{lastTurn.answer}"</p>
+              <p className="font-medium bg-white/50 p-2 rounded-lg">&ldquo;{lastTurn.answer}&rdquo;</p>
               <div className="pt-2 border-t border-emerald-200/50">
                 <p><strong>Nhận xét:</strong> {lastTurn.feedback}</p>
               </div>
