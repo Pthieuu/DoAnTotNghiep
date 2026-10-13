@@ -1,5 +1,6 @@
 import "server-only";
 import type { CvData } from "@/lib/cv-schema";
+import { getAiConfig } from "./ai-config";
 
 export type InterviewQuestion = { text: string; translation: string; focus: string; cvEvidence: string | null };
 
@@ -81,8 +82,9 @@ export async function generateInterviewQuestions(input: {
   attempt?: number;
   correction?: string;
 }): Promise<InterviewQuestion[]> {
-  const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
-  const model = provider === "ollama" ? process.env.OLLAMA_MODEL || "qwen3:4b" : provider === "gemini" ? process.env.GEMINI_MODEL || "gemini-3.8-flash" : provider === "groq" ? process.env.GROQ_MODEL || "llama-3.1-70b-versatile" : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
+  const aiConfig = getAiConfig();
+  const provider = aiConfig.provider;
+  const model = provider === "ollama" ? aiConfig.ollamaModel : provider === "gemini" ? aiConfig.geminiModel : provider === "groq" ? aiConfig.groqModel : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
   const context = JSON.stringify({
     candidate_cv: input.cv,
     target_role: input.role,
@@ -167,7 +169,7 @@ export async function generateInterviewQuestions(input: {
       throw new Error(`Dịch vụ OpenAI trả lỗi HTTP ${response.status} khi tạo câu hỏi.`);
     }
   } else if (provider === "groq") {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = aiConfig.groqApiKey || process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để tạo câu hỏi.");
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {

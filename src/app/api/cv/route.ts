@@ -1,10 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { emptyCv, validateCv } from "@/lib/cv-schema";
+import { getAiConfig } from "@/lib/ai-config";
 
 function aiConfigured() {
-  const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
-  return provider === "ollama" || (provider === "openai" && Boolean(process.env.OPENAI_API_KEY)) || (provider === "gemini" && Boolean(process.env.GOOGLE_API_KEY));
+  const aiConfig = getAiConfig();
+  const provider = aiConfig.provider;
+  return (
+    provider === "ollama" ||
+    (provider === "openai" && Boolean(process.env.OPENAI_API_KEY)) ||
+    (provider === "gemini" && Boolean(process.env.GOOGLE_API_KEY)) ||
+    (provider === "groq" && Boolean(aiConfig.groqApiKey))
+  );
 }
 
 function storageErrorMessage(error: { message?: string; statusCode?: string; name?: string }) {

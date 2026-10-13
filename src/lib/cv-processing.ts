@@ -1,5 +1,6 @@
 import "server-only";
 import { emptyCv, validateCv, type CvData } from "@/lib/cv-schema";
+import { getAiConfig } from "./ai-config";
 
 const maxBytes = 15 * 1024 * 1024;
 const pdfType = "application/pdf";
@@ -70,10 +71,11 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     { role: "user", content: `Extract this CV.\n<resume>\n${clipped}\n</resume>` },
   ];
   let outputText: string;
-  const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
+  const aiConfig = getAiConfig();
+  const provider = aiConfig.provider;
   if (provider === "ollama") {
-    const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
-    const model = process.env.OLLAMA_MODEL || "qwen2.5:3b";
+    const baseUrl = (aiConfig.ollamaBaseUrl || "http://127.0.0.1:11434").replace(/\/$/, "");
+    const model = aiConfig.ollamaModel || "qwen2.5:3b";
     let tagsResponse: Response;
     try {
       tagsResponse = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(5000), cache: "no-store" });
@@ -131,9 +133,9 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     const payload = await response.json();
     outputText = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
   } else if (provider === "groq") {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = aiConfig.groqApiKey || process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để trích xuất CV.");
-    const groqModel = process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
+    const groqModel = aiConfig.groqModel;
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST", signal: AbortSignal.timeout(45000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -142,7 +144,10 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
         messages: [{ role: "system", content: messages[0].content + `\n\nReturn ONLY a JSON object matching this schema:\n${JSON.stringify(schema)}` }, messages[1]]
       })
     });
-    if (!response.ok) throw new Error(`Groq trả lỗi HTTP ${response.status}.`);
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(`Groq trả lỗi HTTP ${response.status}: ${failure?.error?.message || "Không thể trích xuất CV."}`);
+    }
     const payload = await response.json();
     outputText = payload.choices?.[0]?.message?.content || "";
   } else {
