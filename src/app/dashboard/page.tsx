@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Dashboard | Aizuchi.AI", description
 type Interview = { id: string; title: string; company: string | null; level: string | null; score: number | null; status: string; completed_at: string | null };
 const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" });
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
@@ -21,6 +21,22 @@ export default async function DashboardPage() {
     .select("id,title,company,level,score,status,completed_at")
     .eq("user_id", user.id).order("completed_at", { ascending: false, nullsFirst: false });
   const sessions = (data || []) as Interview[];
+  const params = await searchParams;
+  const pageSize = 5;
+  const pageCount = Math.max(1, Math.ceil(sessions.length / pageSize));
+  const requestedPage = typeof params.historyPage === "string" ? Number(params.historyPage) : 1;
+  const historyPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, pageCount) : 1;
+  const startIndex = (historyPage - 1) * pageSize;
+  const visibleSessions = sessions.slice(startIndex, startIndex + pageSize);
+  function historyHref(page: number) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (key === "historyPage" || value === undefined) continue;
+      for (const entry of Array.isArray(value) ? value : [value]) query.append(key, entry);
+    }
+    query.set("historyPage", String(page));
+    return `/dashboard?${query.toString()}#history`;
+  }
   const completedSessions = sessions.filter((session) => session.status === "completed");
   const scoredSessions = completedSessions.filter((session) => session.score !== null);
   const averageScore = scoredSessions.length ? Math.round(scoredSessions.reduce((total, session) => total + (session.score || 0), 0) / scoredSessions.length) : 0;
@@ -692,7 +708,7 @@ export default async function DashboardPage() {
 </tr>
 </tbody>
 <tbody className="font-body-md text-body-md divide-y divide-surface-container">
-{sessions.map((session) => <tr key={session.id} className="hover:bg-surface transition-colors">
+{visibleSessions.map((session) => <tr key={session.id} className="hover:bg-surface transition-colors">
 <td className="py-3.5 px-space-md whitespace-nowrap">{session.completed_at ? dateFormat.format(new Date(session.completed_at)) : "In progress"}</td>
 <td className="py-3.5 px-space-md"><div className="font-semibold text-primary">{session.title}</div>{session.company && <div className="text-xs text-on-surface-variant">{session.company}</div>}</td>
 <td className="py-3.5 px-space-md">{session.level || "—"}</td><td className="py-3.5 px-space-md">{session.score ?? "—"}</td>
@@ -715,6 +731,16 @@ export default async function DashboardPage() {
 </table>
 {error ? <p role="alert" className="mt-3 text-sm text-error">Cannot load sessions. Apply the SQL migration in supabase/migrations/.</p> : sessions.length === 0 && <p className="py-8 text-center text-sm text-on-surface-variant">No interviews yet. Saved sessions will appear here.</p>}
 </div>
+{!error && sessions.length > pageSize && (
+  <nav aria-label="Interview history pagination" className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-surface-container pt-4 text-sm">
+    <p className="text-on-surface-variant">{startIndex + 1}–{Math.min(startIndex + pageSize, sessions.length)} / {sessions.length} interviews</p>
+    <div className="flex items-center gap-3">
+      {historyPage > 1 ? <Link href={historyHref(historyPage - 1)} className="rounded-lg border border-surface-container px-3 py-2 font-medium text-primary hover:bg-surface-container-low focus-visible:outline-2 focus-visible:outline-secondary">Previous</Link> : <span aria-disabled="true" className="rounded-lg border border-surface-container px-3 py-2 text-on-surface-variant opacity-40">Previous</span>}
+      <span aria-live="polite" className="text-on-surface-variant">Page <strong className="text-primary">{historyPage}</strong> of {pageCount}</span>
+      {historyPage < pageCount ? <Link href={historyHref(historyPage + 1)} className="rounded-lg bg-primary px-3 py-2 font-medium text-white hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary">Next</Link> : <span aria-disabled="true" className="rounded-lg bg-surface-container px-3 py-2 text-on-surface-variant opacity-40">Next</span>}
+    </div>
+  </nav>
+)}
 </div>
 {/* Inline Micro-interaction Script for Dashboard */}
 
