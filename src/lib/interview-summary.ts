@@ -1,5 +1,6 @@
 import "server-only";
 import { summarizeScores, type RubricResult } from "./interview-rubric";
+import { getAiConfig } from "./ai-config";
 
 type SummaryInput = {
   sessionTitle: string;
@@ -37,13 +38,14 @@ const summarySchema = {
 };
 
 export async function generateSummary(input: SummaryInput): Promise<SummaryResult> {
-  const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
+  const aiConfig = getAiConfig();
+  const provider = aiConfig.provider;
   const model = provider === "ollama"
-    ? process.env.OLLAMA_MODEL || "qwen3:4b"
+    ? aiConfig.ollamaModel
     : provider === "gemini"
-      ? process.env.GEMINI_MODEL || "gemini-3.8-flash"
+      ? aiConfig.geminiModel
       : provider === "groq"
-        ? process.env.GROQ_MODEL || "llama-3.1-70b-versatile"
+        ? aiConfig.groqModel
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
 
   const computed = summarizeScores(input.answers, input.totalQuestions);
@@ -142,7 +144,7 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
       throw new Error(`OpenAI trả lỗi HTTP ${response.status}.`);
     }
   } else if (provider === "groq") {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = aiConfig.groqApiKey || process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY.");
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {

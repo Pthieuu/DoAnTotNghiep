@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Icon from "@/components/icon";
 import VrmAvatar from "@/components/vrm-avatar";
 import { useGeminiLiveInterview } from "@/hooks/useGeminiLiveInterview";
@@ -21,11 +21,39 @@ type RoomSession = {
   completed: boolean; loadError?: "session" | "answers" 
 };
 
+function checkAndCleanFinishPhrase(text: string): { finished: boolean; cleanText: string; matchedPhrase: string } {
+  const trimmed = text.trim();
+  if (!trimmed) return { finished: false, cleanText: "", matchedPhrase: "" };
+
+  const endPatterns = [
+    { regex: /[\s,.]*(?:dạ\s+)?(?:tôi|em|mình)\s+xin\s+hết(?:\s*ạ)?[\s.!,?]*$/i, phrase: "Tôi xin hết" },
+    { regex: /[\s,.]*(?:dạ\s+)?xin\s+hết(?:\s*ạ)?[\s.!,?]*$/i, phrase: "Xin hết" },
+    { regex: /[\s,.]*(?:dạ\s+)?(?:tôi|em|mình)\s+đã\s+trả\s+lời\s+xong(?:\s*ạ)?[\s.!,?]*$/i, phrase: "Tôi đã trả lời xong" },
+    { regex: /[\s,.]*(?:dạ\s+)?(?:tôi|em|mình)\s+xin\s+kết\s+thúc(?:\s+câu\s+trả\s+lời)?(?:\s*ạ)?[\s.!,?]*$/i, phrase: "Tôi xin kết thúc" },
+    { regex: /[\s,.]*(?:これで)?以上(?:です|になります)[\s.!,?]*$/i, phrase: "以上です" },
+  ];
+
+  for (const { regex, phrase } of endPatterns) {
+    if (regex.test(trimmed)) {
+      const match = trimmed.match(regex);
+      const cleaned = trimmed.replace(regex, "").trim();
+      return {
+        finished: true,
+        cleanText: cleaned || trimmed,
+        matchedPhrase: match ? match[0].replace(/^[\s,.]+/, "").replace(/[\s,.]+$/, "") : phrase,
+      };
+    }
+  }
+
+  return { finished: false, cleanText: trimmed, matchedPhrase: "" };
+}
+
 export default function InterviewRoomClient({ session }: { session: RoomSession | null }) {
   const router = useRouter();
   const [showTranslation, setShowTranslation] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoFinishMessage, setAutoFinishMessage] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
@@ -44,20 +72,51 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         ? "listening"
         : "idle";
 
+  const hasAutoStartedRef = useRef<number | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
+  const isSubmittingRef = useRef(false);
+
+  // Reset auto-finish flags when question changes
+  useEffect(() => {
+    autoSubmitTriggeredRef.current = false;
+    isSubmittingRef.current = false;
+    setAutoFinishMessage(null);
+  }, [currentQuestionIndex]);
+
+  // 1. Tự động đọc câu hỏi khi bắt đầu hoặc khi chuyển câu hỏi mới
+  useEffect(() => {
+    if (!session || session.completed || !session.currentQuestion) return;
+    if (hasAutoStartedRef.current === currentQuestionIndex) return;
+
+    const timer = setTimeout(() => {
+      if (live.state === "idle" && !isSubmitting && !session.completed) {
+        hasAutoStartedRef.current = currentQuestionIndex;
+        void live.start().catch((err) => {
+          console.warn("Autoplay was blocked by browser:", err);
+        });
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live]);
+
   const toggleMic = () => {
     if (isListening) {
       live.stop();
     } else {
+      hasAutoStartedRef.current = currentQuestionIndex;
       void live.start();
     }
   };
 
-  const submitAnswer = async () => {
-    if (!session || !session.currentQuestion || !transcript.trim()) return;
+  const submitAnswer = useCallback(async (customAnswer?: string) => {
+    const answerToSend = (typeof customAnswer === "string" ? customAnswer : transcript).trim();
+    if (!session || !session.currentQuestion || !answerToSend || isSubmittingRef.current) return;
     
-    live.stop();
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError("");
+    live.stop();
 
     try {
       const res = await fetch(`/api/interviews/${session.id}/answers`, {
@@ -65,7 +124,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questionIndex: currentQuestionIndex,
-          answer: transcript.trim()
+          answer: answerToSend
         })
       });
       const data = await res.json();
@@ -83,10 +142,25 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
-    } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
+      setAutoFinishMessage(null);
     }
-  };
+  }, [session, transcript, currentQuestionIndex, live, router]);
+
+  // 2. Tự động nhận diện câu "Tôi xin hết" để kết thúc và gửi câu trả lời
+  useEffect(() => {
+    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current) return;
+    if (live.state !== "listening" || !transcript.trim()) return;
+
+    const { finished, cleanText, matchedPhrase } = checkAndCleanFinishPhrase(transcript);
+    if (finished) {
+      autoSubmitTriggeredRef.current = true;
+      live.stop();
+      setAutoFinishMessage(`Đã nhận diện "${matchedPhrase}" - Đang gửi câu trả lời...`);
+      void submitAnswer(cleanText);
+    }
+  }, [transcript, live.state, isSubmitting, submitAnswer, live]);
 
   if (!session) {
     return <div className="p-8 text-center text-on-surface-variant">Đang tải phòng phỏng vấn...</div>;
@@ -108,6 +182,10 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             showTranslation={showTranslation}
             onToggleTranslation={() => setShowTranslation(!showTranslation)}
             isCompleted={!!isCompleted}
+            onStartSpeech={() => {
+              hasAutoStartedRef.current = currentQuestionIndex;
+              void live.start();
+            }}
           />
           <InterviewControls
             isCompleted={!!isCompleted}
@@ -115,8 +193,10 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             onToggleMic={toggleMic}
             transcript={transcript}
             isSubmitting={isSubmitting}
-            onSubmit={submitAnswer}
+            onSubmit={() => void submitAnswer()}
+            onSkip={() => void submitAnswer("Ứng viên bỏ qua câu hỏi này.")}
             sessionId={session.id}
+            autoFinishMessage={autoFinishMessage}
           />
         </div>
 
@@ -165,13 +245,15 @@ function AIInterviewer({
   question,
   showTranslation,
   onToggleTranslation,
-  isCompleted
+  isCompleted,
+  onStartSpeech,
 }: {
   aiState: AIState;
   question: StoredQuestion | null;
   showTranslation: boolean;
   onToggleTranslation: () => void;
   isCompleted: boolean;
+  onStartSpeech?: () => void;
 }) {
   return (
     <div className="relative flex-1 flex flex-col bg-surface-container-lowest overflow-hidden min-h-[300px]">
@@ -201,12 +283,28 @@ function AIInterviewer({
                   {question.translation}
                 </p>
               )}
-              <button
-                onClick={onToggleTranslation}
-                className="mt-3 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-medium transition-colors"
-              >
-                {showTranslation ? "Ẩn bản dịch" : "Hiện bản dịch"}
-              </button>
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={onToggleTranslation}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-medium transition-colors"
+                >
+                  {showTranslation ? "Ẩn bản dịch" : "Hiện bản dịch"}
+                </button>
+                {aiState === "idle" && onStartSpeech && (
+                  <button
+                    onClick={onStartSpeech}
+                    className="px-3 py-1.5 bg-secondary text-on-secondary hover:bg-secondary/90 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Icon name="volume_up" /> Nghe AI đọc câu hỏi
+                  </button>
+                )}
+                {aiState === "listening" && (
+                  <span className="text-[11px] text-white/90 bg-emerald-950/60 border border-emerald-400/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                    <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Nói <b>&quot;Tôi xin hết&quot;</b> để tự động kết thúc câu trả lời
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -272,7 +370,9 @@ function InterviewControls({
   transcript,
   isSubmitting,
   onSubmit,
-  sessionId
+  sessionId,
+  autoFinishMessage,
+  onSkip,
 }: {
   isCompleted: boolean;
   micActive: boolean;
@@ -280,7 +380,9 @@ function InterviewControls({
   transcript: string;
   isSubmitting: boolean;
   onSubmit: () => void;
+  onSkip?: () => void;
   sessionId: string;
+  autoFinishMessage?: string | null;
 }) {
   if (isCompleted) {
     return (
@@ -294,22 +396,54 @@ function InterviewControls({
 
   return (
     <div className="shrink-0 min-h-20 bg-white border-t border-surface-container flex flex-col sm:flex-row items-center justify-between px-4 py-2 sm:py-0 lg:px-6 gap-2">
-      <div className="flex-1 w-full flex items-center gap-1 lg:gap-3 justify-center sm:justify-start">
-        {/* Placeholder for future tools */}
+      <div className="flex-1 w-full flex items-center gap-2 justify-center sm:justify-start">
+        {onSkip && (
+          <button
+            onClick={onSkip}
+            disabled={isSubmitting}
+            className="px-3 py-1.5 text-xs text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg font-medium transition-colors flex items-center gap-1.5 border border-surface-container disabled:opacity-50"
+            title="Bỏ qua câu hỏi này để chuyển ngay sang câu tiếp theo"
+          >
+            <span>Bỏ qua câu này</span>
+            <Icon name="arrow_forward" className="text-xs" />
+          </button>
+        )}
       </div>
 
-      <div className="flex flex-col items-center justify-center shrink-0 w-48 gap-1">
+      <div className="flex flex-col items-center justify-center shrink-0 w-64 gap-1 relative">
+        {autoFinishMessage && (
+          <div className="absolute -top-11 left-1/2 -translate-x-1/2 whitespace-nowrap bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg animate-bounce flex items-center gap-1.5 z-20">
+            <Icon name="check_circle" className="text-white text-sm" />
+            <span>{autoFinishMessage}</span>
+          </div>
+        )}
         <button
           onClick={onToggleMic}
           disabled={isSubmitting}
-          className={`p-4 rounded-full transition-all duration-300 flex items-center justify-center transform hover:scale-105 disabled:opacity-50 disabled:scale-100 ${micActive ? "bg-error text-white shadow-lg shadow-error/30" : "bg-primary text-white shadow-md hover:bg-primary-container hover:text-primary"}`}
+          className={`p-4 rounded-full transition-all duration-300 flex items-center justify-center transform hover:scale-105 disabled:opacity-50 disabled:scale-100 ${
+            autoFinishMessage
+              ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 animate-pulse"
+              : micActive
+              ? "bg-error text-white shadow-lg shadow-error/30"
+              : "bg-primary text-white shadow-md hover:bg-primary-container hover:text-primary"
+          }`}
         >
-          <Icon name="mic" className={micActive ? "animate-pulse" : ""} />
+          <Icon name="mic" className={micActive || autoFinishMessage ? "animate-pulse" : ""} />
         </button>
         <span
-          className={`text-[10px] font-medium transition-colors ${micActive ? "text-error" : "text-on-surface-variant"}`}
+          className={`text-[10px] font-medium transition-colors text-center ${
+            autoFinishMessage
+              ? "text-emerald-600 font-bold"
+              : micActive
+              ? "text-error"
+              : "text-on-surface-variant"
+          }`}
         >
-          {micActive ? "Đang thu âm (Bấm để dừng)" : "Bấm để trả lời"}
+          {autoFinishMessage
+            ? "Đang hoàn tất câu trả lời..."
+            : micActive
+            ? "Đang thu âm (Nói 'Tôi xin hết' để gửi)"
+            : "Bấm để trả lời / nghe lại"}
         </span>
       </div>
 

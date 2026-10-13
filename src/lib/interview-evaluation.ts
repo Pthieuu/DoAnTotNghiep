@@ -1,6 +1,8 @@
 import "server-only";
 import { parseRubric, rubricSchema, RUBRIC_PROMPT, LOCAL_RUBRIC_PROMPT, localRubricSchema, type RubricResult } from "./interview-rubric";
 
+import { getAiConfig } from "./ai-config";
+
 type EvaluationInput = {
   cvText: string;
   targetRole?: string | null;
@@ -24,13 +26,14 @@ export type EvaluationResult = {
 const evaluationSchema = rubricSchema;
 
 export async function evaluateAnswer(input: EvaluationInput): Promise<EvaluationResult> {
-  const provider = (process.env.CV_AI_PROVIDER || "ollama").toLowerCase();
+  const aiConfig = getAiConfig();
+  const provider = aiConfig.provider;
   const model = provider === "ollama"
-    ? process.env.OLLAMA_MODEL || "qwen3:4b"
+    ? aiConfig.ollamaModel
     : provider === "gemini"
-      ? process.env.GEMINI_MODEL || "gemini-3.8-flash"
+      ? aiConfig.geminiModel
       : provider === "groq"
-        ? process.env.GROQ_MODEL || "llama-3.1-70b-versatile"
+        ? aiConfig.groqModel
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
 
   const localSchema = provider === "ollama" ? localRubricSchema(input.userAnswer) : evaluationSchema;
@@ -131,7 +134,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
       throw new Error(`OpenAI trả lỗi HTTP ${response.status}.`);
     }
   } else if (provider === "groq") {
-    const apiKey = process.env.GROQ_API_KEY;
+    const apiKey = aiConfig.groqApiKey || process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY.");
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
