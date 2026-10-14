@@ -6,7 +6,7 @@ import ts from 'typescript';
 function load(path, dependencies = {}, globals = {}) {
   const source = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};
-  vm.runInNewContext(source, { exports, require: name => name === 'server-only' ? {} : dependencies[name], ...globals });
+  vm.runInNewContext(source, { exports, require: name => name === 'server-only' ? {} : name === './ai-config' ? { getAiConfig: () => ({ provider: globals.process?.env?.CV_AI_PROVIDER || 'ollama', ollamaModel: 'qwen3:4b', geminiModel: 'test', groqModel: 'test' }) } : dependencies[name], ...globals });
   return exports;
 }
 const rubric = load('src/lib/interview-rubric.ts');
@@ -174,4 +174,38 @@ test('summary prompt and schema request only summary fields, not answer evaluati
   });
   const result = await summary.generateSummary({ sessionTitle: 'test', interviewType: 'mixed', totalQuestions: 1, answers: [{ question: '?', answer: 'text', score: 8, feedback: '', question_type: 'behavioral' }] });
   assert.equal(result.strengths.length, 2); assert.equal(result.totalScore, 80);
+});
+
+test('missing positive-score evidence excludes only that criterion from provisional scores', () => {
+  const input = fixture();
+  input.criteria[0].evidence = '   ';
+  const result = rubric.parseRubric(input, context);
+  assert.equal(result.criteria[0].status, 'insufficient_data');
+  assert.equal(result.criteria[0].level, null);
+  assert.match(result.criteria[0].reason, /AI chưa cung cấp/);
+  assert.equal(result.assessedCount, 4);
+  assert.equal(result.provisional, true);
+  assert.equal(result.totalScore, 100);
+  assert.equal(rubric.summarizeScores([{ rubric: result }], 1).grade, 'Chưa xếp loại');
+});
+test('context exclusions and zero scores allow empty evidence', () => {
+  const input = fixture();
+  input.criteria[0].level = 0;
+  input.criteria[0].evidence = '';
+  input.criteria[3].evidence = '';
+  input.criteria[4].evidence = '';
+  const result = rubric.parseRubric(input, { ...context, language: 'vi', targetRole: null });
+  assert.equal(result.criteria[0].status, 'scored');
+  assert.equal(result.criteria[0].level, 0);
+  assert.equal(result.criteria[3].status, 'insufficient_data');
+  assert.equal(result.criteria[4].status, 'not_applicable');
+});
+test('derived positive C03 score also requires evidence', () => {
+  const input = fixture();
+  input.criteria[2].level = 0;
+  input.criteria[2].evidence = '';
+  const result = rubric.parseRubric(input, context);
+  assert.equal(result.criteria[2].level, null);
+  assert.equal(result.structure.status, 'insufficient_data');
+  assert.equal(result.structure.ordered, null);
 });
