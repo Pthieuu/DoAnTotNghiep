@@ -79,6 +79,7 @@ const paths = {
   fact_check: "M4 3h16v18H4Z M7 8h3 M7 13h3 M7 17h7 m-1-8 2 2 3-4",
   mail: "M3 5h18v14H3Z m0 0 9 7 9-7",
   lock: "M5 10h14v12H5Z M8 10V6a4 4 0 0 1 8 0v4 M12 15v3",
+  pin_invoke: "M4 4h16v16H4Z M9 8h.01 M15 8h.01 M9 12h.01 M15 12h.01 M9 16h.01 M15 16h.01",
   visibility: "M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12 M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
   visibility_off: "m3 3 18 18 M10 5q8-1 12 7l-3 4 M6 6q-3 2-4 6s3 7 10 7q3 0 5-2 M10 10a3 3 0 0 0 4 4",
   send: "M22 2 11 13 M22 2l-7 20-4-9-9-4Z",
