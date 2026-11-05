@@ -1,0 +1,39 @@
+# ==============================================================================
+# .aiignore - General AI Assistant ignore file (Cursor, Windsurf, Copilot, etc.)
+# ==============================================================================
+
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+.turbo/
+*.exe
+OllamaSetup.exe
+public/models/
+*.vrm
+*.glb
+*.gltf
+*.fbx
+public/*.jpg
+public/*.jpeg
+public/*.png
+public/*.svg
+public/*.ico
+*.mp3
+*.wav
+*.ogg
+.env*
+!.env.example
+*.log
+interview_practice_requirements.md
+init_database.sql
+.git/
+.DS_Store
+Thumbs.db
+
