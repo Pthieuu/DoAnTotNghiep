@@ -168,3 +168,46 @@ test('Rule Engine: flags outdated CV date', () => {
   assert.equal(dateIssue.severity, 'major');
 });
 
+test('Output strings: do not leak rubric / checklist / cẩm nang / NiX / criteria terms to users', () => {
+  const sample = {
+    rawText: '免許・資格: 2025年05月 Credly バッジ AWS Certified Cloud Practitioner 取得\n学歴: 2022年09月 越間情報通信技術大学 入学\nフリガナ: レバオフック',
+    fileName: 'NguyenVanA_CV_Rakuten.pdf',
+    fileType: 'pdf',
+    personalInfoText: 'フリガナ: レバオフック\n氏名: Lê Bảo Phúc\n2024年01月01日現在',
+    educationWorkText: '2022年09月 越間情報通信技術大学 入学',
+    certificatesText: '2025年05月 Credly バッジ AWS Certified Cloud Practitioner 取得',
+    skillsHobbiesText: 'JavaとReactを勉強しています。',
+    jikoPrText: '私の強みは粘り強さです。',
+    shibouDoukiText: '貴社を志望しました。',
+    otherText: '',
+    detectedHeadings: ['学歴・職歴', '免許・資格', '自己PR', '志望動機'],
+    missingHeadings: [],
+  };
+
+  const issues = ruleEngine.runRuleEngine(sample);
+  assert.ok(issues.length > 0, 'Should find issues');
+
+  const bannedPhrases = ['tiêu chí', 'checklist', 'rubric', 'cẩm nang', 'nix', 'bị cấm'];
+
+  for (const issue of issues) {
+    for (const phrase of bannedPhrases) {
+      assert.ok(
+        !issue.title.toLowerCase().includes(phrase),
+        `Issue title '${issue.title}' should not contain '${phrase}'`
+      );
+      assert.ok(
+        !issue.problemVi.toLowerCase().includes(phrase),
+        `Issue problemVi '${issue.problemVi}' should not contain '${phrase}'`
+      );
+      assert.ok(
+        !issue.whyWrongVi.toLowerCase().includes(phrase),
+        `Issue whyWrongVi '${issue.whyWrongVi}' should not contain '${phrase}'`
+      );
+      assert.ok(
+        !issue.solutionVi.toLowerCase().includes(phrase),
+        `Issue solutionVi '${issue.solutionVi}' should not contain '${phrase}'`
+      );
+    }
+  }
+});
+

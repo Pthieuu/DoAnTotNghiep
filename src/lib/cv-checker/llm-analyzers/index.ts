@@ -140,7 +140,7 @@ export async function runLlmAnalyzers(
       }>;
       suggestedRewriteJa?: string;
     }>(
-      "You are a professional Japanese CV Reviewer for Vietnamese IT graduates entering Japanese companies. Output valid JSON.",
+      "Bạn là chuyên gia cố vấn tuyển dụng tiếng Nhật. Không bao giờ nhắc đến việc bạn đang chấm theo rubric, checklist, tiêu chí, cẩm nang hay tài liệu nội bộ nào. Hãy đưa ra nhận xét tự nhiên bằng JSON.",
       prompt
     );
 
@@ -152,7 +152,7 @@ export async function runLlmAnalyzers(
           section: "jiko_pr",
           severity: issue.severity || "minor",
           ruleCode: issue.ruleCode || "LLM_JIKO_PR_ISSUE",
-          title: issue.title || "Vấn đề trong mục 自己PR",
+          title: issue.title || "Gợi ý cho mục 自己PR",
           problemVi: issue.problemVi,
           whyWrongVi: issue.whyWrongVi,
           solutionVi: issue.solutionVi,
@@ -185,7 +185,7 @@ export async function runLlmAnalyzers(
       }>;
       suggestedRewriteJa?: string;
     }>(
-      "You are a professional Japanese CV Reviewer evaluating 志望動機 (Reason for Application). Output valid JSON.",
+      "Bạn là chuyên gia cố vấn tuyển dụng tiếng Nhật. Không bao giờ nhắc đến việc bạn đang chấm theo rubric, checklist, tiêu chí, cẩm nang hay tài liệu nội bộ nào. Hãy đưa ra nhận xét tự nhiên bằng JSON.",
       prompt
     );
 
@@ -197,7 +197,7 @@ export async function runLlmAnalyzers(
           section: "shibou_douki",
           severity: issue.severity || "minor",
           ruleCode: issue.ruleCode || "LLM_SHIBOU_DOUKI_ISSUE",
-          title: issue.title || "Vấn đề trong mục 志望動機",
+          title: issue.title || "Gợi ý cho mục 志望動機",
           problemVi: issue.problemVi,
           whyWrongVi: issue.whyWrongVi,
           solutionVi: issue.solutionVi,
@@ -230,7 +230,7 @@ export async function runLlmAnalyzers(
       }>;
       suggestedRewriteJa?: string;
     }>(
-      "You are a professional Japanese CV Reviewer evaluating Work Experience and Internships. Output valid JSON.",
+      "Bạn là chuyên gia cố vấn tuyển dụng tiếng Nhật. Không bao giờ nhắc đến việc bạn đang chấm theo rubric, checklist, tiêu chí, cẩm nang hay tài liệu nội bộ nào. Hãy đưa ra nhận xét tự nhiên bằng JSON.",
       prompt
     );
 
@@ -242,7 +242,7 @@ export async function runLlmAnalyzers(
           section: "education_work",
           severity: issue.severity || "minor",
           ruleCode: issue.ruleCode || "LLM_WORK_EXP_ISSUE",
-          title: issue.title || "Vấn đề trong phần Kinh nghiệm / Dự án",
+          title: issue.title || "Gợi ý cho phần Kinh nghiệm / Dự án",
           problemVi: issue.problemVi,
           whyWrongVi: issue.whyWrongVi,
           solutionVi: issue.solutionVi,

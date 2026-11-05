@@ -45,9 +45,9 @@
     {
       "id": 7,
       "section": "certificates",
-      "labelVi": "Bằng cấp rõ ràng, tuyệt đối không có chứng chỉ Credly",
-      "labelJa": "資格・免許が明確で、Credlyが記載されていないか",
-      "descriptionVi": "Ghi rõ tháng năm đạt bằng JLPT/TOEIC, không dùng Credly do NiX đã ngừng cấp từ 07/2026"
+      "labelVi": "Bằng cấp rõ ràng, trình bày chứng chỉ chính quy",
+      "labelJa": "資格・免許が明確に記載されているか",
+      "descriptionVi": "Ghi rõ tháng năm đạt bằng JLPT/TOEIC, nên bỏ các dòng huy hiệu Credly để hồ sơ đúng trọng tâm"
     },
     {
       "id": 8,

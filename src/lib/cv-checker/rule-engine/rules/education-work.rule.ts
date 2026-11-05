@@ -29,13 +29,11 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
 
   // 2. Check canonical university names
   for (const school of schoolRegistry.schools) {
-    // Check if the CV mentions this school's aliases
     const matchedAlias = school.aliases.find((alias) =>
       text.toLowerCase().includes(alias.toLowerCase())
     );
 
     if (matchedAlias) {
-      // Check if it has the canonical full Japanese name + faculty
       const hasFullCanonical = text.includes(school.canonicalJa);
       const hasSchoolName = text.includes(school.aliases[0]);
       const hasFaculty = school.facultyJa ? text.includes(school.facultyJa) : true;
@@ -46,10 +44,10 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
           section: "education_work",
           severity: "major",
           ruleCode: `RULE_SCHOOL_${school.code}_NONCANONICAL`,
-          title: `Tên trường ${school.nameVi} chưa chuẩn hoá tiếng Nhật`,
-          problemVi: `CV có nhắc đến ${matchedAlias} nhưng chưa ghi đúng chuẩn tên trường và khoa tiếng Nhật.`,
-          whyWrongVi: "Các trường đại học đối tác của doanh nghiệp Nhật có quy ước tên gọi và tên khoa chính thức bằng tiếng Nhật để nhà tuyển dụng dễ dàng tra cứu và đối chiếu bằng cấp.",
-          solutionVi: `Ghi chính xác: ${school.canonicalJa}`,
+          title: `Tên trường ${school.nameVi} nên ghi đầy đủ tên khoa tiếng Nhật`,
+          problemVi: `CV có nhắc đến ${matchedAlias} nhưng chưa ghi rõ đầy đủ tên trường và khoa bằng tiếng Nhật.`,
+          whyWrongVi: "Ghi đầy đủ tên trường và chuyên khoa bằng tiếng Nhật giúp nhà tuyển dụng dễ dàng tra cứu chương trình đào tạo và đối chiếu hồ sơ.",
+          solutionVi: `Bạn nên ghi rõ: ${school.canonicalJa}`,
           sourceQuoteJa: matchedAlias,
           rewriteSampleJa: school.canonicalJa,
         });
@@ -66,10 +64,10 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
         section: "education_work",
         severity: "major",
         ruleCode: "RULE_MISSING_IJYOU",
-        title: "Thiếu chữ '以上' ở cuối phần Học vấn / Sự nghiệp",
-        problemVi: "Phần 学歴・職歴 không có chữ '以上' ở dòng cuối cùng bên phải.",
-        whyWrongVi: "Trong quy chuẩn 履歴書 của Nhật Bản, chữ 以上 (Nghĩa là: Hết / Trên đây là toàn bộ) là bắt buộc ở dòng cuối để xác nhận không còn lịch sử nào bị bỏ sót hay viết thêm sau đó.",
-        solutionVi: "Thêm một dòng cuối cùng trong bảng 学歴・職歴: ghi chữ '以上' căn sát lề phải.",
+        title: "Nên thêm chữ '以上' ở dòng cuối phần học vấn / kinh nghiệm",
+        problemVi: "Phần 学歴・職歴 chưa có chữ '以上' ở dòng cuối cùng bên phải.",
+        whyWrongVi: "Trong hồ sơ tiếng Nhật (履歴書), từ 以上 (nghĩa là kết thúc danh sách) ở dòng cuối cùng giúp xác nhận toàn bộ quá trình học tập và làm việc đã được liệt kê đầy đủ.",
+        solutionVi: "Bạn nên thêm chữ '以上' căn sát lề phải ở dòng cuối cùng của bảng 学歴・職歴.",
         rewriteSampleJa: "                                        以上",
       });
     }
@@ -82,10 +80,10 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
       section: "education_work",
       severity: "minor",
       ruleCode: "RULE_SOTSUGYOU_YOTEI",
-      title: "Nên dùng '卒業予定' thay vì '卒業見込み'",
-      problemVi: "CV đang dùng từ '卒業見込み' cho dòng năm tốt nghiệp dự kiến.",
-      whyWrongVi: "Theo cẩm nang hướng dẫn NiX, dòng ghi mốc thời gian tốt nghiệp đại học sắp tới nên dùng thống nhất '卒業予定' (hoặc '現在に至る' cho công việc).",
-      solutionVi: "Thay thế '卒業見込み' thành '卒業予定'. Ví dụ: 2026年06月　フォンドン大学／ソフトウェアサイエンス学部　卒業予定",
+      title: "Nên dùng '卒業予定' cho sinh viên dự kiến tốt nghiệp",
+      problemVi: "CV đang dùng từ '卒業見込み' cho mốc thời gian tốt nghiệp.",
+      whyWrongVi: "Với ứng viên đang đi học và sắp tốt nghiệp, nhà tuyển dụng Nhật thường quen thuộc với cách viết '卒業予定' để chỉ thời gian dự kiến ra trường.",
+      solutionVi: "Bạn nên điều chỉnh '卒業見込み' thành '卒業予定'. Ví dụ: 2026年06月　フォンドン大学／ソフトウェアサイエンス学部　卒業予定",
       sourceQuoteJa: "卒業見込み",
       rewriteSampleJa: "卒業予定",
     });
@@ -102,10 +100,10 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
           section: "education_work",
           severity: "minor",
           ruleCode: "RULE_INTERN_COMPANY_TYPE",
-          title: "Công ty thực tập chưa ghi rõ loại hình doanh nghiệp",
-          problemVi: `Dòng kinh nghiệm '${matchStr.slice(0, 40)}...' chưa ghi rõ tiền tố/hậu tố pháp nhân (株式会社, 有限会社...).`,
-          whyWrongVi: "Khi ghi công ty thực tập, cần ghi đầy đủ tên pháp lý (ví dụ: 株式会社ABC thay vì chỉ viết ABC) để thể hiện sự tôn trọng và chính xác.",
-          solutionVi: "Thêm loại hình pháp nhân (株式会社 hoặc 有限会社) trước hoặc sau tên công ty thực tập.",
+          title: "Công ty thực tập nên ghi rõ loại hình doanh nghiệp",
+          problemVi: `Dòng kinh nghiệm '${matchStr.slice(0, 40)}...' chưa ghi kèm loại hình doanh nghiệp (株式会社, 有限会社...).`,
+          whyWrongVi: "Ghi đầy đủ tiền tố hoặc hậu tố pháp nhân (ví dụ: 株式会社ABC thay vì chỉ viết ABC) giúp thể hiện tính chính xác và trang trọng.",
+          solutionVi: "Bạn nên thêm loại hình doanh nghiệp (như 株式会社 hoặc 有限会社) trước hoặc sau tên công ty.",
           sourceQuoteJa: matchStr,
         });
       }

@@ -18,10 +18,10 @@ export function runRuleEngine(
       section: mapMissingHeadingToSection(missing),
       severity: "critical",
       ruleCode: "RULE_MISSING_SECTION",
-      title: `Thiếu mục bắt buộc: ${missing}`,
+      title: `Chưa thấy phần nội dung: ${missing}`,
       problemVi: `Không tìm thấy tiêu đề hoặc nội dung của mục '${missing}' trong CV.`,
-      whyWrongVi: "Một bản 履歴書 hoàn chỉnh của Nhật Bản bắt buộc phải có đầy đủ các đề mục theo quy định.",
-      solutionVi: `Bổ sung mục '${missing}' vào đúng vị trí theo mẫu CV chuẩn.`,
+      whyWrongVi: "Một bản CV tiếng Nhật hoàn chỉnh cần có đầy đủ các mục thông tin cơ bản để nhà tuyển dụng đánh giá toàn diện hồ sơ của bạn.",
+      solutionVi: `Bạn nên bổ sung thêm mục '${missing}' vào bản CV theo đúng cấu trúc.`,
     });
   }
 
@@ -43,4 +43,3 @@ function mapMissingHeadingToSection(heading: string): CvIssue["section"] {
   if (/志望動機/i.test(heading)) return "shibou_douki";
   return "personal_info";
 }
-

@@ -7,10 +7,10 @@
       "category": "certificates",
       "severity": "critical",
       "ruleCode": "RULE_CREDLY_BANNED",
-      "title": "Sử dụng chứng chỉ Credly bị cấm",
-      "problemVi": "CV có đề cập đến chứng chỉ hoặc huy hiệu 'Credly'.",
-      "whyWrongVi": "Theo cẩm nang hướng dẫn NiX (cập nhật từ 07/2026), NiX đã chính thức dừng cấp chứng chỉ qua nền tảng Credly. Việc ghi Credly vào CV sẽ bị doanh nghiệp Nhật và trường học đánh giá là dùng mẫu cũ hoặc không cập nhật quy định.",
-      "solutionVi": "Xóa toàn bộ các dòng nhắc đến 'Credly' hoặc 'Credly バッジ'. Nếu muốn chứng minh năng lực, hãy ghi rõ các chứng chỉ chính thức như JLPT, FE/AP, TOEIC hoặc ghi nhận quá trình đào tạo cụ thể."
+      "title": "Nên bỏ các dòng huy hiệu Credly trong mục chứng chỉ",
+      "problemVi": "Mục 資格 đang có các dòng Credly バッジ.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật thường chú trọng các chứng chỉ năng lực chính thức (như JLPT, văn bằng hoặc giải thưởng thực tế). Các huy hiệu khóa học trực tuyến dạng Credly thường làm mục này bị loãng và giảm trọng tâm chuyên môn.",
+      "solutionVi": "Bạn nên bỏ các dòng Credly バッジ và chỉ giữ học bổng, JLPT và các chứng chỉ chính thức khác để mục này gọn và đúng trọng tâm hơn."
     },
     {
       "term": "UPD",
@@ -19,10 +19,10 @@
       "category": "education_work",
       "severity": "critical",
       "ruleCode": "RULE_ABBR_UPD",
-      "title": "Viết tắt sai tên Đại học Phương Đông",
-      "problemVi": "CV viết tắt tên trường là 'UPD'.",
-      "whyWrongVi": "Nhà tuyển dụng Nhật Bản không biết 'UPD' là trường nào. Tên trường phải viết đầy đủ bằng tiếng Nhật.",
-      "solutionVi": "Đổi thành: フォンドン大学／ソフトウェアサイエンス学部"
+      "title": "Nên ghi đầy đủ tên trường thay vì viết tắt UPD",
+      "problemVi": "Tên trường đang được viết tắt là 'UPD'.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật Bản thường không quen thuộc với các tên viết tắt của trường đại học tại Việt Nam, điều này có thể gây khó khăn khi đối chiếu hồ sơ.",
+      "solutionVi": "Bạn nên ghi tên trường đầy đủ bằng tiếng Nhật: フォンドン大学／ソフトウェアサイエンス学部"
     },
     {
       "term": "越間",
@@ -31,10 +31,10 @@
       "category": "education_work",
       "severity": "critical",
       "ruleCode": "RULE_VKU_TYPO",
-      "title": "Sai chính tả tên trường VKU (越間 -> 越韓)",
-      "problemVi": "Từ 'Việt - Hàn' viết nhầm chữ Hán thành 越間 (Việt - Gian).",
-      "whyWrongVi": "Đây là lỗi sai chữ Hán nghiêm trọng thể hiện sự cẩu thả khi viết tên trường của mình.",
-      "solutionVi": "Đổi chữ 間 thành 韓: 越韓情報通信技術大学／コンピューターサイエンス学部"
+      "title": "Cần chỉnh lại chữ Hán tên trường VKU (越間 -> 越韓)",
+      "problemVi": "Tên trường đang viết chữ Hán là 越間.",
+      "whyWrongVi": "Chữ 'Hàn' trong Việt - Hàn cần được viết chính xác là 韓 để thể hiện sự chuẩn chỉnh trong hồ sơ gửi doanh nghiệp.",
+      "solutionVi": "Bạn nên sửa chữ 間 thành 韓: 越韓情報通信技術大学／コンピューターサイエンス学部"
     },
     {
       "term": "CNTT Việt Nhật",
@@ -43,10 +43,10 @@
       "category": "education_work",
       "severity": "major",
       "ruleCode": "RULE_ABBR_CNTT_VN",
-      "title": "Dùng tên tiếng Việt không chuẩn cho chương trình Việt Nhật",
-      "problemVi": "CV dùng tên 'CNTT Việt Nhật' trong phần 学歴.",
-      "whyWrongVi": "CV Nhật (履歴書) phải đồng nhất tên ngành bằng tiếng Nhật chuẩn hóa.",
-      "solutionVi": "Ghi đúng tên khoa/ngành bằng tiếng Nhật theo quy định của trường."
+      "title": "Nên dùng tên ngành đào tạo bằng tiếng Nhật",
+      "problemVi": "Phần học vấn đang để cụm từ tiếng Việt 'CNTT Việt Nhật'.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật sẽ dễ nắm bắt chuyên môn đào tạo của bạn hơn khi tên ngành được viết bằng tiếng Nhật tương đương.",
+      "solutionVi": "Bạn nên ghi tên chuyên ngành bằng tiếng Nhật theo hướng dẫn của khoa đào tạo."
     }
   ]
 }

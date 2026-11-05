@@ -17,15 +17,14 @@ export function checkFormattingRules(parsed: CvParsedSections): CvIssue[] {
       section: "formatting_layout",
       severity: "critical",
       ruleCode: "RULE_MARKDOWN_LEAK",
-      title: "Phát hiện ký tự Markdown của AI/ChatGPT",
+      title: "Còn sót các ký tự định dạng Markdown trong văn bản",
       problemVi: `CV có chứa các ký tự định dạng markdown chưa được làm sạch: ${markdownMatches.join(", ")}.`,
-      whyWrongVi: "Lỗi này chứng minh ứng viên sao chép trực tiếp nội dung từ ChatGPT vào CV mà không biên tập lại. Nhà tuyển dụng Nhật Bản cực kỳ dị ứng với việc nộp CV cẩu thả như vậy và sẽ loại hồ sơ ngay lập tức.",
-      solutionVi: "Xóa bỏ toàn bộ các ký hiệu `**`, `##`, `*` và định dạng văn bản thành chữ thường hoặc in đậm chuẩn của trình soạn thảo Word/Google Docs.",
+      whyWrongVi: "Nhà tuyển dụng Nhật rất chú ý đến tính chỉn chu. Các ký hiệu định dạng markdown chưa được làm sạch có thể khiến người đọc nghĩ rằng bạn sao chép trực tiếp mà chưa kiểm tra lại kỹ lưỡng.",
+      solutionVi: "Bạn nên xóa bỏ các ký hiệu `**`, `##`, `*` và sử dụng công cụ định dạng chữ đậm/nhạt trực tiếp trong trình soạn thảo Word.",
     });
   }
 
   // 2. Check for half-width punctuation in Japanese sentences
-  // e.g. Japanese text containing "." or "," instead of "。" or "、"
   const japaneseText = parsed.jikoPrText + " " + parsed.shibouDoukiText;
   const halfCommaMatch = japaneseText.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF],[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/);
   const halfPeriodMatch = japaneseText.match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]\.[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/);
@@ -36,10 +35,10 @@ export function checkFormattingRules(parsed: CvParsedSections): CvIssue[] {
       section: "formatting_layout",
       severity: "minor",
       ruleCode: "RULE_JAPANESE_PUNCTUATION",
-      title: "Dùng dấu câu nửa độ rộng (, .) trong câu tiếng Nhật",
+      title: "Nên dùng dấu câu toàn độ rộng (、 và 。) trong câu tiếng Nhật",
       problemVi: "Trong các đoạn tiếng Nhật, đang dùng dấu phẩy (,) hoặc dấu chấm (.) của bảng chữ cái Latinh.",
-      whyWrongVi: "Quy tắc chính tả tiếng Nhật chuẩn yêu cầu dùng dấu phẩy toàn độ rộng (、- touten) và dấu chấm toàn độ rộng (。- kuten).",
-      solutionVi: "Thay thế dấu ',' bằng '、' và dấu '.' bằng '。' trong tất cả các câu tiếng Nhật.",
+      whyWrongVi: "Quy tắc chính tả tiếng Nhật chuẩn dùng dấu phẩy toàn độ rộng (、- touten) và dấu chấm toàn độ rộng (。- kuten) để câu văn liền mạch và chuẩn mực.",
+      solutionVi: "Bạn nên thay thế dấu ',' bằng '、' và dấu '.' bằng '。' trong các câu tiếng Nhật.",
     });
   }
 
@@ -51,10 +50,10 @@ export function checkFormattingRules(parsed: CvParsedSections): CvIssue[] {
       section: "formatting_layout",
       severity: "minor",
       ruleCode: "RULE_HALF_WIDTH_PARENS",
-      title: "Dùng dấu ngoặc đơn nửa độ rộng () trong văn bản tiếng Nhật",
-      problemVi: `Tìm thấy dấu ngoặc đơn '(' ')' nửa độ rộng trong ngữ cảnh tiếng Nhật: '${halfParenInHeading[0]}'.`,
-      whyWrongVi: "Trong văn bản chuẩn Nhật (履歴書), dấu ngoặc đơn phải là toàn độ rộng '（' và '）' để không làm lệch bố cục hàng chữ.",
-      solutionVi: "Thay '()' bằng '（）' toàn độ rộng.",
+      title: "Nên dùng dấu ngoặc đơn toàn độ rộng （） cho văn bản tiếng Nhật",
+      problemVi: `Tìm thấy dấu ngoặc đơn nửa độ rộng: '${halfParenInHeading[0]}'.`,
+      whyWrongVi: "Trong văn bản tiếng Nhật, dấu ngoặc đơn nên là toàn độ rộng '（' và '）' để bố cục hàng chữ và khoảng cách các ký tự được đều đặn.",
+      solutionVi: "Bạn nên thay '()' bằng '（）' toàn độ rộng.",
       sourceQuoteJa: halfParenInHeading[0],
       rewriteSampleJa: halfParenInHeading[0].replace("(", "（").replace(")", "）"),
     });
@@ -62,4 +61,3 @@ export function checkFormattingRules(parsed: CvParsedSections): CvIssue[] {
 
   return issues;
 }
-

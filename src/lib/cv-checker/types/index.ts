@@ -43,7 +43,7 @@ export interface ChecklistItemResult {
 
 export interface CvCheckerReport {
   overallScore: number; // 0 - 100
-  ratingVi: "Xuất sắc" | "Đạt yêu cầu" | "Cần cải thiện" | "Không đạt chuẩn";
+  ratingVi: "Rất tốt" | "Khá tốt" | "Cần chỉnh sửa thêm" | "Cần làm lại nhiều phần" | string;
   summaryVi: string;
   topPrioritiesVi: string[];
   sections: Record<SectionKey, SectionScore>;

@@ -7,8 +7,8 @@ import CvCheckerClient from "./client-page";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Check CV Chuẩn Nhật (NiX) | Aizuchi.AI",
-  description: "Thẩm định CV tiếng Nhật tự động theo chuẩn NiX Education và doanh nghiệp IT Nhật Bản.",
+  title: "Check CV Tiếng Nhật | Aizuchi.AI",
+  description: "Phân tích và nhận góp ý hoàn thiện CV tiếng Nhật khi ứng tuyển doanh nghiệp Nhật Bản.",
 };
 
 export default async function CvCheckerPage() {
@@ -21,4 +21,3 @@ export default async function CvCheckerPage() {
     </DashboardShell>
   );
 }
-

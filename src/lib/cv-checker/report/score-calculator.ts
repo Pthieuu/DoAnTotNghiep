@@ -8,16 +8,17 @@ import {
   TargetCompanyContext,
 } from "../types";
 import checklistRubric from "../config/checklist-rubric.json";
+import { getScoreTier } from "../config/score-tier";
 import { LlmAnalysisResult } from "../llm-analyzers";
 
 const SECTION_WEIGHTS: Record<SectionKey, { weight: number; titleVi: string; titleJa: string }> = {
-  personal_info: { weight: 0.15, titleVi: "Thông tin cá nhân & Ảnh", titleJa: "個人情報・写真" },
-  education_work: { weight: 0.15, titleVi: "Học vấn & Kinh nghiệm", titleJa: "学歴・職歴" },
-  certificates: { weight: 0.1, titleVi: "Bằng cấp & Chứng chỉ", titleJa: "免許・資格" },
-  skills_hobbies: { weight: 0.15, titleVi: "Kỹ năng & Môn học sở trường", titleJa: "趣味・得意科目" },
-  jiko_pr: { weight: 0.2, titleVi: "Tự PR bản thân (STAR)", titleJa: "自己PR" },
-  shibou_douki: { weight: 0.2, titleVi: "Động lực ứng tuyển (Phễu 4 tầng)", titleJa: "志望動機" },
-  formatting_layout: { weight: 0.05, titleVi: "Định dạng & Trình bày", titleJa: "フォーマット・体裁" },
+  personal_info: { weight: 0.15, titleVi: "Thông tin cá nhân & ảnh", titleJa: "個人情報・写真" },
+  education_work: { weight: 0.15, titleVi: "Học vấn & kinh nghiệm", titleJa: "学歴・職歴" },
+  certificates: { weight: 0.1, titleVi: "Bằng cấp & chứng chỉ", titleJa: "免許・資格" },
+  skills_hobbies: { weight: 0.15, titleVi: "Kỹ năng sở trường", titleJa: "趣味・得意科目" },
+  jiko_pr: { weight: 0.2, titleVi: "Tự PR bản thân", titleJa: "自己PR" },
+  shibou_douki: { weight: 0.2, titleVi: "Động lực ứng tuyển", titleJa: "志望動機" },
+  formatting_layout: { weight: 0.05, titleVi: "Hình thức & trình bày", titleJa: "フォーマット・体裁" },
 };
 
 export function buildCvReport(
@@ -76,10 +77,10 @@ export function buildCvReport(
       calculatedScore = Math.round(calculatedScore * 0.6 + llmResults.workExpResult.score * 0.4);
     }
 
-    let evaluationVi = "Đạt tiêu chuẩn tốt";
-    if (calculatedScore < 50) evaluationVi = "Chưa đạt yêu cầu, có lỗi nghiêm trọng";
-    else if (calculatedScore < 75) evaluationVi = "Cần chỉnh sửa bổ sung các tiêu chí quan trọng";
-    else if (calculatedScore < 90) evaluationVi = "Khá tốt, cần trau chuốt thêm văn phong";
+    let evaluationVi = "Trình bày tốt, thông tin rõ ràng";
+    if (calculatedScore < 50) evaluationVi = "Cần điều chỉnh lại mục này để tạo ấn tượng tốt hơn";
+    else if (calculatedScore < 75) evaluationVi = "Có một số điểm nên lưu ý hoàn thiện thêm";
+    else if (calculatedScore < 90) evaluationVi = "Khá tốt, có thể trau chuốt thêm văn phong";
 
     sections[secKey] = {
       key: secKey,
@@ -96,10 +97,8 @@ export function buildCvReport(
 
   overallScore = Math.round(overallScore);
 
-  let ratingVi: CvCheckerReport["ratingVi"] = "Không đạt chuẩn";
-  if (overallScore >= 90) ratingVi = "Xuất sắc";
-  else if (overallScore >= 75) ratingVi = "Đạt yêu cầu";
-  else if (overallScore >= 60) ratingVi = "Cần cải thiện";
+  const tier = getScoreTier(overallScore);
+  const ratingVi = tier.label;
 
   // Build Top 3 Priorities
   const sortedIssues = [...allIssues].sort((a, b) => {
@@ -108,30 +107,28 @@ export function buildCvReport(
   });
 
   const topPrioritiesVi = sortedIssues.slice(0, 3).map((issue) => {
-    return `[${issue.severity.toUpperCase()}] ${issue.title}: ${issue.solutionVi}`;
+    return `${issue.title}: ${issue.solutionVi}`;
   });
 
   if (topPrioritiesVi.length === 0) {
-    topPrioritiesVi.push("Hồ sơ CV của bạn đã đạt đầy đủ các quy chuẩn hình thức và nội dung cốt lõi của NiX!");
+    topPrioritiesVi.push("Hồ sơ CV của bạn đã được trình bày rất tốt, không phát hiện điểm cần sửa gấp.");
   }
 
-  // Build Checklist
+  // Build Checklist (retained for backend model compatibility if needed)
   const checklist: ChecklistItemResult[] = checklistRubric.checklistItems.map((item) => {
     const secIssues = sectionIssuesMap[item.section as SectionKey] || [];
     const hasCrit = secIssues.some((i) => i.severity === "critical");
     const hasMajor = secIssues.some((i) => i.severity === "major");
     const hasMinor = secIssues.some((i) => i.severity === "minor");
 
-    // Specific item matching
     if (item.id === 2) {
-      // Photo check
       return {
         id: item.id,
         labelVi: item.labelVi,
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "manual_check",
-        detailVi: "Cần kiểm tra thủ công: Ảnh thẻ có mặc vest/áo sơ mi cổ cồn, nền xanh/trắng, không dùng ảnh selfie.",
+        detailVi: "Lưu ý kiểm tra ảnh thẻ: áo sơ mi hoặc vest có cổ, phông nền đơn sắc, không dùng ảnh chụp đời thường.",
       };
     }
 
@@ -142,7 +139,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "warning",
-        detailVi: "Tên file chưa đúng định dạng [HọTên]_CV_[TênCôngTy].pdf",
+        detailVi: "Tên file nên đặt kèm tên công ty ứng tuyển để dễ quản lý.",
       };
     }
 
@@ -153,7 +150,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "fail",
-        detailVi: "CV có chứa chứng chỉ Credly bị cấm. Cần xóa ngay.",
+        detailVi: "Nên bỏ các dòng Credly バッジ để mục này gọn và đúng trọng tâm hơn.",
       };
     }
 
@@ -164,7 +161,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "fail",
-        detailVi: "Phát hiện ký tự Markdown của AI/ChatGPT chưa được xóa.",
+        detailVi: "Nên làm sạch các ký tự định dạng markdown chưa xóa.",
       };
     }
 
@@ -175,7 +172,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "fail",
-        detailVi: secIssues.find((i) => i.severity === "critical")?.problemVi || "Chưa đạt tiêu chuẩn",
+        detailVi: secIssues.find((i) => i.severity === "critical")?.problemVi || "Cần điều chỉnh",
       };
     }
 
@@ -186,7 +183,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "warning",
-        detailVi: secIssues.find((i) => i.severity === "major")?.problemVi || "Cần lưu ý chỉnh sửa",
+        detailVi: secIssues.find((i) => i.severity === "major")?.problemVi || "Nên lưu ý hoàn thiện",
       };
     }
 
@@ -197,7 +194,7 @@ export function buildCvReport(
         labelJa: item.labelJa,
         section: item.section as SectionKey,
         status: "warning",
-        detailVi: "Có điểm nhỏ cần trau chuốt thêm.",
+        detailVi: "Có điểm nhỏ có thể trau chuốt thêm.",
       };
     }
 
@@ -207,16 +204,16 @@ export function buildCvReport(
       labelJa: item.labelJa,
       section: item.section as SectionKey,
       status: "pass",
-      detailVi: "Đạt chuẩn yêu cầu.",
+      detailVi: "Trình bày phù hợp.",
     };
   });
 
   const summaryVi =
     overallScore >= 85
-      ? "Hồ sơ của bạn có chất lượng rất cao, cấu trúc chặt chẽ, tuân thủ tốt các quy chuẩn của NiX và doanh nghiệp Nhật Bản."
+      ? "Hồ sơ của bạn có chất lượng tốt, cấu trúc rõ ràng và đáp ứng tốt kỳ vọng của doanh nghiệp Nhật Bản."
       : overallScore >= 70
-      ? "CV có nền tảng tốt nhưng cần khắc phục các lỗi về hình thức hoặc bổ sung chiều sâu cho phần 自己PR và 志望動機."
-      : "CV còn nhiều lỗi quy chuẩn quan trọng cần được sửa trước khi nộp cho nhà tuyển dụng Nhật Bản.";
+      ? "CV có nền tảng tốt, chỉ cần hoàn thiện thêm một số chi tiết về hình thức hoặc tăng chiều sâu cho phần 自己PR và 志望動機."
+      : "CV còn một số điểm quan trọng cần điều chỉnh trước khi gửi tới nhà tuyển dụng Nhật Bản.";
 
   return {
     overallScore,
@@ -236,4 +233,3 @@ export function buildCvReport(
     },
   };
 }
-

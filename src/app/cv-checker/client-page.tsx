@@ -1,36 +1,141 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/icon";
 import type { CvCheckerReport, IssueSeverity, SectionKey } from "@/lib/cv-checker";
+import { getScoreTier } from "@/lib/cv-checker/config/score-tier";
+
+function ScoreProgressRing({ score }: { score: number }) {
+  const [displayedScore, setDisplayedScore] = useState(0);
+  const tier = getScoreTier(score);
+
+  useEffect(() => {
+    // Respect prefers-reduced-motion
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setDisplayedScore(score);
+      return;
+    }
+
+    let startTime: number | null = null;
+    const duration = 800; // ms
+    let animationFrameId: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // easeOutCubic: 1 - (1 - t)^3
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setDisplayedScore(Math.round(easeOut * score));
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [score]);
+
+  const size = 104; // 96 - 112px range
+  const strokeWidth = 8;
+  const center = size / 2;
+  const radius = center - strokeWidth;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (circumference * displayedScore) / 100;
+
+  return (
+    <div className="flex flex-col items-center shrink-0">
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: size, height: size }}
+        role="progressbar"
+        aria-valuenow={score}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Điểm tham khảo ${score} trên 100`}
+        title={`Điểm tham khảo ${score}/100`}
+      >
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          className="-rotate-90"
+          aria-hidden="true"
+        >
+          {/* Background Track */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke={tier.trackColor}
+            strokeWidth={strokeWidth}
+          />
+          {/* Progress Stroke */}
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke={tier.ringColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </svg>
+
+        {/* Center Numbers */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center select-none pointer-events-none">
+          <span className={`text-3xl font-extrabold tracking-tight ${tier.scoreTextClass}`}>
+            {displayedScore}
+          </span>
+          <span className="text-[11px] font-semibold text-slate-400 -mt-1">
+            /100
+          </span>
+        </div>
+      </div>
+      <span
+        className="text-[11px] font-medium text-slate-500 mt-1.5 tracking-wide text-center"
+        title="Điểm tham khảo dựa trên mức độ hoàn thiện CV"
+      >
+        Điểm tham khảo
+      </span>
+    </div>
+  );
+}
 
 const SEVERITY_CONFIG: Record<
   IssueSeverity,
   { label: string; bg: string; text: string; border: string; badge: string }
 > = {
   critical: {
-    label: "Lỗi nghiêm trọng (Critical)",
+    label: "Cần sửa gấp",
     bg: "bg-red-50",
     text: "text-red-700",
     border: "border-red-200",
     badge: "bg-red-100 text-red-800 border-red-200",
   },
   major: {
-    label: "Lỗi quan trọng (Major)",
+    label: "Cần lưu ý",
     bg: "bg-amber-50",
     text: "text-amber-800",
     border: "border-amber-200",
     badge: "bg-amber-100 text-amber-800 border-amber-200",
   },
   minor: {
-    label: "Cần cải thiện (Minor)",
+    label: "Gợi ý hoàn thiện",
     bg: "bg-sky-50",
     text: "text-sky-800",
     border: "border-sky-200",
     badge: "bg-sky-100 text-sky-800 border-sky-200",
   },
   manual_check: {
-    label: "Kiểm tra thủ công",
+    label: "Lưu ý kiểm tra",
     bg: "bg-purple-50",
     text: "text-purple-800",
     border: "border-purple-200",
@@ -51,9 +156,9 @@ export default function CvCheckerClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [report, setReport] = useState<CvCheckerReport | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"issues" | "diff" | "checklist" | "scores">("issues");
-  const [severityFilter, setSeverityFilter] = useState<"all" | IssueSeverity>("all");
+  const [activeTab, setActiveTab] = useState<"urgent" | "improvement" | "diff" | "sections">("urgent");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isExpandedSummary, setIsExpandedSummary] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +200,7 @@ export default function CvCheckerClient() {
 
     setIsAnalyzing(true);
     setErrorMessage(null);
-    setProgressStage("Đang trích xuất cấu trúc văn bản và nhận diện đề mục...");
+    setProgressStage("Đang trích xuất nội dung và cấu trúc CV...");
 
     try {
       const formData = new FormData();
@@ -107,11 +212,11 @@ export default function CvCheckerClient() {
       if (targetJlpt) formData.append("targetJlpt", targetJlpt);
 
       const stageTimer1 = setTimeout(() => {
-        setProgressStage("Đang chạy bộ quy tắc kiểm tra định dạng & cẩm nang NiX (Deterministic)...");
+        setProgressStage("Đang rà soát cách trình bày và thông tin cần thiết...");
       }, 2000);
 
       const stageTimer2 = setTimeout(() => {
-        setProgressStage("Đang phân tích chiều sâu STAR (自己PR) & Phễu 4 tầng (志望動機)...");
+        setProgressStage("Đang phân tích chi tiết nội dung 自己PR và 志望動機...");
       }, 5000);
 
       const response = await fetch("/api/cv-checker", {
@@ -125,11 +230,11 @@ export default function CvCheckerClient() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Không thể thẩm định CV. Vui lòng thử lại sau.");
+        throw new Error(data.error || "Không thể phân tích CV. Vui lòng thử lại sau.");
       }
 
       setReport(data.report);
-      setActiveTab("issues");
+      setActiveTab("urgent");
     } catch (err: any) {
       setErrorMessage(err.message || "Đã xảy ra lỗi kết nối.");
     } finally {
@@ -148,6 +253,7 @@ export default function CvCheckerClient() {
     setReport(null);
     setFile(null);
     setErrorMessage(null);
+    setIsExpandedSummary(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -155,10 +261,13 @@ export default function CvCheckerClient() {
     ? Object.values(report.sections).flatMap((sec) => sec.issues)
     : [];
 
-  const filteredIssues =
-    severityFilter === "all"
-      ? allIssues
-      : allIssues.filter((i) => i.severity === severityFilter);
+  const urgentIssues = allIssues.filter(
+    (i) => i.severity === "critical" || i.severity === "major"
+  );
+
+  const improvementIssues = allIssues.filter(
+    (i) => i.severity === "minor" || i.severity === "manual_check"
+  );
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-16">
@@ -173,9 +282,9 @@ export default function CvCheckerClient() {
 
       {/* Page Header */}
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Check CV Chuẩn Doanh Nghiệp Nhật</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">Cố Vấn & Góp Ý CV Tiếng Nhật</h1>
         <p className="mt-1 text-sm text-on-surface-variant">
-          Thẩm định toàn diện 7 hạng mục (Thông tin cá nhân, Học vấn, Chứng chỉ, Kỹ năng, 自己PR, 志望動機, Format) theo cẩm nang NiX Education.
+          Hệ thống phân tích hồ sơ và đưa ra gợi ý hoàn thiện từng phần như một chuyên gia review CV doanh nghiệp Nhật.
         </p>
       </header>
 
@@ -186,12 +295,11 @@ export default function CvCheckerClient() {
         </span>
         <div className="text-xs space-y-1">
           <p className="font-bold text-amber-900 text-sm">
-            Lưu ý kỹ thuật về định dạng file từ các trang tạo CV (CV Bank / Canva):
+            Lưu ý về định dạng file từ các trang tạo CV:
           </p>
           <p className="text-amber-800 leading-relaxed">
-            File CV xuất từ một số nền tảng thường có bố cục bảng ẩn (hidden tables) hoặc 2 cột phức tạp,
-            dễ gây lệch dòng hoặc trích xuất thiếu khi chuyển đổi văn bản. Nếu phát hiện thiếu đề mục,
-            bạn nên dùng mẫu Word chuẩn theo hướng dẫn của NiX và lưu trực tiếp sang PDF.
+            File CV xuất từ một số nền tảng trực tuyến thường có bố cục bảng ẩn (hidden tables) hoặc 2 cột phức tạp,
+            dễ gây lệch dòng khi chuyển đổi văn bản. Bạn nên dùng mẫu Word chuẩn và lưu trực tiếp sang PDF trước khi tải lên.
           </p>
         </div>
       </section>
@@ -210,7 +318,7 @@ export default function CvCheckerClient() {
                   Thông tin doanh nghiệp ứng tuyển
                 </h2>
                 <p className="mt-0.5 text-xs text-on-surface-variant">
-                  Giúp AI thẩm định độ ăn khớp với JD và phễu 4 tầng 志望動機.
+                  Giúp AI đối chiếu mức độ ăn khớp với mô tả công việc (JD).
                 </p>
               </div>
             </div>
@@ -251,7 +359,7 @@ export default function CvCheckerClient() {
                     className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15"
                   >
                     <option value="N4">N4</option>
-                    <option value="N3">N3 (Chuẩn NiX)</option>
+                    <option value="N3">N3</option>
                     <option value="N2">N2</option>
                     <option value="N1">N1</option>
                   </select>
@@ -298,7 +406,7 @@ export default function CvCheckerClient() {
                     Tải lên CV (履歴書) cần thẩm định
                   </h2>
                   <p className="mt-0.5 text-xs text-on-surface-variant">
-                    Hỗ trợ tệp PDF hoặc DOCX (Tối đa 10MB). Dữ liệu được bảo mật và xóa ngay sau khi phân tích.
+                    Hỗ trợ tệp PDF hoặc DOCX (Tối đa 10MB).
                   </p>
                 </div>
               </div>
@@ -368,20 +476,10 @@ export default function CvCheckerClient() {
               </div>
             )}
 
-            {/* Rubric highlights pill */}
-            <div className="grid grid-cols-3 gap-3 text-center text-xs">
-              <div className="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container">
-                <span className="text-primary font-bold block text-sm">7 Hạng mục</span>
-                <span className="text-on-surface-variant">Chuẩn hóa NiX</span>
-              </div>
-              <div className="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container">
-                <span className="text-secondary font-bold block text-sm">12 Tiêu chí</span>
-                <span className="text-on-surface-variant">Checklist đỗ CV</span>
-              </div>
-              <div className="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container">
-                <span className="text-error font-bold block text-sm">Cấm Credly</span>
-                <span className="text-on-surface-variant">Cập nhật 07/2026</span>
-              </div>
+            {/* Neutral Privacy Notice (replaces criteria badges) */}
+            <div className="p-3 rounded-xl bg-surface-container-low/60 border border-surface-container text-center text-xs text-on-surface-variant flex items-center justify-center gap-1.5">
+              <Icon name="lock" className="w-4 h-4 text-secondary" />
+              <span>CV của bạn sẽ được phân tích và xóa ngay sau khi hoàn tất.</span>
             </div>
 
             {/* Action button */}
@@ -397,12 +495,12 @@ export default function CvCheckerClient() {
               {isAnalyzing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Đang xử lý thẩm định CV...</span>
+                  <span>Đang xử lý phân tích CV...</span>
                 </>
               ) : (
                 <>
                   <Icon name="fact_check" className="w-4 h-4" />
-                  <span>Bắt đầu thẩm định CV chuẩn Nhật</span>
+                  <span>Bắt đầu phân tích & nhận góp ý CV</span>
                 </>
               )}
             </button>
@@ -422,70 +520,91 @@ export default function CvCheckerClient() {
         /* Report View */
         <div className="space-y-6">
           {/* Header Score Overview */}
-          <div className="bg-white border border-surface-container rounded-2xl p-6 shadow-sm">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                {/* Score Circle */}
-                <div className="relative w-24 h-24 shrink-0 rounded-2xl bg-surface-container-low border border-surface-container flex flex-col items-center justify-center shadow-inner">
-                  <span
-                    className={`text-3xl font-extrabold ${
-                      report.overallScore >= 85
-                        ? "text-emerald-600"
-                        : report.overallScore >= 70
-                        ? "text-secondary"
-                        : report.overallScore >= 50
-                        ? "text-amber-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {report.overallScore}
-                  </span>
-                  <span className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">
-                    Thang 100
-                  </span>
-                </div>
+          <div className="bg-white border border-surface-container rounded-2xl p-6 sm:p-7 shadow-sm">
+            {(() => {
+              const tier = getScoreTier(report.overallScore);
+              return (
+                <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                  {/* Left & Center: Progress Ring + Text Details */}
+                  <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-7 min-w-0 w-full lg:w-auto flex-1">
+                    {/* Progress Ring */}
+                    <ScoreProgressRing score={report.overallScore} />
 
-                {/* Score Summary */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                        report.ratingVi === "Xuất sắc"
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                          : report.ratingVi === "Đạt yêu cầu"
-                          ? "bg-sky-50 text-sky-800 border-sky-200"
-                          : report.ratingVi === "Cần cải thiện"
-                          ? "bg-amber-50 text-amber-800 border-amber-200"
-                          : "bg-red-50 text-red-800 border-red-200"
-                      }`}
-                    >
-                      {report.ratingVi}
-                    </span>
-                    <span className="text-xs text-on-surface-variant">
-                      Tệp: <strong className="text-primary">{report.metadata.fileName}</strong>
-                    </span>
+                    {/* Text Details */}
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      {/* Row 1: [badge mức độ] + [tên tệp] */}
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${tier.badgeClass}`}
+                        >
+                          {tier.label}
+                        </span>
+                        <span
+                          className="text-xs text-on-surface-variant inline-flex items-center gap-1.5 max-w-[240px] sm:max-w-[340px] truncate"
+                          title={report.metadata.fileName}
+                        >
+                          <Icon name="description" className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+                          <span className="truncate">
+                            Tệp: <strong className="text-primary font-medium">{report.metadata.fileName}</strong>
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* Row 2: Tiêu đề & Dòng "Ứng tuyển" (12px gap from Row 1) */}
+                      <div className="mt-3">
+                        <h2 className="text-xl sm:text-2xl font-bold text-primary tracking-tight">
+                          Kết quả thẩm định CV
+                        </h2>
+                        {report.metadata.companyName && (
+                          <p className="text-xs font-medium text-slate-600 mt-1 flex items-center justify-center sm:justify-start gap-1.5">
+                            <Icon name="work_outline" className="w-3.5 h-3.5 text-slate-400" />
+                            <span>
+                              Ứng tuyển: <strong className="text-primary font-semibold">{report.metadata.companyName}</strong>
+                            </span>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Row 3: Đoạn mô tả (8px gap from Row 2) */}
+                      <div className="mt-2 max-w-[65ch]">
+                        <p
+                          className={`text-xs sm:text-sm text-on-surface-variant leading-relaxed break-words [overflow-wrap:anywhere] ${
+                            !isExpandedSummary ? "line-clamp-3" : ""
+                          }`}
+                        >
+                          {report.summaryVi}
+                        </p>
+                        {report.summaryVi && report.summaryVi.length > 150 && (
+                          <button
+                            type="button"
+                            onClick={() => setIsExpandedSummary(!isExpandedSummary)}
+                            className="mt-1 text-xs font-semibold text-secondary hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            {isExpandedSummary ? "Thu gọn" : "Xem thêm"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <h2 className="text-xl font-bold text-primary">Báo cáo Thẩm định CV Chuẩn NiX</h2>
-                  <p className="text-xs text-on-surface-variant max-w-2xl leading-relaxed">{report.summaryVi}</p>
-                </div>
-              </div>
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <button
-                  onClick={handleReset}
-                  className="px-4 py-2 text-xs font-semibold bg-surface-container-low hover:bg-surface-container text-primary rounded-lg border border-outline-variant/60 transition-colors flex items-center gap-1.5"
-                >
-                  <Icon name="arrow_back" className="w-4 h-4" /> Kiểm tra CV khác
-                </button>
-              </div>
-            </div>
+                  {/* Right: Action button */}
+                  <div className="shrink-0 self-center sm:self-start lg:self-center">
+                    <button
+                      onClick={handleReset}
+                      className="px-4 py-2 text-xs font-semibold bg-surface-container-low hover:bg-surface-container text-primary rounded-lg border border-outline-variant/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Icon name="arrow_back" className="w-4 h-4" /> Kiểm tra CV khác
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Top 3 Priorities Callout */}
             <div className="mt-6 pt-5 border-t border-surface-container">
               <h3 className="text-xs font-bold text-primary uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                 <Icon name="bolt" className="w-4 h-4 text-amber-600" />
-                3 việc cần ưu tiên chỉnh sửa ngay trước khi nộp:
+                3 điểm nên lưu ý hoàn thiện trước khi gửi CV:
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {report.topPrioritiesVi.map((priority, idx) => (
@@ -493,7 +612,7 @@ export default function CvCheckerClient() {
                     key={idx}
                     className="p-3 bg-surface-container-low/60 border border-surface-container rounded-xl text-xs text-on-surface leading-relaxed"
                   >
-                    <span className="text-amber-700 font-bold block mb-1">Ưu tiên #{idx + 1}</span>
+                    <span className="text-amber-700 font-bold block mb-1">Góp ý #{idx + 1}</span>
                     {priority}
                   </div>
                 ))}
@@ -504,15 +623,27 @@ export default function CvCheckerClient() {
           {/* Navigation Tabs */}
           <div className="flex border-b border-surface-container gap-2">
             <button
-              onClick={() => setActiveTab("issues")}
+              onClick={() => setActiveTab("urgent")}
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
-                activeTab === "issues"
+                activeTab === "urgent"
                   ? "border-primary text-primary"
                   : "border-transparent text-on-surface-variant hover:text-primary"
               }`}
             >
-              <Icon name="error" className="w-4 h-4" />
-              <span>Danh sách lỗi & Khắc phục ({allIssues.length})</span>
+              <Icon name="error" className="w-4 h-4 text-red-600" />
+              <span>Cần sửa gấp ({urgentIssues.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("improvement")}
+              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
+                activeTab === "improvement"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-on-surface-variant hover:text-primary"
+              }`}
+            >
+              <Icon name="warning" className="w-4 h-4 text-amber-600" />
+              <span>Nên cải thiện ({improvementIssues.length})</span>
             </button>
 
             <button
@@ -523,73 +654,35 @@ export default function CvCheckerClient() {
                   : "border-transparent text-on-surface-variant hover:text-primary"
               }`}
             >
-              <Icon name="translate" className="w-4 h-4" />
-              <span>Mẫu viết lại tiếng Nhật (Rewrite)</span>
+              <Icon name="translate" className="w-4 h-4 text-secondary" />
+              <span>Mẫu viết lại tiếng Nhật</span>
             </button>
 
             <button
-              onClick={() => setActiveTab("checklist")}
+              onClick={() => setActiveTab("sections")}
               className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
-                activeTab === "checklist"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-on-surface-variant hover:text-primary"
-              }`}
-            >
-              <Icon name="check_circle" className="w-4 h-4" />
-              <span>12 Tiêu chí Checklist</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("scores")}
-              className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-all flex items-center gap-2 ${
-                activeTab === "scores"
+                activeTab === "sections"
                   ? "border-primary text-primary"
                   : "border-transparent text-on-surface-variant hover:text-primary"
               }`}
             >
               <Icon name="assessment" className="w-4 h-4" />
-              <span>Chi tiết 7 Hạng mục</span>
+              <span>Đánh giá từng phần</span>
             </button>
           </div>
 
-          {/* Tab 1: Issues View */}
-          {activeTab === "issues" && (
+          {/* Tab 1: Cần sửa gấp (Urgent Issues) */}
+          {activeTab === "urgent" && (
             <div className="space-y-4">
-              {/* Filter Pills */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-on-surface-variant mr-2">Lọc mức độ:</span>
-                {(["all", "critical", "major", "minor", "manual_check"] as const).map((sev) => {
-                  const count =
-                    sev === "all"
-                      ? allIssues.length
-                      : allIssues.filter((i) => i.severity === sev).length;
-
-                  return (
-                    <button
-                      key={sev}
-                      onClick={() => setSeverityFilter(sev)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                        severityFilter === sev
-                          ? "bg-primary text-white shadow-sm"
-                          : "bg-white text-on-surface-variant hover:text-primary border border-surface-container"
-                      }`}
-                    >
-                      {sev === "all" ? "Tất cả" : SEVERITY_CONFIG[sev].label} ({count})
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Issue Cards */}
-              {filteredIssues.length === 0 ? (
+              {urgentIssues.length === 0 ? (
                 <div className="p-8 text-center bg-white rounded-2xl border border-surface-container shadow-sm">
                   <Icon name="check_circle" className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
-                  <p className="text-sm font-bold text-primary">Không có lỗi nào ở phân loại này!</p>
-                  <p className="text-xs text-on-surface-variant mt-1">CV của bạn tuân thủ rất tốt các quy chuẩn kiểm tra.</p>
+                  <p className="text-sm font-bold text-primary">Không có điểm nào cần sửa gấp!</p>
+                  <p className="text-xs text-on-surface-variant mt-1">CV của bạn không có các lỗi sai cấu trúc hay thông tin quan trọng.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredIssues.map((issue) => {
+                  {urgentIssues.map((issue) => {
                     const cfg = SEVERITY_CONFIG[issue.severity];
                     return (
                       <div
@@ -601,37 +694,36 @@ export default function CvCheckerClient() {
                             <span
                               className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${cfg.badge}`}
                             >
-                              {issue.severity}
+                              {cfg.label}
                             </span>
-                            <span className="text-xs text-outline font-mono">[{issue.ruleCode}]</span>
                             <h4 className="text-sm font-bold text-primary">{issue.title}</h4>
                           </div>
                         </div>
 
-                        {/* Problem & Why Wrong */}
+                        {/* Problem & Perspective */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                           <div className="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container space-y-1">
-                            <span className="font-semibold text-primary block">Hiện trạng phát hiện:</span>
+                            <span className="font-semibold text-primary block">Chi tiết góp ý:</span>
                             <p className="text-on-surface-variant leading-relaxed">{issue.problemVi}</p>
                           </div>
                           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1">
-                            <span className="font-semibold text-amber-900 block">Vì sao sai theo chuẩn Nhật:</span>
+                            <span className="font-semibold text-amber-900 block">Góc nhìn nhà tuyển dụng:</span>
                             <p className="text-amber-800 leading-relaxed">{issue.whyWrongVi}</p>
                           </div>
                         </div>
 
-                        {/* Solution */}
+                        {/* Suggestion */}
                         <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1">
-                          <span className="font-semibold text-emerald-800 block">Cách khắc phục:</span>
+                          <span className="font-semibold text-emerald-800 block">Gợi ý điều chỉnh:</span>
                           <p className="text-emerald-900 leading-relaxed">{issue.solutionVi}</p>
                         </div>
 
-                        {/* Rewrite or Quote if available */}
+                        {/* Rewrite sample */}
                         {issue.rewriteSampleJa && (
                           <div className="p-3 rounded-xl bg-surface-container-low border border-surface-container text-xs space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
-                                Câu mẫu tiếng Nhật gợi ý (Rewrite):
+                                Câu mẫu tiếng Nhật tham khảo:
                               </span>
                               <button
                                 onClick={() => handleCopyText(issue.id, issue.rewriteSampleJa!)}
@@ -653,26 +745,100 @@ export default function CvCheckerClient() {
             </div>
           )}
 
-          {/* Tab 2: Japanese Rewrite Diff View */}
+          {/* Tab 2: Nên cải thiện (Improvement Issues) */}
+          {activeTab === "improvement" && (
+            <div className="space-y-4">
+              {improvementIssues.length === 0 ? (
+                <div className="p-8 text-center bg-white rounded-2xl border border-surface-container shadow-sm">
+                  <Icon name="check_circle" className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-primary">Không có gợi ý hoàn thiện thêm!</p>
+                  <p className="text-xs text-on-surface-variant mt-1">Các chi tiết nhỏ và hình thức CV đều đã được chăm chút rất tốt.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {improvementIssues.map((issue) => {
+                    const cfg = SEVERITY_CONFIG[issue.severity];
+                    return (
+                      <div
+                        key={issue.id}
+                        className={`p-5 rounded-2xl border ${cfg.border} bg-white shadow-sm space-y-3.5`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${cfg.badge}`}
+                            >
+                              {cfg.label}
+                            </span>
+                            <h4 className="text-sm font-bold text-primary">{issue.title}</h4>
+                          </div>
+                        </div>
+
+                        {/* Problem & Perspective */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                          <div className="p-3 rounded-xl bg-surface-container-low/70 border border-surface-container space-y-1">
+                            <span className="font-semibold text-primary block">Chi tiết góp ý:</span>
+                            <p className="text-on-surface-variant leading-relaxed">{issue.problemVi}</p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1">
+                            <span className="font-semibold text-amber-900 block">Góc nhìn nhà tuyển dụng:</span>
+                            <p className="text-amber-800 leading-relaxed">{issue.whyWrongVi}</p>
+                          </div>
+                        </div>
+
+                        {/* Suggestion */}
+                        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1">
+                          <span className="font-semibold text-emerald-800 block">Gợi ý điều chỉnh:</span>
+                          <p className="text-emerald-900 leading-relaxed">{issue.solutionVi}</p>
+                        </div>
+
+                        {/* Rewrite sample */}
+                        {issue.rewriteSampleJa && (
+                          <div className="p-3 rounded-xl bg-surface-container-low border border-surface-container text-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-secondary uppercase tracking-wider">
+                                Câu mẫu tiếng Nhật tham khảo:
+                              </span>
+                              <button
+                                onClick={() => handleCopyText(issue.id, issue.rewriteSampleJa!)}
+                                className="text-[11px] text-secondary font-semibold hover:underline flex items-center gap-1"
+                              >
+                                {copiedId === issue.id ? "✓ Đã copy" : "Sao chép tiếng Nhật"}
+                              </button>
+                            </div>
+                            <pre className="font-sans text-xs text-primary whitespace-pre-wrap leading-relaxed bg-white p-3 rounded-lg border border-outline-variant/60 shadow-inner">
+                              {issue.rewriteSampleJa}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 3: Japanese Rewrite Diff View */}
           {activeTab === "diff" && (
             <div className="space-y-6">
               <div className="bg-white border border-surface-container rounded-2xl p-5 shadow-sm space-y-1.5">
                 <h3 className="text-sm font-bold text-primary flex items-center gap-2">
                   <Icon name="translate" className="w-4 h-4 text-secondary" />
-                  Bản viết lại mẫu chuẩn STAR & Phễu 4 tầng (AI Rewrite Sample)
+                  Mẫu câu tiếng Nhật tham khảo từ chuyên gia
                 </h3>
                 <p className="text-xs text-on-surface-variant">
-                  Dưới đây là các câu viết lại mẫu tiếng Nhật chuẩn hóa từ chuyên gia. Bạn có thể sao chép và tinh chỉnh vào bản CV chính thức.
+                  Dưới đây là các câu gợi ý viết lại bằng tiếng Nhật tự nhiên và đúng trọng tâm. Bạn có thể sao chép và tinh chỉnh cho phù hợp với hồ sơ của mình.
                 </p>
               </div>
 
-              {filteredIssues.filter((i) => i.rewriteSampleJa).length === 0 ? (
+              {allIssues.filter((i) => i.rewriteSampleJa).length === 0 ? (
                 <div className="p-8 text-center bg-white rounded-2xl border border-surface-container shadow-sm">
                   <p className="text-sm text-on-surface-variant">Không có đoạn văn tiếng Nhật nào cần viết lại.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredIssues
+                  {allIssues
                     .filter((i) => i.rewriteSampleJa)
                     .map((item) => (
                       <div
@@ -681,7 +847,7 @@ export default function CvCheckerClient() {
                       >
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-bold text-primary">
-                            Mục: {item.title} ({item.section})
+                            {item.title}
                           </h4>
                           <button
                             onClick={() => handleCopyText(`diff-${item.id}`, item.rewriteSampleJa!)}
@@ -695,7 +861,7 @@ export default function CvCheckerClient() {
                           {/* Original */}
                           <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 space-y-2">
                             <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
-                              Trích xuất nguyên văn CV hiện tại:
+                              Trích xuất trong CV hiện tại:
                             </span>
                             <p className="text-xs text-amber-950 whitespace-pre-wrap leading-relaxed font-sans">
                               {item.sourceQuoteJa || "(Không có trích đoạn ngắn hoặc thiếu nội dung)"}
@@ -705,7 +871,7 @@ export default function CvCheckerClient() {
                           {/* Rewrite Sample */}
                           <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-2">
                             <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
-                              Mẫu đề xuất viết lại (Chuẩn Nhật):
+                              Mẫu đề xuất tham khảo:
                             </span>
                             <p className="text-xs text-emerald-950 whitespace-pre-wrap leading-relaxed font-sans font-medium">
                               {item.rewriteSampleJa}
@@ -723,71 +889,8 @@ export default function CvCheckerClient() {
             </div>
           )}
 
-          {/* Tab 3: 12-Item Checklist View */}
-          {activeTab === "checklist" && (
-            <div className="space-y-4">
-              <div className="p-4 bg-white border border-surface-container rounded-2xl shadow-sm flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-primary">
-                    Bảng 12 Tiêu chí Kiểm tra CV trước khi nộp (Section ⑦ NiX)
-                  </h3>
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    Đối chiếu với danh mục 12 điểm cốt lõi đảm bảo CV không bị loại ở vòng lọc hồ sơ.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="px-2.5 py-1 rounded bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
-                    Đạt: {report.checklist.filter((c) => c.status === "pass").length}/12
-                  </span>
-                </div>
-              </div>
-
-              <div className="divide-y divide-surface-container bg-white border border-surface-container rounded-2xl shadow-sm overflow-hidden">
-                {report.checklist.map((item) => (
-                  <div key={item.id} className="p-4 flex items-start gap-4 hover:bg-surface-container-low/40 transition-colors">
-                    {/* Status Badge */}
-                    <div className="mt-0.5 shrink-0">
-                      {item.status === "pass" && (
-                        <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                          <Icon name="check" className="w-3.5 h-3.5" />
-                        </div>
-                      )}
-                      {item.status === "fail" && (
-                        <div className="w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center">
-                          <Icon name="close" className="w-3.5 h-3.5" />
-                        </div>
-                      )}
-                      {item.status === "warning" && (
-                        <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
-                          <Icon name="warning" className="w-3.5 h-3.5" />
-                        </div>
-                      )}
-                      {item.status === "manual_check" && (
-                        <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
-                          <Icon name="info" className="w-3.5 h-3.5" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <h4 className="text-sm font-bold text-primary">
-                          #{item.id}. {item.labelVi}
-                        </h4>
-                        <span className="text-[11px] text-on-surface-variant font-sans hidden sm:inline">
-                          {item.labelJa}
-                        </span>
-                      </div>
-                      <p className="text-xs text-on-surface-variant leading-relaxed">{item.detailVi}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 4: 7 Categories Breakdown */}
-          {activeTab === "scores" && (
+          {/* Tab 4: Đánh giá từng phần (Sections Breakdown) */}
+          {activeTab === "sections" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(Object.keys(report.sections) as SectionKey[]).map((key) => {
                 const sec = report.sections[key];
@@ -837,19 +940,18 @@ export default function CvCheckerClient() {
 
                     <div className="flex items-center justify-between text-xs text-on-surface-variant pt-1">
                       <span>{sec.evaluationVi}</span>
-                      <span className="text-outline">Trọng số: {(sec.weight * 100).toFixed(0)}%</span>
                     </div>
 
                     {sec.issues.length > 0 && (
                       <div className="text-[11px] text-on-surface-variant space-y-1 pt-2 border-t border-surface-container">
                         {sec.issues.slice(0, 2).map((i) => (
                           <div key={i.id} className="truncate">
-                            • <strong className="text-primary">{i.title}</strong>: {i.problemVi}
+                            • <strong className="text-primary">{i.title}</strong>
                           </div>
                         ))}
                         {sec.issues.length > 2 && (
                           <div className="text-outline italic">
-                            ... và {sec.issues.length - 2} vấn đề khác (xem ở tab Danh sách lỗi)
+                            ... và {sec.issues.length - 2} điểm lưu ý khác
                           </div>
                         )}
                       </div>
