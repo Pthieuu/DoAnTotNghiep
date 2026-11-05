@@ -12,7 +12,7 @@ const navigation: { label: string; icon: IconName; anchor?: string; action?: str
   { label: "Dashboard", icon: "home", anchor: "/dashboard" },
   { label: "My Profile", icon: "person", anchor: "/profile" },
   { label: "My CV", icon: "description", anchor: "/cv" },
-  { label: "Job Description", icon: "business_center", anchor: "#profile" },
+  { label: "Check CV", icon: "fact_check", anchor: "/cv-checker" },
   { label: "Set Up Interview", icon: "videocam", anchor: "/interview-setup" },
   { label: "Interview Room", icon: "videocam", anchor: "/interview-room" },
   { label: "Practice Weaknesses", icon: "track_changes", anchor: "#practice" },

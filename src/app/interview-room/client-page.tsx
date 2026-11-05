@@ -55,6 +55,8 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoFinishMessage, setAutoFinishMessage] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
   const transcript = live.candidateTranscript;
@@ -63,8 +65,28 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
   // Keep track of current state
   const currentQuestionIndex = session ? session.turns.length : 0;
   const isCompleted = session?.completed;
+
+  const handlePause = useCallback(() => {
+    live.stop();
+    setIsPaused(true);
+  }, [live]);
+
+  const handleResume = useCallback(() => {
+    setIsPaused(false);
+    hasAutoStartedRef.current = currentQuestionIndex;
+    void live.start().catch((err) => {
+      console.warn("Resume speech was blocked or failed:", err);
+    });
+  }, [live, currentQuestionIndex]);
+
+  const handleExitClick = useCallback(() => {
+    live.stop();
+    setShowExitModal(true);
+  }, [live]);
   
-  const aiState: AIState = isSubmitting
+  const aiState: AIState = isPaused
+    ? "idle"
+    : isSubmitting
     ? "thinking"
     : live.state === "speaking"
       ? "speaking"
@@ -85,11 +107,11 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   // 1. Tự động đọc câu hỏi khi bắt đầu hoặc khi chuyển câu hỏi mới
   useEffect(() => {
-    if (!session || session.completed || !session.currentQuestion) return;
+    if (!session || session.completed || !session.currentQuestion || isPaused) return;
     if (hasAutoStartedRef.current === currentQuestionIndex) return;
 
     const timer = setTimeout(() => {
-      if (live.state === "idle" && !isSubmitting && !session.completed) {
+      if (live.state === "idle" && !isSubmitting && !session.completed && !isPaused) {
         hasAutoStartedRef.current = currentQuestionIndex;
         void live.start().catch((err) => {
           console.warn("Autoplay was blocked by browser:", err);
@@ -98,7 +120,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live]);
+  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live, isPaused]);
 
   const toggleMic = () => {
     if (isListening) {
@@ -150,7 +172,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   // 2. Tự động nhận diện câu "Tôi xin hết" để kết thúc và gửi câu trả lời
   useEffect(() => {
-    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current) return;
+    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current || isPaused) return;
     if (live.state !== "listening" || !transcript.trim()) return;
 
     const { finished, cleanText, matchedPhrase } = checkAndCleanFinishPhrase(transcript);
@@ -160,15 +182,46 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
       setAutoFinishMessage(`Đã nhận diện "${matchedPhrase}" - Đang gửi câu trả lời...`);
       void submitAnswer(cleanText);
     }
-  }, [transcript, live.state, isSubmitting, submitAnswer, live]);
+  }, [transcript, live.state, isSubmitting, submitAnswer, live, isPaused]);
 
   if (!session) {
-    return <div className="p-8 text-center text-on-surface-variant">Đang tải phòng phỏng vấn...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-2xl border border-surface-container m-4 shadow-sm">
+        <div className="size-16 rounded-full bg-primary-fixed text-primary flex items-center justify-center mb-4">
+          <Icon name="history" className="text-3xl" />
+        </div>
+        <h2 className="text-xl font-bold text-primary mb-2">Chưa chọn phiên phỏng vấn</h2>
+        <p className="text-sm text-on-surface-variant max-w-md mb-6 leading-relaxed">
+          Vui lòng bắt đầu một buổi phỏng vấn mới từ hồ sơ CV hoặc chọn tiếp tục một buổi luyện tập đang dở từ Dashboard.
+        </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/interview-setup"
+            className="px-5 py-2.5 rounded-xl bg-primary text-white hover:bg-secondary font-semibold transition-colors"
+          >
+            Tạo buổi phỏng vấn mới
+          </Link>
+          <Link
+            href="/dashboard"
+            className="px-5 py-2.5 rounded-xl border border-surface-container hover:bg-surface-container text-on-surface font-medium transition-colors"
+          >
+            Về Dashboard
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-2rem)] w-full bg-surface space-y-4 p-4 lg:p-6 overflow-hidden">
-      <InterviewHeader session={session} currentQuestionIndex={currentQuestionIndex} />
+    <div className="flex flex-col min-h-[calc(100vh-2rem)] w-full bg-surface space-y-4 p-4 lg:p-6 overflow-hidden relative">
+      <InterviewHeader
+        session={session}
+        currentQuestionIndex={currentQuestionIndex}
+        isPaused={isPaused}
+        onPause={handlePause}
+        onResume={handleResume}
+        onExit={handleExitClick}
+      />
 
       {(error || session.loadError) && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{error || "Không thể tải dữ liệu phỏng vấn. Vui lòng thử lại."}</div>}
       {live.error && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{live.error}</div>}
@@ -189,6 +242,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
           />
           <InterviewControls
             isCompleted={!!isCompleted}
+            isPaused={isPaused}
             micActive={isListening}
             onToggleMic={toggleMic}
             transcript={transcript}
@@ -198,6 +252,37 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             sessionId={session.id}
             autoFinishMessage={autoFinishMessage}
           />
+
+          {/* Pause Overlay */}
+          {isPaused && (
+            <div className="absolute inset-0 z-30 bg-surface/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+              <div className="size-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mb-4 shadow-sm animate-pulse">
+                <Icon name="pause" className="text-3xl" />
+              </div>
+              <h3 className="text-xl font-bold text-primary mb-2">Cuộc phỏng vấn đang tạm dừng</h3>
+              <p className="text-sm text-on-surface-variant max-w-md mb-6 leading-relaxed">
+                Micro đã được tắt và phiên phỏng vấn đang được giữ nguyên tại câu {Math.min(currentQuestionIndex + 1, session.total)}. Bạn có thể nghỉ ngơi và bấm Tiếp tục khi sẵn sàng.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResume}
+                  className="px-6 py-2.5 rounded-xl bg-primary text-white hover:bg-secondary font-semibold transition-all shadow-md flex items-center gap-2"
+                >
+                  <Icon name="play_arrow" />
+                  <span>Tiếp tục phỏng vấn</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExitClick}
+                  className="px-5 py-2.5 rounded-xl border border-surface-container hover:bg-surface-container-high text-on-surface-variant font-medium transition-colors flex items-center gap-2"
+                >
+                  <Icon name="logout" className="text-sm" />
+                  <span>Rời phòng</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Panel / Side Panel */}
@@ -207,13 +292,86 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
       </div>
 
       <InterviewProgress current={currentQuestionIndex} total={session.total} />
+
+      {/* Exit Confirmation Modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-surface-container space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Icon name="warning" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-primary">Tạm dừng &amp; Thoát phỏng vấn?</h3>
+                <p className="text-xs text-on-surface-variant">Bạn đang ở câu {Math.min(currentQuestionIndex + 1, session.total)} / {session.total}</p>
+              </div>
+            </div>
+            
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              {session.turns.length > 0
+                ? `Bạn đã hoàn thành ${session.turns.length} câu hỏi. Tất cả câu trả lời trước đó đã được lưu lại tự động. Bạn có thể quay lại tiếp tục bất kỳ lúc nào từ màn hình Dashboard.`
+                : `Bạn chưa hoàn thành câu trả lời nào. Nếu thoát bây giờ, bạn có thể quay lại luyện tập bất kỳ lúc nào từ Dashboard.`}
+            </p>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  live.stop();
+                  router.push("/dashboard");
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-primary text-white hover:bg-secondary font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Icon name="dashboard" />
+                <span>Lưu tiến độ &amp; Về Dashboard</span>
+              </button>
+
+              {session.turns.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    live.stop();
+                    router.push(`/summary?sessionId=${session.id}`);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl border border-surface-container hover:bg-surface-container-high text-primary font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Icon name="assessment" />
+                  <span>Kết thúc sớm &amp; Xem kết quả</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowExitModal(false)}
+                className="w-full py-2 px-4 rounded-xl text-on-surface-variant hover:bg-surface-container text-sm font-medium transition-colors"
+              >
+                Ở lại tiếp tục phỏng vấn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function InterviewHeader({ session, currentQuestionIndex }: { session: RoomSession; currentQuestionIndex: number }) {
+function InterviewHeader({ 
+  session, 
+  currentQuestionIndex,
+  isPaused,
+  onPause,
+  onResume,
+  onExit,
+}: { 
+  session: RoomSession; 
+  currentQuestionIndex: number;
+  isPaused: boolean;
+  onPause: () => void;
+  onResume: () => void;
+  onExit: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between shrink-0">
+    <div className="flex items-center justify-between shrink-0 flex-wrap gap-3">
       <div>
         <h1 className="text-headline-md font-bold text-primary">
           {session.title}
@@ -230,11 +388,38 @@ function InterviewHeader({ session, currentQuestionIndex }: { session: RoomSessi
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-surface-container shadow-sm shrink-0">
-        <Icon name="history" />
-        <span className="text-label-lg font-semibold tabular-nums text-primary">
-          Thực hành
-        </span>
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={isPaused ? onResume : onPause}
+          disabled={session.completed}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all shadow-sm ${
+            isPaused
+              ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-600 animate-pulse"
+              : "bg-white hover:bg-surface-container text-on-surface border-surface-container"
+          }`}
+          title={isPaused ? "Tiếp tục cuộc phỏng vấn" : "Tạm dừng cuộc phỏng vấn"}
+        >
+          <Icon name={isPaused ? "play_arrow" : "pause"} className="text-sm" />
+          <span>{isPaused ? "Tiếp tục" : "Tạm dừng"}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onExit}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all shadow-sm"
+          title="Rời khỏi phòng phỏng vấn"
+        >
+          <Icon name="logout" className="text-sm" />
+          <span>Thoát</span>
+        </button>
+
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-surface-container shadow-sm shrink-0">
+          <Icon name="history" />
+          <span className="text-label-lg font-semibold tabular-nums text-primary">
+            Thực hành
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -365,6 +550,7 @@ function CandidateCamera() {
 
 function InterviewControls({
   isCompleted,
+  isPaused,
   micActive,
   onToggleMic,
   transcript,
@@ -375,6 +561,7 @@ function InterviewControls({
   onSkip,
 }: {
   isCompleted: boolean;
+  isPaused?: boolean;
   micActive: boolean;
   onToggleMic: () => void;
   transcript: string;
@@ -400,7 +587,7 @@ function InterviewControls({
         {onSkip && (
           <button
             onClick={onSkip}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isPaused}
             className="px-3 py-1.5 text-xs text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg font-medium transition-colors flex items-center gap-1.5 border border-surface-container disabled:opacity-50"
             title="Bỏ qua câu hỏi này để chuyển ngay sang câu tiếp theo"
           >
@@ -419,27 +606,34 @@ function InterviewControls({
         )}
         <button
           onClick={onToggleMic}
-          disabled={isSubmitting}
+          disabled={isSubmitting || isPaused}
           className={`p-4 rounded-full transition-all duration-300 flex items-center justify-center transform hover:scale-105 disabled:opacity-50 disabled:scale-100 ${
-            autoFinishMessage
+            isPaused
+              ? "bg-surface-container text-on-surface-variant cursor-not-allowed opacity-60"
+              : autoFinishMessage
               ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 animate-pulse"
               : micActive
               ? "bg-error text-white shadow-lg shadow-error/30"
               : "bg-primary text-white shadow-md hover:bg-primary-container hover:text-primary"
           }`}
+          title={isPaused ? "Cuộc phỏng vấn đang tạm dừng" : "Bật/Tắt Micro"}
         >
-          <Icon name="mic" className={micActive || autoFinishMessage ? "animate-pulse" : ""} />
+          <Icon name="mic" className={(!isPaused && (micActive || autoFinishMessage)) ? "animate-pulse" : ""} />
         </button>
         <span
           className={`text-[10px] font-medium transition-colors text-center ${
-            autoFinishMessage
+            isPaused
+              ? "text-amber-600 font-semibold"
+              : autoFinishMessage
               ? "text-emerald-600 font-bold"
               : micActive
               ? "text-error"
               : "text-on-surface-variant"
           }`}
         >
-          {autoFinishMessage
+          {isPaused
+            ? "Đang tạm dừng cuộc phỏng vấn"
+            : autoFinishMessage
             ? "Đang hoàn tất câu trả lời..."
             : micActive
             ? "Đang thu âm (Nói 'Tôi xin hết' để gửi)"
@@ -450,7 +644,7 @@ function InterviewControls({
       <div className="flex-1 w-full flex items-center justify-center sm:justify-end gap-1 lg:gap-3">
         <button 
           onClick={onSubmit}
-          disabled={isSubmitting || !transcript.trim()}
+          disabled={isSubmitting || isPaused || !transcript.trim()}
           className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-surface-container disabled:text-on-surface-variant rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
           {isSubmitting ? <><Icon name="autorenew" className="animate-spin" /> Gửi...</> : <><Icon name="send" /> Gửi câu trả lời</>}

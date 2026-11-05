@@ -1,0 +1,89 @@
+{
+  "checklistItems": [
+    {
+      "id": 1,
+      "section": "personal_info",
+      "labelVi": "Tên file CV đúng quy chuẩn (HọTên_CV_TênCôngTy)",
+      "labelJa": "ファイル名が命名規則に沿っているか",
+      "descriptionVi": "Tên file theo cấu trúc: [HọTên]_CV_[TênCôngTy].pdf (Ví dụ: NguyenVanA_CV_Rakuten.pdf)"
+    },
+    {
+      "id": 2,
+      "section": "personal_info",
+      "labelVi": "Ảnh thẻ chuẩn công sở (Vest/áo sơ mi, nền đơn sắc)",
+      "labelJa": "証明写真がスーツ・襟付きで適切か",
+      "descriptionVi": "Ảnh chụp chính diện, trang phục lịch sự (vest hoặc sơ mi có cổ), nền xanh/trắng, chụp trong vòng 3 tháng"
+    },
+    {
+      "id": 3,
+      "section": "personal_info",
+      "labelVi": "Tên Katakana (ふりがな) có dấu phân tách '・'",
+      "labelJa": "フリガナに「・」で区切りが入っているか",
+      "descriptionVi": "Tên Katakana của người Việt phải có dấu '・' giữa các âm tiết. Ví dụ: レ・バオ・フック"
+    },
+    {
+      "id": 4,
+      "section": "personal_info",
+      "labelVi": "Địa chỉ viết song ngữ theo thứ tự địa lý Nhật Bản",
+      "labelJa": "現住所が日越併記かつ日本順（国→市→区）か",
+      "descriptionVi": "Ghi cả tiếng Nhật và tiếng Việt theo thứ tự: Quốc gia → Tỉnh/Thành phố → Quận/Huyện → Phường/Xã → Số nhà"
+    },
+    {
+      "id": 5,
+      "section": "personal_info",
+      "labelVi": "Ngày cập nhật CV trong vòng 30 ngày gần nhất",
+      "labelJa": "提出日付（現在）が直近1ヶ月以内か",
+      "descriptionVi": "Dòng ngày tháng ở góc trên (VD: 2026年03月03日現在) phải là ngày mới, không cũ quá 30 ngày"
+    },
+    {
+      "id": 6,
+      "section": "education_work",
+      "labelVi": "Học vấn & Kinh nghiệm đúng chuẩn, kết thúc bằng '以上'",
+      "labelJa": "学歴・職歴が時系列順かつ「以上」で終了しているか",
+      "descriptionVi": "Thứ tự từ cũ đến mới, dòng nhập học và tốt nghiệp riêng biệt, công ty thực tập có loại hình và kết thúc bằng 以上"
+    },
+    {
+      "id": 7,
+      "section": "certificates",
+      "labelVi": "Bằng cấp rõ ràng, tuyệt đối không có chứng chỉ Credly",
+      "labelJa": "資格・免許が明確で、Credlyが記載されていないか",
+      "descriptionVi": "Ghi rõ tháng năm đạt bằng JLPT/TOEIC, không dùng Credly do NiX đã ngừng cấp từ 07/2026"
+    },
+    {
+      "id": 8,
+      "section": "skills_hobbies",
+      "labelVi": "Kỹ năng chuyên môn (得意科目) phân nhóm rõ ràng",
+      "labelJa": "得意科目が分野別（Backend, Frontend...）に整理されているか",
+      "descriptionVi": "Phân chia rõ rệt: Backend, Frontend, Database, Tools/DevOps; không viết thành đoạn văn dài thiếu cấu trúc"
+    },
+    {
+      "id": 9,
+      "section": "jiko_pr",
+      "labelVi": "Tự PR chuẩn cấu trúc STAR và gắn dự án cá nhân",
+      "labelJa": "自己PRがSTAR法に沿い、個人開発が盛り込まれているか",
+      "descriptionVi": "Mở đầu nêu thế mạnh → Minh chứng cụ thể (Situation, Task, Action, Result) → Đóng góp cho công ty"
+    },
+    {
+      "id": 10,
+      "section": "shibou_douki",
+      "labelVi": "Động lực ứng tuyển phễu 4 tầng bám sát công ty ứng tuyển",
+      "labelJa": "志望動機が4層ファンネルで企業独自の特徴に合致しているか",
+      "descriptionVi": "Phễu 4 tầng (Tổng quan IT Nhật → Điểm kết nối công ty → Kỹ năng ăn khớp → Tầm nhìn 5 năm), tránh văn mẫu chung chung"
+    },
+    {
+      "id": 11,
+      "section": "formatting_layout",
+      "labelVi": "Định dạng font, cỡ chữ và căn lề đồng nhất",
+      "labelJa": "フォント・文字サイズ・配置が統一されているか",
+      "descriptionVi": "1 font duy nhất (MS Gothic hoặc Mincho), cỡ chữ 10.5-12pt, màu chữ 100% đen, căn lề chuẩn"
+    },
+    {
+      "id": 12,
+      "section": "formatting_layout",
+      "labelVi": "Không sót dấu vết Markdown hoặc văn phong AI (ChatGPT)",
+      "labelJa": "ChatGPT等のマークダウン記号（**や##）が残っていないか",
+      "descriptionVi": "Không để sót các ký hiệu định dạng `**`, `##`, `*` hoặc văn phong sao chép thô từ AI"
+    }
+  ]
+}
+

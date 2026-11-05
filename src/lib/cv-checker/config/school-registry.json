@@ -1,0 +1,45 @@
+{
+  "schools": [
+    {
+      "code": "PDU",
+      "canonicalJa": "フォンドン大学／ソフトウェアサイエンス学部",
+      "nameVi": "Đại học Phương Đông",
+      "facultyJa": "ソフトウェアサイエンス学部",
+      "aliases": ["フォンドン大学", "Phương Đông", "Phuong Dong"],
+      "bannedAliases": ["UPD", "東方大学", "ĐH Phương Đông"]
+    },
+    {
+      "code": "VKU",
+      "canonicalJa": "越韓情報通信技術大学／コンピューターサイエンス学部",
+      "nameVi": "Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn",
+      "facultyJa": "コンピューターサイエンス学部",
+      "aliases": ["越韓情報通信技術大学", "ベトナム韓国情報通信大学", "VKU"],
+      "bannedAliases": ["越間情報通信技術大学", "越間", "CNTT Việt Nhật"]
+    },
+    {
+      "code": "HUST",
+      "canonicalJa": "ハノイ工科大学／情報通信学部",
+      "nameVi": "Đại học Bách Khoa Hà Nội",
+      "facultyJa": "情報通信学部",
+      "aliases": ["ハノイ工科大学", "HUST", "Bách Khoa Hà Nội"],
+      "bannedAliases": []
+    },
+    {
+      "code": "DUT",
+      "canonicalJa": "ダナン工科大学／情報技術学部",
+      "nameVi": "Đại học Bách Khoa - Đại học Đà Nẵng",
+      "facultyJa": "情報技術学部",
+      "aliases": ["ダナン工科大学", "DUT", "Bách Khoa Đà Nẵng"],
+      "bannedAliases": []
+    },
+    {
+      "code": "FPT",
+      "canonicalJa": "FPT大学／ソフトウェア工学部",
+      "nameVi": "Đại học FPT",
+      "facultyJa": "ソフトウェア工学部",
+      "aliases": ["FPT大学", "FPT University"],
+      "bannedAliases": []
+    }
+  ]
+}
+
