@@ -10,6 +10,17 @@ function load(path, dependencies = {}, globals = {}) {
   return exports;
 }
 const rubric = load('src/lib/interview-rubric.ts');
+const makeAiConfig = (provider = 'ollama') => ({
+  getAiConfig: () => ({
+    provider,
+    groqApiKey: 'test',
+    groqModel: 'test',
+    geminiApiKey: 'test',
+    geminiModel: 'test',
+    ollamaBaseUrl: 'http://127.0.0.1:11434',
+    ollamaModel: 'test',
+  }),
+});
 const context = { answer: '意見。理由。具体例。結論。', language: 'ja', targetRole: 'Engineer' };
 function fixture() {
   return {
@@ -78,11 +89,11 @@ for (const provider of ['ollama', 'openai', 'gemini', 'groq']) {
       return new Response(JSON.stringify(provider === 'ollama' ? { message: { content: text } } : provider === 'gemini' ? { candidates: [{ content: { parts: [{ text }] } }] } : { choices: [{ message: { content: text } }] }));
     };
     const globals = { fetch, Response, AbortSignal, console: { info() {} }, process: { env: { CV_AI_PROVIDER: provider, OPENAI_API_KEY: 'test', GOOGLE_API_KEY: 'test', GROQ_API_KEY: 'test' } } };
-    const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric }, globals);
+    const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig(provider) }, globals);
     const result = await evaluation.evaluateAnswer({ cvText: '', language: 'ja', targetRole: 'Engineer', question: '?', userAnswer: context.answer, interviewType: 'mixed', questionType: 'behavioral', questionIndex: 0, totalQuestions: 1 });
     assert.equal(result.score, 10); assert.equal(result.rubric.totalScore, 100); assert.ok(result.suggestion);
     output = { strengths: ['Câu 1: 意見。'], weaknesses: [], improvementTips: ['Luyện ví dụ.'], totalScore: 1, grade: 'D' };
-    const summary = load('src/lib/interview-summary.ts', { './interview-rubric': rubric }, globals);
+    const summary = load('src/lib/interview-summary.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig(provider) }, globals);
     const final = await summary.generateSummary({ sessionTitle: 'test', interviewType: 'mixed', totalQuestions: 1, answers: [{ question: '?', answer: context.answer, score: result.score, rubric: result.rubric, feedback: result.feedback, question_type: 'behavioral' }] });
     assert.equal(final.totalScore, 100); assert.equal(final.grade, 'A');
   });
@@ -113,7 +124,7 @@ test('generation schema requires five criteria and four structure steps', () => 
 });
 test('local evaluation uses compact prompt, warm model and a bounded longer timeout', async () => {
   let timeoutMs;
-  const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric }, {
+  const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig('ollama') }, {
     process: { env: { CV_AI_PROVIDER: 'ollama' } }, console: { info() {} },
     AbortSignal: { timeout(ms) { timeoutMs = ms; return undefined; } },
     fetch: async (_url, options) => {
@@ -129,7 +140,7 @@ test('local evaluation uses compact prompt, warm model and a bounded longer time
   assert.equal(timeoutMs, 120000);
 });
 test('truncated local output is rejected rather than scored', async () => {
-  const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric }, {
+  const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig('ollama') }, {
     process: { env: {} }, console: { info() {} }, AbortSignal,
     fetch: async () => new Response(JSON.stringify({ message: { content: '{}' }, done_reason: 'length' })),
   });
@@ -160,7 +171,7 @@ test('summary normalizes surplus, blank and duplicate comments without changing 
   assert.throws(() => summary.parseSummaryComments({ strengths: [], weaknesses: [], improvementTips: [' '] }), /Thiếu việc luyện lại/);
 });
 test('summary prompt and schema request only summary fields, not answer evaluation', async () => {
-  const summary = load('src/lib/interview-summary.ts', { './interview-rubric': rubric }, {
+  const summary = load('src/lib/interview-summary.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig('ollama') }, {
     process: { env: { CV_AI_PROVIDER: 'ollama' } }, AbortSignal,
     fetch: async (_url, options) => {
       const body = JSON.parse(options.body);

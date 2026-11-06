@@ -1,0 +1,228 @@
+Lưu ý: Khi sử dụng, hãy sao chép riêng tài liệu này và dùng như một checklist để kiểm tra.
+【Chuẩn bị hồ sơ (CV) để ứng tuyển vào công ty Nhật Bản】
+Mục đích: Dùng danh sách kiểm tra này để tự rà soát xem CV của bạn trước khi nộp cho
+giáo viên đã gây ấn tượng tốt với nhà tuyển dụng Nhật Bản hay chưa.
+Khi sử dụng AI, không được viết tiếng Nhật trong CV vượt quá trình độ của bản
+thân. Hãy điều chỉnh về mức tiếng Nhật tương đương N3–N4.
+Lý do là vì trước đây, các anh/chị khóa trước bị hỏi rất nhiều câu hỏi dựa trên
+nội dung trong CV, và có nhiều bạn không hiểu chính phần tiếng Nhật mình đã
+viết nên không thể trả lời được.
+Xác nhận thông tin cơ bản・định dạng
+1. Thông tin liên hệ
+Họ tên: Có ghi bằng chữ tiếng Việt và katakana một cách chính xác không.
+Địa chỉ email: Địa chỉ email có chính xác không.
+Địa chỉ: Địa chỉ hiện tại đã được ghi chính xác chưa.
+Phần “Ngày cập nhật” ở góc phải phía trên có phải là ngày mới nhất không.
+2. Ảnh
+Ảnh được chụp trong vòng 1 năm gần nhất, nếu có thể thì mặc trang phục công sở
+(vest) không.
+Ảnh có vẻ sạch sẽ, độ sáng phù hợp, khuôn mặt được chụp rõ ràng không. Tránh
+dùng ảnh toàn thân.
+3. Tên tệp (file name)
+Tên tệp rõ ràng để ai cũng biết đó là hồ sơ của ai và dùng cho công ty nào, ví dụ: 「
+HọTên_CV_TênCôngTy.pdf」。 (Ví dụ: Nguyen_Van_A_CV_○○株式会社.pdf)
+4. Bố cục tổng thể・cỡ chữ
+Bố cục có dễ đọc không. Thông tin có bị nhồi nhét quá nhiều không.
+Cỡ chữ được thống nhất và không quá nhỏ (khoảng 10.5pt–12pt).
+1
+
+-- 1 of 12 --
+
+Khi dịch CV tiếng Việt sang tiếng Nhật có xuất hiện xuống dòng bất thường hoặc
+cách viết không thống nhất không.
+5. Lỗi chính tả・cách diễn đạt tiếng Nhật
+Đã dùng AI kiểm tra lỗi chính tả tiếng Nhật chưa.
+Trợ từ (てにをは) và kính ngữ (đồng bộ phong cách です・ます) có được sử dụng
+đúng không.
+Khi sử dụng ChatGPT để viết CV, hãy kiểm tra xem tiếng Nhật có quá khó không (có
+đúng ở trình độ N3–N4 không).
+※Nhà phỏng vấn về cơ bản sẽ hỏi dựa trên nội dung trong CV của bạn.Vì vậy, nếu
+chính bạn còn không đọc được hoặc không hiểu mình đã viết gì bằng tiếng Nhật, thì
+sẽ không có ý nghĩa gì cả.
+Khi copy–paste từ ChatGPT, hãy kiểm tra xem có ký hiệu như ** có bị chèn vào trong
+bài hay không.
+Xác nhận nội dung（những điểm công ty Nhật thường chú trọng）
+6. Lý do ứng tuyển (志望動機)
+Lý do vì sao phải là công ty này có được viết một cách cụ thể không.（Ví dụ: Chỉ viết
+“vì là công ty IT” hay “muốn làm việc ở Nhật” là chưa đủ.）
+Có đề cập cụ thể điểm nào trong hoạt động/công nghệ/triết lý doanh nghiệp của
+công ty khiến bạn bị thu hút không.
+Có viết cụ thể kỹ năng hoặc kinh nghiệm của bản thân sẽ được áp dụng như thế nào
+tại công ty không.
+Có nêu rõ bạn muốn đóng góp gì sau khi vào công ty, muốn học hỏi kỹ năng gì để
+phát triển hay không.
+Không viết quá dài; tóm tắt điểm chính một cách súc tích.
+Comment：
+Mấy đứa. Cô Hiro có 1 vài lời khuyên gửi đến các bạn liên quan đến mục "động cơ, nguyện
+vọng" trong CV cũng như trình bày lúc phỏng vấn như sau: Đầu tiên, hãy nghĩ về nguồn
+gốc, động lực của mình.
+Đó có thể là niềm yêu thích với tiếng Nhật và văn hóa Nhật Bản.
+Tiếp theo, hãy nghĩ về mục tiêu nghề nghiệp của các bạn.
+Điều này có thể là: Các bạn yêu thích công nghệ thông tin và muốn trở thành một kỹ sư
+trong tương lai.
+Các bạn có một hình mẫu kỹ sư mà mình mong muốn trở thành. Sau đó, hãy tìm hiểu về nội
+dung công việc và triết lý kinh doanh của công ty ___.
+Các bạn nên tìm những đặc điểm độc đáo mà chỉ công ty này mới có.
+2
+
+-- 2 of 12 --
+
+Cuối cùng, hãy kết hợp các ý trên để tạo nên một bài viết mạch lạc.
+Các bạn có thể trình bày theo cấu trúc như sau: Động lực của mình là tiếng Nhật và văn hóa
+Nhật. Mình yêu thích công nghệ thông tin và muốn trở thành một kỹ sư trong tương lai. __.
+cong ty __ có những đặc điểm, triết lý kinh doanh, hoặc nội dung công việc rất phù hợp với
+mục tiêu của mình.
+Vì vậy, mình thực sự mong muốn được làm việc tại —-.
+7.Tự PR・điểm mạnh (自己PR・強み)
+Điểm mạnh của bạn có phù hợp với vị trí ứng tuyển và hình mẫu nhân sự công ty cần
+không.
+Có dẫn chứng cụ thể cho điểm mạnh (ví dụ: “khả năng giao tiếp tốt” → “tại dự án XX,
+tôi điều phối sự khác biệt giữa các nhóm và đạt được kết quả YY” ).
+Từ trải nghiệm đó rút ra được gì, bạn đã tiến bộ ra sao có được truyền đạt rõ ràng
+không.
+Các điểm mạnh ngoài kỹ năng IT (ví dụ: khả năng hợp tác, tinh thần cầu tiến, năng
+lực giải quyết vấn đề…) có được minh họa bằng ví dụ cụ thể không.
+8. Học vấn・kinh nghiệm làm việc・kinh nghiệm dự án
+Học vấn có ghi chính xác tháng năm nhập học và tốt nghiệp không.
+Vi dụ: フォンドン大学 ソフトウェアサイエンス学部 入学
+越韓情報通信技術大学 コンピューターサイエンス学部 入学
+年 	月 	学歴
+2022 	9 	越韓情報通信技術大学 コンピューターサイエンス学部 入学
+2027 	6 	越韓情報通信技術大学 コンピューターサイエンス学部 卒業予定
+職歴
+2022 	10 Vi dụ:株式会社NIX EDUCATION マーケティング担当業務 インターン開始
+2023 	3 	Vi dụ:株式会社NIX EDUCATION マーケティング担当業務 インターン終了
+Các môn đã học hoặc lĩnh vực sở trường (đặc biệt liên quan IT) có được ghi cụ thể
+không.
+3
+
+-- 3 of 12 --
+
+Kinh nghiệm dự án có ghi rõ vai trò đảm nhiệm, công nghệ sử dụng, thời gian phát
+triển, kết quả đạt được không.
+Nếu là dự án theo nhóm, có ghi rõ mức đóng góp của bản thân để dễ nhận biết
+không.
+Có viết cụ thể những khó khăn gặp phải và cách bạn giải quyết ra sao không.
+Nếu đã tham gia cuộc thi thì ghi:「VKU大学主催のAI FOR LIFEコンテストに参加」「優勝／
+235チーム中」（Tham gia cuộc thi AI FOR LIFE do Trường Đại học VKU tổ chức Giải
+Nhất / trong tổng số 235 đội）
+年 	月 	資格・免許・賞罰
+2025 	11 越韓情報通信技術大学（VKU）主催のAI FOR LIFEコンテストに参加
+優勝／235チーム中
+9. Trình độ ngoại ngữ・chứng chỉ
+Trình độ JLPT (kỳ thi năng lực tiếng Nhật) và tháng năm đạt được có ghi chính xác
+không.
+Ví dụ: TOEIC 800（2025年6月取得）
+Các ngoại ngữ khác (tiếng Anh…) có được ghi bằng tiêu chí khách quan như điểm
+TOEIC hay không. ※Không ghi dạng “TOEIC 400〜500相当” (cách ghi này không
+được).
+Nếu có các chứng chỉ IT liên quan (ví dụ: Chứng chỉ Kỹ sư cơ bản, Chứng chỉ Kỹ sư
+ứng dụng…), có ghi tháng năm 取得 (đỗ) không.
+Ví dụ: 	資格・免許・賞罰
+2025 	3 TOEIC800点 （2025年3月取得）
+2026 	1 JLPT N2取得 （2026年1月取得）
+2026 	3 AI FOR LIFE ３位入賞／256チーム中
+2025 	11 Credly バッジ NIX・IT 日本語- zero [LINK]
+2025 	11 Credlyバッジ NIX・IT 日本語- AI [LINK]
+※Credlyは、日本経済新聞社が国内展開を主導する国際標準のデジタル認証で、学
+習成果や実務経験を可視化し証明する仕組みです。
+4
+
+-- 4 of 12 --
+
+Lưu ý khi đưa Huy hiệu Credly vào CV:
+Hãy tự bổ sung các mục sau:↑↑↑
+① Trước tiêu đề, hãy ghi thêm: [Credly バッジ]
+Ví dụ: [Credly バッジ] NIX・IT 日本語 - ・・・ [LINK]
+② Dán link dẫn đến Huy hiệu của mình.
+(để phía công ty Nhật có thể xem được nội dung chi tiết từng huy hiệu)
+STEP1：mấy bạn vào phần profile của mình xong nhấn vào huy hiệu muốn share
+↓↓↓
+↓↓↓
+STEP2：xong rồi chọn share badge
+5
+
+-- 5 of 12 --
+
+↓↓↓
+STEP3：tới đây nhấn vào public link rồi copy cái link đó là được nhé
+③ Thêm một dòng bên dưới và bổ sung phần mô tả tiếng Nhật sau:
+(để phía công ty Nhật có thể hiểu được mô hình huy hiệu số Credly mà NiX -
+Nikkei đang triển khai)
+「※Credlyは、日本経済新聞社が国内展開を主導する国際標準のデジタル認証で、学習
+成果や実務経験を可視化し証明する仕組みです。」
+┗=> Nên để font chữ nhỏ hơn 1-2 cỡ.
+（Lưu ý: trong văn bản gốc mục số 10 bị thiếu — xin lưu ý sắp xếp đánh số khi chỉnh
+sửa nếu cần.）
+10. Kế hoạch nghề nghiệp tương lai
+Bạn muốn trở thành loại kỹ sư như thế nào khi vào công ty, mục tiêu nghề nghiệp ra
+sao có được nêu rõ không.
+Có mô tả cụ thể tầm nhìn nghề nghiệp sau 5 năm, 10 năm không (ví dụ: “muốn trở
+thành Project Manager”, “muốn trở thành chuyên gia trong một lĩnh vực kỹ thuật cụ
+thể”…).
+6
+
+-- 6 of 12 --
+
+Viết rõ cách thức chương trình thực tập hoặc công ty này sẽ giúp bạn đạt được mục
+tiêu đó như thế nào.
+Các lưu ý khác
+11. Video giới thiệu bản thân hoặc portfolio（nếu có）
+Nếu ghi URL video giới thiệu bản thân hoặc portfolio (GitHub…), đã kiểm tra xem
+đường link còn hoạt động không, có bị giới hạn truy cập không.
+Nội dung có được cập nhật mới nhất và có liên quan đến công ty ứng tuyển không.
+11. Tính nhất quán tổng thể
+Thông tin trong CV có mâu thuẫn với nội dung bạn sẽ trình bày trong phỏng vấn
+không.
+Nội dung CV có phù hợp với hình mẫu nhân sự mà công ty đang tìm không.
+Tin nhắn dành cho sinh viên
+Danh sách kiểm tra này là công cụ quan trọng giúp bạn đạt được đánh giá cao từ các công
+ty Nhật Bản. Hãy rà soát từng mục một cách cẩn thận và hoàn thiện CV tốt nhất có thể. Nếu
+có điểm chưa rõ, xin hãy trao đổi với giáo viên bất kỳ lúc nào. Chúc bạn nỗ lực thành công!
+アドバイス：
+CVの日本語は自分以上のレベルの日本語にしないこと。N3~N4レベルの日本語に調整する。
+理由はCVの中から質問され、自分が書いた日本語がわからなくて答えられない学生がいる。
+7
+
+-- 7 of 12 --
+
+Good CV Example：Bố cục đẹp, có ghi rõ tên công ty thực tập và thời gian thực tập, và có
+thể thấy là đã xem kỹ checklist rồi mới viết.
+Đây chỉ là ví dụ tham khảo, vì vậy không cần phải bắt chước giống hệt như vậy.
+8
+
+-- 8 of 12 --
+
+BAD Example:
+↓↓
+・Không có ngày cập nhật mới nhất.
+・Tên và các thông tin khác có ghi đầy đủ, nhưng khoảng trống quá nhiều (vấn đề về bố
+cục/layout).
+9
+
+-- 9 of 12 --
+
+↓↓Nếu nhìn kỹ sẽ thấy riêng phần này màu chữ và kích thước font khác với các phần còn
+lại, nên có thể nhận ra là đã copy & paste. Ngoài ra, tên trường đại học cũng bị ghi sai.
+Người Nhật rất chú ý đến chi tiết, nên những điểm như vậy sẽ khiến họ để ý.
+Ngoài ra, ở mục “Kinh nghiệm làm việc”, hãy ghi rõ tên công ty (thêm 株式会社 hoặc 有限会
+社 nếu có) và nhớ ghi cả thời gian thực tập.
+↓↓↓↓Đây là ví dụ cho thấy chưa đọc kỹ hướng dẫn trong checklist.
+10
+
+-- 10 of 12 --
+
+↓↓↓Mặc dù ghi là “Lý do ứng tuyển”, nhưng nội dung lại giới thiệu sản phẩm mình đã làm.
+Điều đó cho thấy chưa hiểu rõ mỗi mục cần viết nội dung gì.
+↓↓↓↓Vì chữ đang được căn giữa nên hãy chỉnh lại thành căn lề trái.
+Ngoài ra, phần mô tả về Credly đang để màu đỏ, hãy thống nhất lại thành màu đen.
+11
+
+-- 11 of 12 --
+
+↓↓↓Khi chuyển sang file PDF, có trường hợp font chữ bị thay đổi, vì vậy cần đặc biệt chú ý.
+Ngoài ra, hãy thống nhất kích thước chữ trong toàn bộ CV.
+12
+
+-- 12 of 12 --
+

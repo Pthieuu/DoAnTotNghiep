@@ -1,0 +1,187 @@
+Các ví dụ của một CV tốt
+Trong tài liệu này, chúng ta sẽ cùng phân tích lý do vì sao một bản CV được đánh giá
+cao. Mục tiêu không chỉ là đưa ra ví dụ về một “CV tốtˮ, mà còn giúp các bạn hiểu rõ
+những yếu tố nào khiến CV trở nên nổi bật trong mắt nhà tuyển dụng. Qua việc quan
+sát và chỉ ra từng phần cụ thể, các bạn sẽ thấy được tầm quan trọng của bố cục rõ
+ràng, nội dung phù hợp và cách trình bày chuyên nghiệp. Những yếu tố này không chỉ
+giúp CV dễ đọc, dễ gây ấn tượng, mà còn thể hiện sự nghiêm túc và định hướng nghề
+nghiệp rõ ràng của ứng viên. Tài liệu này được thiết kế để hỗ trợ các bạn trong quá
+trình viết và hoàn thiện CV của riêng mình, nhằm nhấn mạnh thế mạnh cá nhân và tăng
+cơ hội thành công khi ứng tuyển. Hy vọng rằng những phân tích và ví dụ minh họa
+trong đây sẽ là nguồn tham khảo hữu ích cho các bạn.
+1. Bố cục hình thức CV
+Nhìn vào CV này ta thấy được hình thức bố cục rất rõ ràng gọn gàng. Các đường kẻ
+được thống nhất và có quy luật.
+Nội dung được căn chỉnh lề rất có chủ đích.
+
+-- 1 of 8 --
+
+2. Phần 資格 được trình bày ngắn gọn đầy đủ
+Như hình phía trên, các nội dung các mục 学歴、職歴、資格 được trình bày theo thứ tự
+thời gian, nội dung vắn tắt. Theo hình ảnh minh họa ở phía trên, việc trình bày các nội
+dung trong hồ sơ cần tuân thủ một số nguyên tắc cơ bản để đảm bảo tính rõ ràng và
+chuyên nghiệp. Cụ thể, các mục quan trọng như Học vấn (学歴), Kinh nghiệm làm việc
+(職歴), và Chứng chỉ/Bằng cấp (資格) phải được sắp xếp một cách logic và dễ theo dõi.
+Nguyên tắc cốt lõi là trình bày theo thứ tự thời gian (chronological order). Điều này giúp
+người đọc (thường là nhà tuyển dụng) nhanh chóng nắm bắt được quá trình phát triển và
+kinh nghiệm của ứng viên theo dòng thời gian từ quá khứ đến hiện tại.
+Đặc biệt, nội dung trong từng mục cần phải được vắn tắt, súc tích (concise), chỉ tập trung
+vào các thông tin quan trọng nhất, tránh lan man hay đưa vào các chi tiết không liên quan.
+Sự vắn tắt này không chỉ tiết kiệm thời gian cho người đọc mà còn thể hiện khả năng chọn
+lọc thông tin và trình bày một cách hiệu quả của ứng viên.
+
+-- 2 of 8 --
+
+3. Phần 自己PR điểm mạnh được nêu rõ ràng và minh
+chứng thuyết phục
+Dịch (translate):
+Điểm mạnh của tôi là “khả năng tự học công nghệ mới”.
+Khi còn là học sinh trung học, tôi đã khởi động dự án cá nhân mang tên “Project Atelier”, từ đó nảy
+sinh hứng thú với phần mềm mã nguồn mở và máy chủ Linux, và tôi đã tự học cách xây dựng hạ tầng
+hệ thống. Trong dự án này, tôi đã thiết lập một máy chủ trò chơi có thể cho 100 người kết nối cùng
+lúc. Tuy nhiên, vào thời điểm đó, máy chủ đã phải đối mặt với một cuộc tấn công DDoS quy mô lớn
+khiến hệ thống gần như sập hoàn toàn.
+Tôi không bỏ cuộc mà đã đọc rất nhiều tài liệu kỹ thuật bằng tiếng Anh để tìm giải pháp, và tự mình
+triển khai Proxy để khắc phục vấn đề, qua đó duy trì dịch vụ ổn định. Trải nghiệm này giúp tôi có
+thêm sự tự tin rằng mình có thể kiên trì đối mặt và giải quyết những lỗi phức tạp.
+Ngoài ra, tận dụng kinh nghiệm quản trị hệ thống trước đó, trong kỳ thực tập tại TMT Education, tôi
+đã tham gia dự án xây dựng hệ thống LMS (Learning Management System – hệ thống quản lý học
+tập) phục vụ cho việc ôn thi trong môi trường Bare-metal. Hệ thống này được 150 người sử dụng và
+tôi đã đóng góp vào việc đảm bảo vận hành ổn định.
+Tôi mong muốn phát huy “khả năng tự học và kiên trì giải quyết vấn đề” này để đóng góp cho các dự
+án của công ty, đồng thời tiếp tục phát triển trong lĩnh vực mà tôi có thể dành trọn đam mê.
+Phần tự giới thiệu này được đánh giá cao vì có cấu trúc rõ ràng, bắt đầu bằng việc nêu điểm
+mạnh, sau đó đưa ra minh chứng cụ thể từ dự án cá nhân và kinh nghiệm thực tập, thể hiện
+khả năng tự học, kiên trì giải quyết vấn đề và áp dụng kiến thức vào môi trường chuyên
+nghiệp. Nội dung vừa súc tích vừa thuyết phục, đồng thời kết thúc bằng định hướng phát
+triển và mong muốn đóng góp cho công ty, tạo ấn tượng tích cực với nhà tuyển dụng.
+
+-- 3 of 8 --
+
+4. Phần trình bày志望動機 được trình bày một cách logic
+Dịch:
+Tôi tin rằng lĩnh vực CNTT là một cơ hội tuyệt vời cho sự nghiệp tương lai của mình, vì vậy tôi đang
+nỗ lực học tập trong ngành này. Trong xã hội hiện nay, công nghệ đang phát triển rất nhanh chóng,
+do đó tôi nhận thấy việc trang bị kiến thức và kỹ năng CNTT là điều quan trọng để mở rộng khả năng
+của bản thân trong tương lai.
+Để tích lũy kiến thức và kinh nghiệm, tôi quan niệm rằng không chỉ dừng lại ở các bài giảng trên lớp
+mà cần phải chủ động tự học và thực hành thực tế. Tôi luôn giữ tinh thần sẵn sàng học hỏi từ những
+thất bại để trưởng thành hơn. Chính vì thế, tôi mong muốn được làm việc trong một môi trường có thể
+giúp mình phát triển hơn nữa thông qua các nghiệp vụ thực tế.
+Khi tìm hiểu về Quý công ty, tôi cảm thấy rất ấn tượng với việc công ty cho phép tham gia dự án ngay
+từ các công đoạn thượng nguồn (xác định yêu cầu và thiết kế cơ bản). Tôi được biết tại nhiều doanh
+nghiệp CNTT khác, nhân viên mới thường bắt đầu từ các công đoạn hạ nguồn như lập trình hoặc
+kiểm thử, và phải mất nhiều thời gian mới được tham gia vào các công đoạn thượng nguồn. Tuy
+nhiên, tại Quý công ty, tôi cảm nhận được một môi trường coi trọng sự phát triển của nhân viên, nơi
+ngay cả những người trẻ cũng có cơ hội thử sức với các công đoạn thượng nguồn. Với một người
+
+-- 4 of 8 --
+
+mong muốn trở thành kỹ sư có khả năng thấu hiểu hệ thống từ khâu thiết kế như tôi, đây là một môi
+trường vô cùng lý tưởng.
+Tại trường đại học, tôi đã học về Java, OOP, JavaFX, Python, REST API, Android, Kotlin, v.v.
+Ngoài ra, tôi cũng đã học các kiến thức cơ bản về phát triển Web. Trong tương lai, tôi định hướng trở
+thành một kỹ sư Web hoặc kỹ sư Android, không chỉ dừng lại ở việc lập trình mà còn có thể tham gia
+vào cả khâu thiết kế.
+Hơn nữa, tôi có khả năng sử dụng tiếng Anh và tiếng Nhật. Trong tương lai, tôi mong muốn đảm nhận
+vai trò là một Kỹ sư cầu nối (BrSE), kết nối giữa Nhật Bản và các kỹ sư nước ngoài. Để đạt được
+mục tiêu đó, tôi hiểu rằng mình cần có năng lực tiếng Nhật cao và sự am hiểu sâu sắc về quy trình
+phát triển hệ thống. Tôi cảm thấy môi trường tại Quý công ty — nơi cho phép trải nghiệm các công
+đoạn thượng nguồn — rất phù hợp với mục tiêu của mình. Vì vậy, tôi rất khao khát được thử sức và
+quyết định ứng tuyển.
+Với tinh thần trách nhiệm và ý chí cầu tiến, tôi sẽ nỗ lực không ngừng mỗi ngày. Rất mong nhận được
+sự giúp đỡ của Quý công ty.
+Khi đọc phần kì vọng và động cơ làm việc của bài CV này ta thấy rõ được bố cục được
+phân tích một cách trực quan hóa như sau.
+1.Lý do tại sao chọn ngành IT (tại sao lại là ở
+nhật bản mà không phải các quốc gia khác khác
+như mỹ, trung,...)
+2.Lý do tại sao lại muốn làm việc tại công ty này
+3.Những việc mà bản thân có thể làm được.
+(Java, OOP,...) . Tham khảo thêm (*)
+4.Những suy nghĩ mà chỉ bản thân mình có
+…..
+…
+..
+Bố cục của hồ sơ nên được tổ chức một cách logic và cuốn hút, bắt đầu từ những lý do
+rộng lớn nhất rồi thu hẹp dần đến những điểm đặc thù của bản thân, tạo thành một mạch kể
+chuyện rõ ràng:
+1. Lý do chọn ngành IT (Phạm vi rộng nhất): Sinh viên cần trình bày ngắn gọn lý do
+lựa chọn ngành Công nghệ thông tin, ví dụ như sự yêu thích công nghệ, hứng thú
+với việc giải quyết vấn đề hoặc mong muốn tạo ra các sản phẩm hữu ích cho xã hội.
+Đồng thời giải thích lý do định hướng làm việc tại Nhật Bản thay vì các quốc
+gia khác, chẳng hạn như môi trường làm việc chuyên nghiệp, chú trọng chất
+lượng, kỷ luật và cơ hội phát triển lâu dài trong lĩnh vực IT.
+
+-- 5 of 8 --
+
+2. Lý do làm việc cho công ty (Sự phù hợp với tổ chức): Giải thích tại sao trong rất
+nhiều công ty, bạn lại chọn ứng tuyển vào đây. Cần thể hiện sự nghiên cứu kỹ lưỡng
+về văn hóa công ty, sản phẩm, hoặc tầm nhìn. Nêu bật sự tương đồng giữa mục tiêu
+cá nhân và định hướng của công ty. Điều này chứng tỏ bạn không ứng tuyển bừa
+bãi mà có mục đích rõ ràng.
+3. Những việc bản thân làm được (Kỹ năng và kinh nghiệm): Tập trung vào việc liệt
+kê và mô tả chi tiết những kỹ năng chuyên môn (hard skills) và kỹ năng mềm (soft
+skills) mà bạn đã tích lũy. Quan trọng là phải minh họa bằng những thành tựu cụ thể
+(có số liệu, kết quả) đạt được trong các dự án hoặc công việc trước đây. Điều này
+cho người đọc thấy giá trị thực tế mà bạn có thể mang lại.（＊）
+4. Những suy nghĩ, tư duy riêng nhất của bản thân mình (Điểm khác biệt cốt lõi):
+Đây là phần quan trọng nhất, giúp bạn nổi bật so với các ứng viên khác. Trình bày
+những triết lý làm việc, góc nhìn độc đáo, cách tiếp cận vấn đề sáng tạo, hoặc tầm
+nhìn cá nhân về sự phát triển trong ngành IT. Có thể là cách bạn đối diện với thất
+bại, cách bạn học hỏi công nghệ mới, hay bất kỳ phẩm chất nào thể hiện "cái tôi"
+chuyên nghiệp không thể sao chép của bạn.
+Mục tiêu cuối cùng: Khi đọc xong hồ sơ, nhà tuyển dụng phải ngay lập tức nhận biết được
+bạn khác biệt như thế nào so với hàng loạt ứng viên khác, thông qua sự kết hợp độc đáo
+giữa đam mê, sự phù hợp với công ty, năng lực đã được chứng minh, và tư duy cá nhân
+sắc bén.
+（＊）：Ở mục số 3 chúng ta nên viết những gì ?
+Trong quá trình ứng tuyển, việc hồ sơ của bạn có những điểm không hoàn toàn phù hợp với
+yêu cầu của công ty là điều thường thấy, và ngược lại, cũng sẽ có những điểm rất phù hợp.
+Điều quan trọng nhất là bạn cần phải biết cách làm nổi bật những điểm tương đồng và liên
+quan trực tiếp đến công việc hoặc văn hóa của công ty mà bạn đang ứng tuyển.
+Lời khuyên ở đây là bạn nên tập trung khai thác và trình bày những điểm chung, những
+kinh nghiệm, kỹ năng, hoặc thậm chí là định hướng nghề nghiệp có sự liên hệ chặt chẽ với
+những gì công ty đang tìm kiếm hoặc giá trị mà công ty theo đuổi. Việc làm này giúp nhà
+tuyển dụng dễ dàng hình dung về sự hòa hợp giữa bạn và vị trí ứng tuyển, từ đó tăng cơ hội
+được xem xét.
+Tóm lại, hãy xem xét kỹ lưỡng mô tả công việc và tìm hiểu về văn hóa doanh nghiệp. Sau
+đó, lựa chọn những điểm mạnh và kinh nghiệm của bản thân để "kết nối" một cách
+thông minh và có chiến lược, giống như hình ảnh minh họa bên dưới về cách tạo ra một
+"mối liên hệ" rõ ràng và có ý nghĩa giữa hồ sơ của bạn và công ty.
+
+-- 6 of 8 --
+
+Bây giờ, chúng ta hãy tiếp tục phân tích những điểm mạnh của một ví dụ sau.
+Dịch:
+Tôi là người yêu thích tiếng Nhật cũng như văn hóa Nhật Bản, và mong muốn trong tương lai được
+làm việc tại Nhật với tư cách là một kỹ sư CNTT. Trong quá trình học lập trình tại đại học, tôi bắt đầu
+nuôi dưỡng ước mơ trở thành một kỹ sư có thể dùng công nghệ để giúp ích cho mọi người. [ Tư
+tưởng, lý do lớn ]
+Trước đây, tôi đã được nghe một người anh khóa trên (tiền bối) đang thực tập tại Exection chia sẻ về
+nội dung công việc, bầu không khí nơi làm việc và cả những thông tin về công ty. Sau khi nghe những
+chia sẻ đó, tôi cảm thấy đây là một môi trường mà mình có thể yên tâm vừa học hỏi vừa phát triển, từ
+đó tôi càng cảm thấy hứng thú hơn.
+
+-- 7 of 8 --
+
+Sau đó, tôi đã có cơ hội đến tham quan phòng Lab của Exection và được trò chuyện với hai nhân viên
+người Nhật. Cả hai anh chị đều rất tử tế và đã giải đáp các câu hỏi của tôi một cách rất dễ hiểu. Lúc
+đó, tôi cảm nhận được rằng "Đây là một công ty tốt với bầu không khí tuyệt vời", và mong muốn được
+làm việc tại Exection trong tôi càng trở nên mạnh mẽ hơn. [ Hai đoạn trên trình bày câu
+chuyện, thể hiện cảm nghĩ, tại sao lại muốn làm cho công ty, câu chuyện trên làm cho
+lời nói có sức thuyết phục ]
+Ngoài ra, tôi rất thích câu châm ngôn "Kiến tạo sự thịnh vượng cho ngày mai" của Quý công ty.
+Bản thân tôi cũng muốn làm một công việc có thể giúp ích cho mọi người và cải thiện tương lai thông
+qua công nghệ. Sau khi vào công ty, tôi muốn tận dụng các chế độ đào tạo và chứng chỉ để nắm vững
+các kiến thức nền tảng như Java hay Linux. Hiện tại, tôi cũng đã bắt đầu học về AWS và muốn thử
+sức với việc phát triển trên nền tảng đám mây trong tương lai. Tôi hy vọng có thể phát huy kinh
+nghiệm phát triển Web ở đại học để sớm đóng góp cho Quý công ty. [ Từ đó câu chuyện đó bạn
+đã dẫn dắt đến lý tưởng chung của bạn và công ty ]
+Mục tiêu của tôi là sau 5 năm sẽ trở thành một kỹ sư có thể tự mình đảm nhận từ khâu thiết kế đến
+kiểm thử và vận hành; và sau 10 năm sẽ trở thành một trưởng nhóm (leader) có khả năng dẫn dắt đội
+ngũ để tạo ra những thành quả lớn lao. [ Thể hiện mong muốn cá nhân ]
+//
+
+-- 8 of 8 --
+

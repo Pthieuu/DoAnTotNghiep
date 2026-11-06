@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   description: "Configure a Japanese interview practice session.",
 };
 
-export default async function InterviewSetupPage() {
+export default async function InterviewSetupPage({ searchParams }: { searchParams: Promise<{ cvDraft?: string }> }) {
+  const { cvDraft } = await searchParams;
   const user = await getUser();
   if (!user) redirect("/login");
 
@@ -27,7 +28,7 @@ export default async function InterviewSetupPage() {
 
   return (
     <DashboardShell user={user} activePage="Interview Setup">
-      <InterviewSetupForm cv={cv ? { fileName: cv.file_name, data: cv.confirmed_data } : null} />
+      <InterviewSetupForm key={cvDraft || "saved-cv"} draftId={cvDraft} cv={cv ? { fileName: cv.file_name, data: cv.confirmed_data } : null} />
     </DashboardShell>
   );
 }

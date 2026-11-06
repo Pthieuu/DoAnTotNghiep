@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import Icon from "@/components/icon";
+import { HANDOFF_PREFIX, parseHandoff, toInterviewCv, type CvHandoff } from "@/lib/cv-checker/virtual-cv";
 import type { CvData } from "@/lib/cv-schema";
 
 type SetupCv = { fileName: string; data: CvData | null };
 const field = "mt-1.5 w-full rounded-lg border border-outline-variant bg-white px-3 py-2.5 text-sm text-primary outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20";
 const button = "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors";
 
-export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
+export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: SetupCv | null; draftId?: string }) {
+  const [handoff, setHandoff] = useState<CvHandoff | null>(null);
+  const [handoffError, setHandoffError] = useState("");
+  const cv = draftId ? handoff ? { fileName: handoff.fileName, data: toInterviewCv(handoff) } : null : savedCv;
   const [role, setRole] = useState("");
   const [company, setCompany] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -21,6 +25,22 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const [created, setCreated] = useState<{ id: string; title: string; question_count: number } | null>(null);
+
+  useEffect(() => {
+    if (!draftId) return;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      try {
+        const data = parseHandoff(JSON.parse(sessionStorage.getItem(HANDOFF_PREFIX + draftId) || "null"));
+        if (!data) throw new Error("Bản CV chuyển tiếp không còn khả dụng. Hãy quay lại Check CV để chuyển lại dữ liệu.");
+        setHandoff(data);
+        setRole(data.role);
+        setCompany(data.company);
+      } catch (error) { setHandoffError(error instanceof Error ? error.message : "Không đọc được CV chuyển tiếp."); }
+    });
+    return () => { cancelled = true; };
+  }, [draftId]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,7 +58,7 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
       const response = await fetch("/api/interviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: cleanRole, company: company.trim(), jobDescription: jobDescription.trim(), level, questionCount: Number(questionCount), interviewType, interviewLanguage }),
+        body: JSON.stringify({ ...(handoff ? { checkerCv: handoff } : {}), role: cleanRole, company: company.trim(), jobDescription: jobDescription.trim(), level, questionCount: Number(questionCount), interviewType, interviewLanguage }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Không thể tạo buổi phỏng vấn.");
@@ -55,12 +75,13 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
     <div className="mb-2 flex items-center gap-2 text-[11px] text-on-surface-variant"><span>Workspace</span><Icon name="chevron_right" /><span className="font-semibold text-primary">Interview Setup</span></div>
     <header><h1 className="text-2xl font-bold tracking-tight text-primary">Thiết lập buổi phỏng vấn</h1><p className="mt-2 text-sm text-on-surface-variant">Chọn mục tiêu để bộ câu hỏi luyện tập bám sát hồ sơ và công việc bạn hướng đến.</p></header>
 
-    {!cv ? <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
+    {draftId && !handoff ? <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6"><p role={handoffError ? "alert" : "status"}>{handoffError || "Đang nhận CV đã chỉnh sửa…"}</p><Link href="/cv-checker" className={`${button} mt-4 bg-primary text-white`}>Quay lại Check CV</Link></section> : !cv ? <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
       <h2 className="font-semibold text-amber-950">Cần xác nhận CV trước</h2>
       <p className="mt-2 text-sm text-amber-900">Hãy tải CV lên, kiểm tra thông tin AI trích xuất và xác nhận hồ sơ. Sau đó quay lại đây để thiết lập buổi tập.</p>
       <Link href="/cv" className={`${button} mt-4 bg-primary text-white hover:bg-secondary`}>Đi đến My CV <Icon name="arrow_forward" /></Link>
     </section> : <>
-      <section className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><Icon name="verified" /><div><p className="text-sm font-semibold text-emerald-950">CV đã xác nhận</p><p className="mt-1 text-xs text-emerald-900">{cv.fileName} · thông tin đã xác nhận sẽ làm dữ liệu nền cho câu hỏi.</p></div></section>
+      <section className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><Icon name="verified" /><div><p className="text-sm font-semibold text-emerald-950">{handoff ? "CV đã tối ưu từ Check CV" : "CV đã xác nhận"}</p><p className="mt-1 text-xs text-emerald-900">{cv.fileName} · thông tin đã xác nhận sẽ làm dữ liệu nền cho câu hỏi.</p></div></section>
+      {handoff && <details className="rounded-xl border border-indigo-200 bg-indigo-50 p-4"><summary className="cursor-pointer text-sm font-semibold text-indigo-900">Xem nội dung CV chuyển sang phỏng vấn</summary><div className="mt-4 space-y-4 text-sm"><section><h3 className="font-semibold">自己PR</h3><p className="whitespace-pre-wrap leading-7">{handoff.cv.sections.jiko_pr || "Chưa có nội dung"}</p></section><section><h3 className="font-semibold">志望動機</h3><p className="whitespace-pre-wrap leading-7">{handoff.cv.sections.shibou_douki || "Chưa có nội dung"}</p></section><p className="text-xs text-slate-600">Toàn bộ văn bản CV gốc và các phần đã chỉnh sửa được dùng làm ngữ cảnh và lưu cùng buổi phỏng vấn.</p></div></details>}
       <form onSubmit={submit} className="space-y-5 rounded-2xl border border-surface-container bg-white p-5 shadow-sm sm:p-7">
         <div><label htmlFor="role" className="text-sm font-semibold text-primary">Vị trí ứng tuyển <span className="text-error">*</span></label><input id="role" className={field} value={role} onChange={(e) => { setRole(e.target.value); setSaved(false); }} maxLength={160} required placeholder="Ví dụ: Backend Engineer" /><p className="mt-1 text-xs text-on-surface-variant">Dùng làm tiêu đề buổi phỏng vấn.</p></div>
         <div><label htmlFor="company" className="text-sm font-semibold text-primary">Công ty <span className="font-normal text-on-surface-variant">(không bắt buộc)</span></label><input id="company" className={field} value={company} onChange={(e) => { setCompany(e.target.value); setSaved(false); }} maxLength={160} placeholder="Ví dụ: Công ty bạn đang ứng tuyển" /></div>

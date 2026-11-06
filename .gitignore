@@ -1,9 +1,36 @@
+# Dependencies
 node_modules/
+/.pnp
+.pnp.js
+
+# Build & Compilation
 .next/
 out/
+dist/
+build/
 *.tsbuildinfo
 next-env.d.ts
+
+# Large Installers & Binary Assets
+*.exe
+OllamaSetup.exe
+public/models/*.vrm
+
+# Environment variables
 .env*
 !.env.example
-.DS_Store
+
+# Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System & OS
+.DS_Store
+Thumbs.db
+
+# Turbopack & IDE
+.turbo/
+.idea/
+.vscode/
