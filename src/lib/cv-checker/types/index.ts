@@ -23,6 +23,7 @@ export interface CvIssue {
 }
 
 export interface SectionScore {
+  ruleScoreWeight?: number;
   key: SectionKey;
   titleVi: string;
   titleJa: string;
@@ -42,6 +43,7 @@ export interface ChecklistItemResult {
 }
 
 export interface CvCheckerReport {
+  virtualCv?: { originalText: string; sections: Record<SectionKey, string> };
   overallScore: number; // 0 - 100
   ratingVi: "Rất tốt" | "Khá tốt" | "Cần chỉnh sửa thêm" | "Cần làm lại nhiều phần" | string;
   summaryVi: string;

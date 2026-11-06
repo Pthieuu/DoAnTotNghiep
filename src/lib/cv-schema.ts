@@ -7,6 +7,7 @@ export type CvItem = {
   evidence: Evidence[];
 };
 export type CvData = {
+  checkerContext?: { originalText: string; sections: Record<string, string> };
   fullName: string | null;
   summary: string | null;
   motivation: string | null;

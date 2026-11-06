@@ -92,11 +92,11 @@ export function checkEducationWorkRules(parsed: CvParsedSections): CvIssue[] {
   // 5. Check internship company format
   const internMatch = text.match(/(?:インターンシップ|インターン|実習|実務経験)[^\n\r]*/g);
   if (internMatch && internMatch.length > 0) {
-    for (const matchStr of internMatch) {
+    for (const [index, matchStr] of internMatch.entries()) {
       const hasCompanyForm = /株式会社|有限会社|合同会社|Corporation|Co\.,\s*Ltd/i.test(matchStr);
       if (!hasCompanyForm && !/なし|特になし/.test(matchStr)) {
         issues.push({
-          id: "EW-INTERN-FORM",
+          id: `EW-INTERN-FORM-${index}`,
           section: "education_work",
           severity: "minor",
           ruleCode: "RULE_INTERN_COMPANY_TYPE",
