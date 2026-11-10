@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Icon from "@/components/icon";
 import type { CvCheckerReport } from "@/lib/cv-checker";
 import CvCheckerReportWorkspace from "@/components/cv-checker-report";
+import { clearInterviewSessionContext } from "@/lib/interview-session-context";
 
 export default function CvCheckerClient() {
   const [file, setFile] = useState<File | null>(null);
@@ -32,17 +33,16 @@ export default function CvCheckerClient() {
     }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const dropped = e.dataTransfer.files[0];
-      const ext = dropped.name.toLowerCase().split(".").pop();
-      if (ext !== "pdf" && ext !== "docx") {
-        setErrorMessage("Chỉ hỗ trợ file .pdf hoặc .docx.");
-        return;
-      }
       if (dropped.size > 10 * 1024 * 1024) {
-        setErrorMessage("File tải lên vượt quá 10MB.");
+        setErrorMessage("File tải lên vượt quá giới hạn 10MB. Vui lòng chọn file nhẹ hơn.");
         return;
       }
       setFile(dropped);
@@ -92,8 +92,8 @@ export default function CvCheckerClient() {
       }
 
       setReport(data.report);
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : "Đã xảy ra lỗi kết nối.");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Đã xảy ra lỗi kết nối.");
     } finally {
       setIsAnalyzing(false);
       setProgressStage("");
@@ -104,6 +104,7 @@ export default function CvCheckerClient() {
     setReport(null);
     setFile(null);
     setErrorMessage(null);
+    clearInterviewSessionContext();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -118,84 +119,59 @@ export default function CvCheckerClient() {
         <span className="font-semibold text-primary">Check CV</span>
       </div>
 
-      {/* Page Header */}
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">Check CV Chuẩn Doanh Nghiệp Nhật</h1>
-        <p className="mt-1 text-sm text-on-surface-variant">
-          Hệ thống phân tích hồ sơ và đưa ra gợi ý hoàn thiện từng phần như một chuyên gia review CV doanh nghiệp Nhật.
-        </p>
-      </header>
-
-      {/* Top Banner Alert regarding CV Bank formats */}
-      {!report && <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950 flex items-start gap-3 shadow-sm">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 mt-0.5">
-          <Icon name="warning" className="w-4 h-4" />
-        </span>
-        <div className="text-xs space-y-1">
-          <p className="font-bold text-amber-900 text-sm">
-            Lưu ý về định dạng file từ các trang tạo CV:
-          </p>
-          <p className="text-amber-800 leading-relaxed">
-            File CV xuất từ một số nền tảng trực tuyến thường có bố cục bảng ẩn (hidden tables) hoặc 2 cột phức tạp,
-            dễ gây lệch dòng khi chuyển đổi văn bản. Bạn nên dùng mẫu Word chuẩn và lưu trực tiếp sang PDF trước khi tải lên.
-          </p>
-        </div>
-      </section>}
-
-      {/* Main Container */}
       {!report ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left: Target Company Information */}
-          <div className="lg:col-span-5 bg-white border border-surface-container rounded-2xl p-5 sm:p-6 shadow-sm space-y-5">
-            <div className="flex items-center gap-3 border-b border-surface-container pb-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-container-low text-primary">
-                <Icon name="work_outline" />
+        /* Upload & Form Container */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Target Company Context Card */}
+          <div className="lg:col-span-5 bg-white border border-surface-container rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-surface-container">
+              <span className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
+                <Icon name="business_center" className="w-5 h-5" />
               </span>
               <div>
-                <h2 className="text-sm font-bold text-primary sm:text-base">
-                  Thông tin doanh nghiệp ứng tuyển
-                </h2>
-                <p className="mt-0.5 text-xs text-on-surface-variant">
-                  Giúp AI đối chiếu mức độ ăn khớp với mô tả công việc (JD).
+                <h2 className="text-base font-bold text-primary">Doanh nghiệp ứng tuyển</h2>
+                <p className="text-xs text-on-surface-variant">
+                  Giúp AI phân tích độ khớp với công ty và vị trí ứng tuyển.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+                <label className="text-xs font-semibold text-primary block mb-1">
                   Tên công ty Nhật ứng tuyển
                 </label>
                 <input
                   type="text"
-                  placeholder="VD: Rakuten, Line, GMO-Z.com, FPT Japan..."
+                  placeholder="VD: Rakuten, LINE, GMO-Z.com, FPT Japan..."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15 placeholder:text-outline"
+                  className="w-full text-xs rounded-xl border border-outline-variant/60 px-3.5 py-2.5 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+                  <label className="text-xs font-semibold text-primary block mb-1">
                     Vị trí ứng tuyển
                   </label>
                   <input
                     type="text"
                     value={targetRole}
                     onChange={(e) => setTargetRole(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    className="w-full text-xs rounded-xl border border-outline-variant/60 px-3.5 py-2.5 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+                  <label className="text-xs font-semibold text-primary block mb-1">
                     Trình độ JLPT mục tiêu
                   </label>
                   <select
                     value={targetJlpt}
                     onChange={(e) => setTargetJlpt(e.target.value)}
-                    className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15"
+                    className="w-full text-xs rounded-xl border border-outline-variant/60 px-3.5 py-2.5 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all"
                   >
+                    <option value="N5">N5</option>
                     <option value="N4">N4</option>
                     <option value="N3">N3</option>
                     <option value="N2">N2</option>
@@ -205,156 +181,135 @@ export default function CvCheckerClient() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-                  Trang web công ty (URL)
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Trang web công ty (URL) <span className="text-slate-400 font-normal">(không bắt buộc)</span>
                 </label>
                 <input
                   type="url"
                   placeholder="https://..."
                   value={companyUrl}
                   onChange={(e) => setCompanyUrl(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15 placeholder:text-outline"
+                  className="w-full text-xs rounded-xl border border-outline-variant/60 px-3.5 py-2.5 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-                  Mô tả công việc / Job Description (JD)
+                <label className="text-xs font-semibold text-primary block mb-1">
+                  Mô tả công việc / Job Description (JD) <span className="text-slate-400 font-normal">(không bắt buộc)</span>
                 </label>
                 <textarea
                   rows={4}
                   placeholder="Dán yêu cầu kỹ thuật, trách nhiệm công việc bằng tiếng Nhật hoặc tiếng Việt..."
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
-                  className="w-full rounded-lg border border-outline-variant/70 bg-white px-3 py-2.5 text-sm text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/15 placeholder:text-outline resize-y leading-6"
+                  className="w-full text-xs rounded-xl border border-outline-variant/60 p-3 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all leading-relaxed"
                 />
               </div>
             </div>
           </div>
 
-          {/* Right: CV File Upload & Start Button */}
-          <div className="lg:col-span-7 bg-white border border-surface-container rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-6">
-            <div>
-              <div className="flex items-center gap-3 border-b border-surface-container pb-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-container-low text-primary">
-                  <Icon name="fact_check" />
-                </span>
-                <div>
-                  <h2 className="text-sm font-bold text-primary sm:text-base">
-                    Tải lên CV (履歴書) cần thẩm định
-                  </h2>
-                  <p className="mt-0.5 text-xs text-on-surface-variant">
-                    Hỗ trợ tệp PDF hoặc DOCX (Tối đa 10MB).
-                  </p>
-                </div>
+          {/* Upload Dropzone Card */}
+          <div className="lg:col-span-7 bg-white border border-surface-container rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-surface-container">
+              <span className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
+                <Icon name="description" className="w-5 h-5" />
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-primary">Tải lên CV (履歴書) cần thẩm định</h2>
+                <p className="text-xs text-on-surface-variant">
+                  Hỗ trợ tệp PDF hoặc DOCX (Tối đa 10MB). Dữ liệu được bảo mật theo phiên.
+                </p>
               </div>
             </div>
 
-            {/* Dropzone */}
+            {/* Dropzone Box */}
             <div
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={handleDragOver}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+              className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
                 file
-                  ? "border-secondary bg-surface-container-low/60"
-                  : "border-outline-variant/70 bg-surface-container-low/30 hover:border-secondary hover:bg-surface-container-low/60"
+                  ? "border-emerald-400 bg-emerald-50/20"
+                  : "border-outline-variant/60 hover:border-secondary bg-surface-container-lowest/50"
               }`}
             >
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.docx"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={handleFileChange}
                 className="hidden"
               />
 
+              <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mb-3 text-secondary">
+                <Icon name={file ? "verified" : "cloud_upload"} className="w-6 h-6" />
+              </div>
+
               {file ? (
-                <div className="space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-secondary-container/40 text-secondary flex items-center justify-center">
-                    <Icon name="description" className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-primary text-sm">{file.name}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB • Sẵn sàng phân tích
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFile(null);
-                    }}
-                    className="text-xs text-error font-medium hover:underline inline-flex items-center gap-1"
-                  >
-                    <Icon name="close" className="w-3.5 h-3.5" /> Chọn file khác
-                  </button>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-primary">{file.name}</p>
+                  <p className="text-xs text-on-surface-variant">
+                    {(file.size / 1024 / 1024).toFixed(2)} MB • Nhấp để đổi tệp khác
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-surface-container-high text-primary flex items-center justify-center">
-                    <Icon name="cloud_upload" className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-primary">
-                      Kéo & thả file CV vào đây, hoặc <span className="text-secondary underline">chọn từ máy tính</span>
-                    </p>
-                    <p className="text-xs text-on-surface-variant mt-1">Định dạng hỗ trợ: PDF, DOCX (Dung lượng ≤ 10MB)</p>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-primary">
+                    Kéo & thả file CV vào đây, hoặc <span className="text-secondary underline">chọn từ máy tính</span>
+                  </p>
+                  <p className="text-xs text-on-surface-variant">
+                    Định dạng hỗ trợ: PDF, DOCX (Dung lượng ≤ 10MB)
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Error Message */}
+            {/* Privacy notice */}
+            <p className="text-[11px] text-slate-500 text-center">
+              CV của bạn sẽ được phân tích và bảo mật theo phiên làm việc.
+            </p>
+
+            {/* Error Banner */}
             {errorMessage && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
-                <Icon name="error" className="w-4 h-4 shrink-0 text-red-600" />
+              <div
+                role="alert"
+                className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2"
+              >
+                <Icon name="error" className="w-4 h-4 shrink-0 text-red-500" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* Neutral Privacy Notice (replaces criteria badges) */}
-            <div className="p-3 rounded-xl bg-surface-container-low/60 border border-surface-container text-center text-xs text-on-surface-variant flex items-center justify-center gap-1.5">
-              <Icon name="lock" className="w-4 h-4 text-secondary" />
-              <span>CV của bạn sẽ được phân tích và xóa ngay sau khi hoàn tất.</span>
-            </div>
-
-            {/* Action button */}
+            {/* Submit Button */}
             <button
               onClick={handleStartAnalysis}
               disabled={!file || isAnalyzing}
-              className={`w-full py-3 px-5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors ${
-                !file || isAnalyzing
-                  ? "bg-surface-container-highest text-outline cursor-not-allowed"
-                  : "bg-primary text-white hover:bg-primary/90"
-              }`}
+              className="w-full py-3 px-4 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-secondary transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
               {isAnalyzing ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Đang xử lý phân tích CV...</span>
+                  <Icon name="autorenew" className="w-4 h-4 animate-spin" />
+                  <span>Đang phân tích CV...</span>
                 </>
               ) : (
                 <>
                   <Icon name="fact_check" className="w-4 h-4" />
-                  <span>Bắt đầu phân tích & nhận góp ý CV</span>
+                  <span>Bắt đầu thẩm định CV chuẩn Nhật</span>
                 </>
               )}
             </button>
 
-            {/* Progress indicator during analysis */}
+            {/* Live Progress Stage Indicator */}
             {isAnalyzing && (
-              <div className="p-3 bg-surface-container-low rounded-xl border border-surface-container text-center">
-                <p className="text-xs text-primary font-medium">{progressStage}</p>
-                <div className="w-full bg-surface-container-high h-1.5 rounded-full mt-2 overflow-hidden">
-                  <div className="bg-secondary h-full rounded-full animate-[shimmer_2s_infinite]" style={{ width: "70%" }} />
-                </div>
+              <div className="p-3 bg-surface-container-low border border-surface-container rounded-xl flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse" />
+                <span className="text-xs text-secondary font-medium">{progressStage}</span>
               </div>
             )}
           </div>
         </div>
       ) : (
+        /* Detailed Report Workspace */
         <CvCheckerReportWorkspace report={report} onReset={handleReset} />
       )}
     </div>

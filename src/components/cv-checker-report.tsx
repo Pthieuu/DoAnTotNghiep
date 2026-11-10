@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { applyCorrections, rescoreCv, parseHandoff, HANDOFF_PREFIX, type CvCorrection, type CvHandoff } from "@/lib/cv-checker/virtual-cv";
-import type { CvCheckerReport, IssueSeverity } from "@/lib/cv-checker";
+import { applyCorrections, rescoreCv, parseHandoff, toInterviewCv, SECTION_KEYS, HANDOFF_PREFIX, type CvCorrection, type CvHandoff } from "@/lib/cv-checker/virtual-cv";
+import type { CvCheckerReport, IssueSeverity, SectionKey } from "@/lib/cv-checker";
 import { getScoreTier } from "@/lib/cv-checker/config/score-tier";
+import { saveInterviewSessionContext, type InterviewSessionContext } from "@/lib/interview-session-context";
 
 function ScoreProgressRing({ score }: { score: number }) {
   const [displayed, setDisplayed] = useState(score);
@@ -167,14 +168,45 @@ export default function CvCheckerReportWorkspace({ report, onReset }: { report: 
     setCorrections((old) => ({ ...old, [selected.key]: { section: selected.section, text, sourceQuote: selected.sourceQuoteJa } }));
   }
   function startInterview() {
-    if (!virtualCv) return;
-    try {
-      const id = crypto.randomUUID();
-      const handoff: CvHandoff = { version: 1, fileName: report.metadata.fileName, cv: virtualCv, company: report.metadata.companyName || "", role: report.metadata.targetRole || "" };
-      if (!parseHandoff(handoff)) { setActionError("CV quá dài hoặc thiếu nội dung gốc để chuyển tiếp. Hãy kiểm tra lại tệp CV."); return; }
-      sessionStorage.setItem(HANDOFF_PREFIX + id, JSON.stringify(handoff));
-      router.push(`/interview-setup?cvDraft=${id}`);
-    } catch { setActionError("Không lưu được CV chuyển tiếp. Hãy cho phép lưu trữ trong trình duyệt rồi thử lại."); }
+    const hasCritical = important.some((issue) => issue.severity === "critical" && !resolved.has(issue.key));
+    const activeCv = virtualCv || {
+      originalText: "",
+      sections: Object.fromEntries(SECTION_KEYS.map((key) => [key, ""])) as Record<SectionKey, string>,
+    };
+
+    const sessionData: InterviewSessionContext = {
+      cvFileName: report.metadata.fileName,
+      companyName: report.metadata.companyName || "",
+      jobPosition: report.metadata.targetRole || "",
+      jlptTarget: "N3",
+      companyUrl: report.metadata.companyUrl || "",
+      cvAnalysisId: report.metadata.analyzedAt,
+      cvData: report.parsedCvData || toInterviewCv({ version: 1, fileName: report.metadata.fileName, cv: activeCv, company: report.metadata.companyName || "", role: report.metadata.targetRole || "" }),
+      checkedAt: report.metadata.analyzedAt || new Date().toISOString(),
+      hasCriticalIssues: hasCritical,
+    };
+    saveInterviewSessionContext(sessionData);
+
+    if (virtualCv) {
+      try {
+        const id = crypto.randomUUID();
+        const handoff: CvHandoff = {
+          version: 1,
+          fileName: report.metadata.fileName,
+          cv: virtualCv,
+          company: report.metadata.companyName || "",
+          role: report.metadata.targetRole || "",
+        };
+        if (parseHandoff(handoff)) {
+          sessionStorage.setItem(HANDOFF_PREFIX + id, JSON.stringify(handoff));
+          router.push(`/interview-setup?cvDraft=${id}`);
+          return;
+        }
+      } catch (err) {
+        console.warn("Could not save handoff:", err);
+      }
+    }
+    router.push("/interview-setup");
   }
 
   function changeTab(tab: typeof activeTab) {
@@ -281,11 +313,46 @@ export default function CvCheckerReportWorkspace({ report, onReset }: { report: 
           </details>
 
       {actionError && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{actionError}</p>}
-      {ready && virtualCv && <section className="rounded-2xl bg-indigo-600 p-6 text-white shadow-sm" aria-label="Tiếp tục luyện phỏng vấn">
-        <h2 className="text-lg font-bold">{resolved.size === issues.length ? "CV của bạn đã hoàn thiện!" : "Bạn đã hoàn thành các lỗi quan trọng!"}</h2>
-        <p className="mt-2 text-sm leading-6 text-indigo-100">Đưa dữ liệu các phần vừa sửa sang phòng luyện phỏng vấn ngay?</p>
-        <button type="button" onClick={startInterview} className={`${actionClass} mt-4 bg-white text-indigo-700 hover:bg-indigo-50`}>Bắt đầu phỏng vấn thử với CV này ➔</button>
-      </section>}
+      
+      {/* Bottom CTA Card */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4" aria-label="Tiếp tục luyện phỏng vấn">
+        {important.some((issue) => issue.severity === "critical" && !resolved.has(issue.key)) && (
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 text-amber-900 text-xs border border-amber-200">
+            <span className="font-bold text-amber-700">💡 Lưu ý:</span>
+            <span>CV vẫn còn một số điểm nên sửa trước khi phỏng vấn. Bạn vẫn có thể tiếp tục.</span>
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Sẵn sàng luyện phỏng vấn?</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Bộ câu hỏi sẽ được cá nhân hóa tự động theo hồ sơ CV bạn vừa kiểm tra.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startInterview}
+            className={`${actionClass} bg-primary text-white hover:bg-secondary px-6 py-2.5 shadow-sm text-sm w-full sm:w-auto`}
+          >
+            Tiếp tục: Thiết lập phỏng vấn ➔
+          </button>
+        </div>
+      </section>
+
+      {/* Mobile Sticky CTA Bar */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 px-4 shadow-lg flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-slate-900 truncate">Điểm: {liveReport.overallScore}/100</p>
+          <p className="text-[11px] text-slate-500 truncate">Sẵn sàng luyện tập</p>
+        </div>
+        <button
+          type="button"
+          onClick={startInterview}
+          className="px-4 py-2 text-xs font-semibold bg-primary text-white rounded-xl shadow transition-colors flex items-center gap-1.5 shrink-0"
+        >
+          Tiếp tục ➔
+        </button>
+      </div>
     </div>
   );
 }
