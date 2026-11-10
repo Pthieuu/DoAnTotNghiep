@@ -56,7 +56,14 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
   const [state, setState] = useState<LiveState>("idle");
   const [candidateTranscript, setCandidateTranscript] = useState("");
   const [interviewerTranscript, setInterviewerTranscript] = useState("");
+  const [currentInterviewerText, setCurrentInterviewerText] = useState("");
   const [error, setError] = useState("");
+  const [clarifying, setClarifying] = useState(false);
+  const clarifyingRef = useRef(false);
+  const setClarificationMode = useCallback((enabled: boolean) => {
+    clarifyingRef.current = enabled;
+    setClarifying(enabled);
+  }, []);
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
@@ -103,7 +110,9 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
     socketRef.current = null;
     contextRef.current = null;
     setState("idle");
-  }, [clearPlayback]);
+    setCurrentInterviewerText("");
+    setClarificationMode(false);
+  }, [clearPlayback, setClarificationMode]);
 
   const start = useCallback(async () => {
     if (!sessionId || !questionText || activeRef.current) return;
@@ -122,6 +131,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
     setError("");
     setCandidateTranscript("");
     setInterviewerTranscript("");
+    setCurrentInterviewerText("");
     transcriptRef.current = "";
     setState("connecting");
     try {
@@ -158,6 +168,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
         socket.send(JSON.stringify({ setup: { model: tokenData.model } }));
       };
       let setupReceived = false;
+      let newOutputTurn = true;
       let modelTurnActive = true;
       let micReadyAt = Infinity;
       const finishPlayback = () => {
@@ -212,6 +223,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
 
         const serverContent = message.serverContent;
         if (serverContent?.interrupted) {
+          newOutputTurn = true;
           clearPlayback();
           modelTurnActive = false;
           finishPlayback();
@@ -220,14 +232,17 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           modelTurnActive = true;
           micReadyAt = Infinity;
         }
-        if (serverContent?.inputTranscription?.text) {
+        if (serverContent?.inputTranscription?.text && !clarifyingRef.current) {
           const next = `${transcriptRef.current}${serverContent.inputTranscription.text}`;
           transcriptRef.current = next;
           setCandidateTranscript(next);
         }
         const outputText = serverContent?.outputTranscription?.text;
-        if (outputText) {
-          setInterviewerTranscript((previous) => previous + outputText);
+        if (outputText && !serverContent?.interrupted) {
+          const startsTurn = newOutputTurn;
+          newOutputTurn = false;
+          setCurrentInterviewerText((previous) => startsTurn ? outputText : previous + outputText);
+          setInterviewerTranscript((previous) => previous + (startsTurn && previous ? "\n\n" : "") + outputText);
         }
         const parts = serverContent?.interrupted ? [] : serverContent?.modelTurn?.parts || [];
         for (const part of parts) {
@@ -254,6 +269,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           };
         }
         if (serverContent?.turnComplete) {
+          newOutputTurn = true;
           modelTurnActive = false;
           finishPlayback();
         }
@@ -268,5 +284,5 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
 
   useEffect(() => stop, [sessionId, questionIndex, questionText, stop]);
 
-  return { state, candidateTranscript, interviewerTranscript, error, start, stop };
+  return { state, candidateTranscript, interviewerTranscript, currentInterviewerText, error, start, stop, clarifying, setClarificationMode };
 }

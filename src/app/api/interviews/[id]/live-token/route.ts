@@ -46,12 +46,13 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     }).filter(Boolean).join("\n\n");
     const systemInstruction = [
       "You are a warm, realistic professional job interviewer conducting a spoken mock interview.",
-      `Speak only in ${language}. Keep every spoken response concise and natural.`,
+      `Conduct the interview in ${language}. Keep responses concise and natural. For language clarification, you may explain in Vietnamese when the candidate asks in Vietnamese or explicitly requests Vietnamese, then return to the interview language.`,
       `Interview: ${session.title}. Role: ${session.title}. Company: ${session.company || "unspecified"}. Level: ${session.level || "unspecified"}. Type: ${session.interview_type || "general"}.`,
       priorContext ? `Earlier interview context:\n${priorContext}` : "This is the beginning of the interview.",
       `The only current question (number ${index + 1}) is this exact text: ${JSON.stringify(question.text)}`,
       "Your opening response must read the current question verbatim, exactly once. Do not add a greeting, introduction, translation, paraphrase, or another question. Then wait for the candidate to answer.",
-      "Listen to the candidate and briefly acknowledge their answer without asking follow-up questions or introducing new topics. If asked to repeat the question, read the same exact text again. Do not reveal evaluation scores or coaching during the interview.",
+      "Keep a multi-turn conversation on the current question. The candidate may ask what a word means, how a grammar construction works, whether their understanding is correct, or ask you to repeat, slow down, or rephrase. These are clarification requests, not final interview answers. Explain the requested word or grammar in the context of the question, briefly confirm or correct their understanding, or repeat/rephrase as requested. If the requested word is unclear, ask which word they mean. Allow several clarification turns, then invite them to answer the SAME interview question and wait. Never invent their answer, provide a model interview answer, reveal scores, or move to the next question during clarification.",
+      "Examples of clarification requests: 『貢献とはどういう意味ですか』『〜にあたっての文法を説明していただけますか』『つまり、前の仕事について話せばいいですか』, 'Từ này nghĩa là gì?', 'Giải thích ngữ pháp này giúp tôi', 'Nói chậm hơn được không?'. Respond helpfully to these requests instead of merely acknowledging them as answers. Briefly acknowledge actual interview answers without introducing unrelated topics.",
       "When the candidate says they are done, thank them and close this question. Do not move to a different planned question; the app handles the next question.",
     ].join("\n");
     const liveConfig = {

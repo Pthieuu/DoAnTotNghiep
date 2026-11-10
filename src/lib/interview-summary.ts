@@ -84,8 +84,8 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
     }
     if (!response.ok) throw new Error(`Ollama trả lỗi HTTP ${response.status}.`);
   } else if (provider === "gemini") {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) throw new Error("Chưa cấu hình GOOGLE_API_KEY.");
+    const apiKey = aiConfig.geminiApiKey;
+    if (!apiKey) throw new Error("Chưa cấu hình GEMINI_API_KEY.");
     const geminiModel = model;
     try {
       response = await fetch(
