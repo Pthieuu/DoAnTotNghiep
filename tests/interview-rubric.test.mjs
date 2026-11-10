@@ -6,7 +6,7 @@ import ts from 'typescript';
 function load(path, dependencies = {}, globals = {}) {
   const source = ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = {};
-  vm.runInNewContext(source, { exports, require: name => name === 'server-only' ? {} : name === './ai-config' ? { getAiConfig: () => ({ provider: globals.process?.env?.CV_AI_PROVIDER || 'ollama', ollamaModel: 'qwen3:4b', geminiModel: 'test', groqModel: 'test' }) } : dependencies[name], ...globals });
+  vm.runInNewContext(source, { exports, require: name => name === 'server-only' ? {} : dependencies[name] ?? (name === './ai-config' ? { getAiConfig: () => ({ provider: globals.process?.env?.CV_AI_PROVIDER || 'ollama', ollamaModel: 'qwen3:4b', geminiModel: 'test', groqModel: 'test' }) } : undefined), ...globals });
   return exports;
 }
 const rubric = load('src/lib/interview-rubric.ts');
@@ -89,7 +89,7 @@ for (const provider of ['ollama', 'openai', 'gemini', 'groq']) {
       return new Response(JSON.stringify(provider === 'ollama' ? { message: { content: text } } : provider === 'gemini' ? { candidates: [{ content: { parts: [{ text }] } }] } : { choices: [{ message: { content: text } }] }));
     };
     const globals = { fetch, Response, AbortSignal, console: { info() {} }, process: { env: { CV_AI_PROVIDER: provider, OPENAI_API_KEY: 'test', GOOGLE_API_KEY: 'test', GROQ_API_KEY: 'test' } } };
-    const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig(provider) }, globals);
+    const evaluation = load('src/lib/interview-evaluation.ts', { './interview-rubric': rubric, './ai-config': makeAiConfig(provider), './gemini-retry': { fetchGeminiWithRetry: fetch, GeminiUnavailableError: Error } }, globals);
     const result = await evaluation.evaluateAnswer({ cvText: '', language: 'ja', targetRole: 'Engineer', question: '?', userAnswer: context.answer, interviewType: 'mixed', questionType: 'behavioral', questionIndex: 0, totalQuestions: 1 });
     assert.equal(result.score, 10); assert.equal(result.rubric.totalScore, 100); assert.ok(result.suggestion);
     output = { strengths: ['Câu 1: 意見。'], weaknesses: [], improvementTips: ['Luyện ví dụ.'], totalScore: 1, grade: 'D' };

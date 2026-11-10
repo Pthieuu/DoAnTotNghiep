@@ -3,44 +3,59 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/icon";
+import WeaknessPracticePanel from "@/components/weakness-practice-panel";
+import WeaknessPracticeProgressReport from "@/components/weakness-practice-progress";
+import type { WeaknessPracticeSession } from "@/lib/weakness-practice";
 
 import type { SummaryResult } from "@/lib/interview-summary";
 
-export default function SummaryClient({ 
-  sessionId, 
-  title, 
-  initialSummary, 
-  status 
-}: { 
-  sessionId: string; 
-  title: string; 
+export default function SummaryClient({
+  sessionId,
+  title,
+  initialSummary,
+  status,
+  practice = null,
+}: {
+  sessionId: string;
+  title: string;
   initialSummary: SummaryResult | null;
   status: string;
+  practice?: WeaknessPracticeSession | null;
 }) {
   const [summary, setSummary] = useState<SummaryResult | null>(initialSummary);
-  const [loading, setLoading] = useState(!initialSummary && status === "completed");
+  const needsRefresh = status === "completed" && (!initialSummary || practice !== null);
+  const [loading, setLoading] = useState(needsRefresh);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!summary && status === "completed") {
-      // Generate summary if it doesn't exist
+    const controller = new AbortController();
+    if (needsRefresh) {
       const generateSummary = async () => {
         try {
           const res = await fetch(`/api/interviews/${sessionId}/summary`, {
-            method: "POST"
+            method: "POST",
+            signal: controller.signal,
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Có lỗi xảy ra khi tổng kết.");
-          setSummary(data.summary);
+          if (!controller.signal.aborted) setSummary(data.summary);
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
+          if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
         } finally {
-          setLoading(false);
+          if (!controller.signal.aborted) setLoading(false);
         }
       };
-      generateSummary();
+      void generateSummary();
     }
-  }, [sessionId, summary, status]);
+    return () => controller.abort();
+  }, [sessionId, needsRefresh, attempt]);
+
+  function retrySummary() {
+    setError("");
+    setLoading(true);
+    setAttempt(current => current + 1);
+  }
 
   if (status !== "completed") {
     return (
@@ -57,7 +72,7 @@ export default function SummaryClient({
     );
   }
 
-  if (loading) {
+  if (loading && !summary) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
@@ -69,12 +84,13 @@ export default function SummaryClient({
     );
   }
 
-  if (error) {
+  if (error && !summary) {
     return (
       <div className="p-8 max-w-3xl mx-auto">
         <div className="bg-error-container text-on-error-container p-6 rounded-2xl">
           <h2 className="font-bold text-lg mb-2">Không thể tạo bảng tổng kết</h2>
           <p>{error}</p>
+          <button type="button" onClick={retrySummary} className="mt-4 mr-3 rounded-lg bg-primary px-4 py-2 font-semibold text-white">Thử lại tổng kết</button>
           <Link href="/dashboard" className="mt-4 inline-block px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold">
             Về trang chủ
           </Link>
@@ -84,6 +100,7 @@ export default function SummaryClient({
   }
 
   if (!summary) return null;
+  const progress = practice && (loading || error) ? undefined : summary.practiceProgress;
 
   const scoreColor = summary.totalScore === null ? "text-on-surface-variant" : (summary.totalScore ?? 0) >= 80 ? "text-emerald-600" : (summary.totalScore ?? 0) >= 65 ? "text-blue-600" : (summary.totalScore ?? 0) >= 50 ? "text-amber-600" : "text-error";
 
@@ -92,7 +109,15 @@ export default function SummaryClient({
       <div className="text-center">
         <h1 className="text-3xl font-bold text-primary mb-2">Kết quả phỏng vấn</h1>
         <p className="text-on-surface-variant text-lg">{title}</p>
+        {practice && !progress && <Link href={`/summary?sessionId=${practice.sourceSessionId}`} className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">Xem phiên nguồn</Link>}
       </div>
+
+      {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Đang cập nhật kết quả luyện tập...</p>}
+      {error && <div role="alert" className="rounded-xl bg-error-container p-4 text-sm text-on-error-container space-y-2">
+        <p>{error}</p>
+        <button type="button" onClick={retrySummary} className="font-semibold underline underline-offset-4">Thử lại cập nhật kết quả</button>
+      </div>}
+      {progress && <WeaknessPracticeProgressReport progress={progress} />}
 
       <div className="bg-white rounded-3xl p-8 border border-surface-container shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-16 justify-center">
         <div className="text-center">
@@ -177,7 +202,9 @@ export default function SummaryClient({
         </ul>
       </div>
 
-      <div className="flex justify-center gap-4 pt-4">
+      <WeaknessPracticePanel key={sessionId} sessionId={sessionId} continuePractice={practice !== null || !!progress} />
+
+      <div className="flex flex-wrap justify-center gap-4 pt-4">
         <Link href="/dashboard" className="px-6 py-3 bg-white border border-surface-container text-primary hover:bg-surface-container rounded-xl font-semibold transition-colors flex items-center gap-2">
           Về trang chủ
         </Link>
