@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
-import { load, plain, practice, rubric, sourceId, userId, sourceSession, answers, questions } from './helpers/weakness-practice-fixtures.mjs';
+import { load, plain, practice, rubric, sourceId, userId, sourceSession, answers, questions, sessionQuery } from './helpers/weakness-practice-fixtures.mjs';
 
 const practiceMetadata = { sourceSessionId: sourceId, selectedCriteria: ['C01', 'C02'] };
 
@@ -60,6 +60,7 @@ test('room page passes practice metadata, turns and current question to the clie
       '@/lib/auth': { getUser: async () => ({ id: userId }) },
       '@/components/dashboard-shell': { default: () => null }, './client-page': { default: () => null },
       '@/lib/weakness-practice': practice,
+      '@/lib/interview-session-query': sessionQuery,
       '@/lib/supabase/server': { createClient: async () => ({ from: table => {
         const builder = {
           select: () => builder, eq: (key, value) => { filters.push([table, key, value]); return builder; },
@@ -109,6 +110,7 @@ function answerFixture(isPractice, options = {}) {
     }) },
     '@/lib/auth-http': { checkRequest: () => null, json: (body, status = 200) => Response.json(body, { status }) },
     '@/lib/weakness-practice': practice,
+    '@/lib/interview-session-query': sessionQuery,
     '@/lib/gemini-retry': { GeminiUnavailableError: class extends Error {} },
     '@/lib/interview-evaluation': { evaluateAnswer: async input => {
       state.evaluated.push(plain(input));

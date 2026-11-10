@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { load, plain, practice, rubric, sourceId, userId, sourceSession, answers, questions } from './helpers/weakness-practice-fixtures.mjs';
+import { load, plain, practice, rubric, sourceId, userId, sourceSession, answers, questions, sessionQuery } from './helpers/weakness-practice-fixtures.mjs';
 
 const progressModule = load('src/lib/weakness-practice-progress.ts', { './interview-rubric': rubric });
 const practiceId = '22222222-2222-4222-8222-222222222222';
@@ -26,6 +26,7 @@ function fixture(options = {}) {
   const api = load('src/app/api/interviews/[id]/summary/route.ts', {
     '@/lib/auth-http': { checkRequest: () => null, json: (body, status = 200) => Response.json(body, { status }) },
     '@/lib/weakness-practice': practice,
+    '@/lib/interview-session-query': sessionQuery,
     '@/lib/weakness-practice-progress': progressModule,
     '@/lib/interview-summary': { generateSummary: async input => {
       state.generated.push(plain(input));
@@ -43,6 +44,9 @@ function fixture(options = {}) {
           eq: (key, value) => { call.filters[key] = value; return builder; },
           update: value => { update = value; return builder; },
           maybeSingle: async () => {
+            if (options.missingPracticeColumns && call.columns.includes('source_session_id')) {
+              return { data: null, error: { code: '42703', message: 'column interview_sessions.source_session_id does not exist' } };
+            }
             const session = call.filters.id === practiceId ? current : source;
             return {
               data: session && session.user_id === call.filters.user_id ? session : null,
@@ -108,6 +112,19 @@ test('ordinary uncached sessions still generate their standard summary without p
   assert.deepEqual((await (await instance.post()).json()).summary, summary);
   assert.equal(instance.state.generated.length, 1);
   assert.ok(!instance.state.calls.some(call => call.filters.id === sourceId));
+});
+
+test('ordinary summaries still load and generate when practice migrations are absent', async () => {
+  for (const cached of [summary, null]) {
+    const instance = fixture({ normal: true, cached, missingPracticeColumns: true });
+    const response = await instance.post();
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).summary, summary);
+    assert.equal(instance.state.generated.length, cached ? 0 : 1);
+    assert.ok(instance.state.calls[0].columns.includes('source_session_id'));
+    assert.ok(!instance.state.calls[1].columns.includes('source_session_id'));
+    assert.deepEqual(instance.state.calls[1].filters, { id: practiceId, user_id: userId });
+  }
 });
 
 test('source ownership is checked before source answers are read, including cached practice summaries', async () => {

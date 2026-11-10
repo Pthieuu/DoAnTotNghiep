@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { load, plain, rubric, practice, cvSchema, sourceId, userId, sourceSession, questions } from './helpers/weakness-practice-fixtures.mjs';
+import { load, plain, rubric, practice, cvSchema, sourceId, userId, sourceSession, questions, sessionQuery } from './helpers/weakness-practice-fixtures.mjs';
 import { componentHarness, nodes, content } from './helpers/component-harness.mjs';
 
 const answerText = '意見。理由。具体例。結論。';
@@ -102,6 +102,7 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
       checkRequest: request => request.headers.get('origin') === 'http://localhost' ? null : Response.json({ error: 'origin' }, { status: 403 }),
     },
     '@/lib/weakness-practice': practice, '@/lib/interview-rubric': rubric,
+    '@/lib/interview-session-query': sessionQuery,
     '@/lib/cv-schema': cvSchema, '@/lib/weakness-practice-generation': generation,
     '@/lib/interview-evaluation': evaluation, '@/lib/gemini-retry': retry,
     '@/lib/interview-summary': summary, '@/lib/weakness-practice-progress': progress,
@@ -139,6 +140,7 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
       'react/jsx-runtime': jsxRuntime, 'next/navigation': { redirect: () => { throw new Error('Unexpected redirect'); } },
       '@/lib/auth': { getUser: async () => ({ id: userId }) }, '@/lib/supabase/server': common['@/lib/supabase/server'],
       '@/lib/weakness-practice': practice,
+      '@/lib/interview-session-query': sessionQuery,
       '@/components/dashboard-shell': { default: () => null }, './client-page': { default: () => null },
     });
     const page = await Page({ searchParams: Promise.resolve({ sessionId }) });

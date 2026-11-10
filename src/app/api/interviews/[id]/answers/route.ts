@@ -3,6 +3,7 @@ import { checkRequest, json } from "@/lib/auth-http";
 import { evaluateAnswer } from "@/lib/interview-evaluation";
 import { GeminiUnavailableError } from "@/lib/gemini-retry";
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
+import { querySessionWithPractice } from "@/lib/interview-session-query";
 
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score?: number };
@@ -27,9 +28,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Vui lòng đăng nhập để lưu câu trả lời." }, 401);
 
-    const { data: session, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language,source_session_id,selected_criteria")
-      .eq("id", id).eq("user_id", user.id).maybeSingle();
+    const { data: session, error: sessionError } = await querySessionWithPractice(
+      columns => supabase.from("interview_sessions").select(columns)
+        .eq("id", id).eq("user_id", user.id).maybeSingle(),
+      "id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language",
+    );
     if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
     const practice = getWeaknessPracticeSession(session.source_session_id, session.selected_criteria);

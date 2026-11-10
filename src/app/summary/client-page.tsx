@@ -15,12 +15,14 @@ export default function SummaryClient({
   initialSummary,
   status,
   practice = null,
+  practiceAvailable = true,
 }: {
   sessionId: string;
   title: string;
   initialSummary: SummaryResult | null;
   status: string;
   practice?: WeaknessPracticeSession | null;
+  practiceAvailable?: boolean;
 }) {
   const [summary, setSummary] = useState<SummaryResult | null>(initialSummary);
   const needsRefresh = status === "completed" && (!initialSummary || practice !== null);
@@ -202,7 +204,9 @@ export default function SummaryClient({
         </ul>
       </div>
 
-      <WeaknessPracticePanel key={sessionId} sessionId={sessionId} continuePractice={practice !== null || !!progress} />
+      {practiceAvailable
+        ? <WeaknessPracticePanel key={sessionId} sessionId={sessionId} continuePractice={practice !== null || !!progress} />
+        : <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Chức năng luyện tập điểm yếu chưa được kích hoạt. Bạn vẫn có thể xem kết quả phỏng vấn và chi tiết từng câu.</p>}
 
       <div className="flex flex-wrap justify-center gap-4 pt-4">
         <Link href="/dashboard" className="px-6 py-3 bg-white border border-surface-container text-primary hover:bg-surface-container rounded-xl font-semibold transition-colors flex items-center gap-2">

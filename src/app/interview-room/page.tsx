@@ -6,6 +6,7 @@ import DashboardShell from "@/components/dashboard-shell";
 import InterviewRoomClient from "./client-page";
 import { createClient } from "@/lib/supabase/server";
 import { getWeaknessPracticeSession, type WeaknessPracticeSession } from "@/lib/weakness-practice";
+import { querySessionWithPractice } from "@/lib/interview-session-query";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,11 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
   const supabase = await createClient();
   let session: RoomSession | null = null;
   if (typeof sessionId === "string" && sessionId.length <= 64) {
-    const { data, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,title,company,level,status,questions,interview_type,interview_language,source_session_id,selected_criteria")
-      .eq("id", sessionId).eq("user_id", user.id).maybeSingle();
+    const { data, error: sessionError } = await querySessionWithPractice(
+      columns => supabase.from("interview_sessions").select(columns)
+        .eq("id", sessionId).eq("user_id", user.id).maybeSingle(),
+      "id,title,company,level,status,questions,interview_type,interview_language",
+    );
     if (sessionError) {
       session = { id: sessionId, title: "Interview Room", company: null, level: null, interviewType: "mixed", interviewLanguage: "vi", total: 0, currentQuestion: null, turns: [], completed: false, loadError: "session" };
     } else if (data && Array.isArray(data.questions)) {

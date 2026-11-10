@@ -18,6 +18,7 @@ export const plain = value => JSON.parse(JSON.stringify(value));
 export const rubric = load('src/lib/interview-rubric.ts');
 export const cvSchema = load('src/lib/cv-schema.ts');
 export const practice = load('src/lib/weakness-practice.ts', { './interview-rubric': rubric });
+export const sessionQuery = load('src/lib/interview-session-query.ts');
 export const sourceId = '11111111-1111-4111-8111-111111111111';
 export const userId = 'user-1';
 export const question = '経験を教えてください。';

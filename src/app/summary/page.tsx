@@ -5,6 +5,7 @@ import DashboardShell from "@/components/dashboard-shell";
 import SummaryClient from "./client-page";
 import { createClient } from "@/lib/supabase/server";
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
+import { querySessionWithPractice } from "@/lib/interview-session-query";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +22,11 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
   if (!sessionId) redirect("/dashboard");
 
   const supabase = await createClient();
-  const { data: session, error } = await supabase.from("interview_sessions")
-    .select("id,title,status,summary_json,source_session_id,selected_criteria")
-    .eq("id", sessionId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data: session, error, practiceAvailable } = await querySessionWithPractice(
+    columns => supabase.from("interview_sessions").select(columns)
+      .eq("id", sessionId).eq("user_id", user.id).maybeSingle(),
+    "id,title,status,summary_json",
+  );
 
   if (error || !session) redirect("/dashboard");
 
@@ -40,6 +41,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
         initialSummary={session.summary_json}
         status={session.status}
         practice={practice}
+        practiceAvailable={practiceAvailable}
       />
     </DashboardShell>
   );

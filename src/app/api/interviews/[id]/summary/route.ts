@@ -5,6 +5,7 @@ import { generateSummary, type SummaryResult } from "@/lib/interview-summary";
 import type { RubricResult } from "@/lib/interview-rubric";
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
 import { calculateWeaknessPracticeProgress, type PracticeProgressAnswer } from "@/lib/weakness-practice-progress";
+import { querySessionWithPractice } from "@/lib/interview-session-query";
 
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score: number | null; rubric_json: RubricResult | null; feedback: string };
@@ -36,9 +37,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Vui lòng đăng nhập để xem tổng kết." }, 401);
 
-    const { data: session, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,status,questions,title,interview_type,interview_language,level,target_role,job_description,question_count,summary_json,source_session_id,selected_criteria")
-      .eq("id", id).eq("user_id", user.id).maybeSingle();
+    const { data: session, error: sessionError } = await querySessionWithPractice(
+      columns => supabase.from("interview_sessions").select(columns)
+        .eq("id", id).eq("user_id", user.id).maybeSingle(),
+      "id,status,questions,title,interview_type,interview_language,level,target_role,job_description,question_count,summary_json",
+    );
 
     if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
@@ -113,7 +116,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       };
     });
 
-    let summaryResult: SummaryResult = session.summary_json;
+    let summaryResult: SummaryResult | null = session.summary_json;
     if (!summaryResult) {
       try {
         summaryResult = await generateSummary({
