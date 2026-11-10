@@ -6,14 +6,15 @@ import Link from "next/link";
 import type { CriterionId } from "@/lib/interview-rubric";
 import type { WeaknessPracticeTarget } from "@/lib/weakness-practice";
 
-export default function WeaknessPracticePanel({ sessionId, continuePractice = false }: {
+export default function WeaknessPracticePanel({ sessionId, continuePractice = false, initialSelectedCriteria = [] }: {
   sessionId: string;
   continuePractice?: boolean;
+  initialSelectedCriteria?: readonly CriterionId[];
 }) {
   const router = useRouter();
   const headingId = useId();
   const [targets, setTargets] = useState<WeaknessPracticeTarget[] | null>(null);
-  const [selected, setSelected] = useState<CriterionId[]>([]);
+  const [selected, setSelected] = useState<CriterionId[]>(() => [...new Set(initialSelectedCriteria)]);
   const [loadError, setLoadError] = useState("");
   const [createError, setCreateError] = useState("");
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -118,7 +119,7 @@ export default function WeaknessPracticePanel({ sessionId, continuePractice = fa
       </div>}
       {createError && <p role="alert" className="rounded-lg bg-error-container p-3 text-sm text-on-error-container">{createError} Lựa chọn của bạn được giữ để thử lại.</p>}
       {targets && <div className="flex flex-wrap items-center gap-3">
-        <button type="button" disabled={isCreating || selected.length === 0} onClick={() => void startPractice()} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="button" disabled={isCreating || !targets.some(target => selected.includes(target.criterionId))} onClick={() => void startPractice()} className="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50">
           {isCreating ? "Đang tạo bài luyện tập..." : createError ? "Thử lại tạo bài luyện tập" : continuePractice ? "Luyện tiếp điểm yếu" : "Luyện tập điểm yếu"}
         </button>
         <p role="status" className="text-sm text-on-surface-variant">{isCreating ? "AI đang chuẩn bị 4 câu hỏi. Vui lòng chờ." : `Đã chọn ${selected.length} tiêu chí.`}</p>

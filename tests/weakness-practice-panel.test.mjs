@@ -89,3 +89,19 @@ test('renders source/practice samples and handles positive, negative, zero and u
   for (const expected of ['0/4', 'Tăng +2', 'Giảm -1', 'Không đổi', 'Chưa thể so sánh', '1 câu bị loại', 'Hai bộ câu hỏi khác nhau.']) assert.ok(html.includes(expected), expected);
   assert.ok(html.includes(`/summary?sessionId=${sourceId}`));
 });
+
+test('dashboard entry preselects its criterion and creates practice using that selection', async () => {
+  let submitted;
+  const instance = panel(async (_url, init) => {
+    if (!init.method) return Response.json({ weaknesses: targets });
+    submitted = JSON.parse(init.body);
+    return Response.json({ sessionId: 'created-from-dashboard' });
+  }, { initialSelectedCriteria: ['C02'] });
+  await instance.harness.settle();
+  assert.deepEqual(nodes(instance.harness.tree, node => node.type === 'input' && node.props.checked).map(node => node.props.value), ['C02']);
+  assert.equal(button(instance.harness.tree).props.disabled, false);
+  button(instance.harness.tree).props.onClick();
+  await instance.harness.settle();
+  assert.deepEqual(submitted.selectedCriteria, ['C02']);
+  assert.deepEqual(instance.navigation, ['/interview-room?sessionId=created-from-dashboard']);
+});
