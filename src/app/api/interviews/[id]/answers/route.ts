@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { evaluateAnswer } from "@/lib/interview-evaluation";
+import { GeminiUnavailableError } from "@/lib/gemini-retry";
 
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score?: number };
@@ -74,7 +75,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       } catch (evalError) {
         console.error("Evaluation failed", evalError);
         // Fallback or bubble up error
-        return json({ error: evalError instanceof Error ? evalError.message : "Lỗi chấm điểm AI." }, 500);
+        return json({ error: evalError instanceof Error ? evalError.message : "Lỗi chấm điểm AI." }, evalError instanceof GeminiUnavailableError ? 503 : 500);
       }
 
       const { error: insertError } = await supabase.from("interview_answers").insert({ 

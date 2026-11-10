@@ -1,6 +1,7 @@
 import "server-only";
 import { emptyCv, validateCv, type CvData } from "@/lib/cv-schema";
 import { getAiConfig } from "./ai-config";
+import { readGeminiCvJson } from "./gemini-cv-response";
 
 const maxBytes = 15 * 1024 * 1024;
 const pdfType = "application/pdf";
@@ -119,19 +120,33 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     const payload = await response.json();
     outputText = payload.choices?.[0]?.message?.content || "";
   } else if (provider === "gemini") {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) throw new Error("Chưa cấu hình GOOGLE_API_KEY trên backend để trích xuất CV.");
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`, {
-      method: "POST", signal: AbortSignal.timeout(60000), headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: `${messages[0].content}\n\nFormat required: JSON matching this schema:\n${JSON.stringify(schema)}\n\n${messages[1].content}` }] }],
-        generationConfig: { temperature: 0, responseMimeType: "application/json" }
-      })
+    const apiKey = aiConfig.geminiApiKey;
+    if (!apiKey) throw new Error("Chưa cấu hình GEMINI_API_KEY trên backend để trích xuất CV.");
+    const geminiModel = aiConfig.geminiModel;
+    const requestBody = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: `${messages[0].content}\n\nFormat required: JSON matching this schema:\n${JSON.stringify(schema)}\n\n${messages[1].content}` }] }],
+      generationConfig: { temperature: 0, responseMimeType: "application/json", responseJsonSchema: schema, maxOutputTokens: 16384 }
     });
-    if (!response.ok) throw new Error(`Gemini trả lỗi HTTP ${response.status} khi trích xuất CV.`);
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
+        method: "POST", signal: AbortSignal.timeout(45000), headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: requestBody,
+      });
+      if (![502, 503, 504].includes(response.status) || attempt === 2) break;
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, 2000 * 2 ** attempt));
+    }
+    if (!response) throw new Error("Không nhận được phản hồi từ Gemini.");
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null) as { error?: { message?: string; status?: string } } | null;
+      const detail = (failure?.error?.message || "Không có mô tả lỗi.").replaceAll(apiKey, "[hidden]").slice(0, 300);
+      throw new Error(`Gemini ${geminiModel} trả lỗi HTTP ${response.status}: ${detail}${response.status === 503 ? " Đã thử 3 lần. Hãy thử model Gemini khác qua GEMINI_MODEL hoặc thử lại sau." : ""}`);
+    }
     const payload = await response.json();
-    outputText = payload.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const output = readGeminiCvJson(payload);
+    if (!validateCv(output)) throw new Error("Kết quả Gemini không đúng cấu trúc dữ liệu CV. Hãy thử lại.");
+    return { data: output, notes };
   } else if (provider === "groq") {
     const apiKey = aiConfig.groqApiKey || process.env.GROQ_API_KEY;
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để trích xuất CV.");

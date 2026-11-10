@@ -2,6 +2,7 @@ import "server-only";
 import { parseRubric, rubricSchema, RUBRIC_PROMPT, LOCAL_RUBRIC_PROMPT, localRubricSchema, type RubricResult } from "./interview-rubric";
 
 import { getAiConfig } from "./ai-config";
+import { fetchGeminiWithRetry, GeminiUnavailableError } from "./gemini-retry";
 
 type EvaluationInput = {
   cvText: string;
@@ -38,7 +39,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
 
   const localSchema = provider === "ollama" ? localRubricSchema(input.userAnswer) : evaluationSchema;
   const messages = [
-    { role: "system", content: provider === "ollama" ? LOCAL_RUBRIC_PROMPT : `${RUBRIC_PROMPT}\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}` },
+    { role: "system", content: provider === "ollama" ? LOCAL_RUBRIC_PROMPT : `${RUBRIC_PROMPT}\n\nỨng viên có thể hỏi lại nghĩa từ, ngữ pháp, yêu cầu nhắc lại hoặc xác nhận cách hiểu trong hội thoại. Phân biệt các yêu cầu làm rõ này với câu trả lời thực tế; không coi riêng việc hỏi lại là trả lời sai hoặc dùng nó để suy diễn năng lực. Chỉ chấm nội dung trả lời thực tế, không tự bổ sung câu trả lời còn thiếu.\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}` },
     { role: "user", content: JSON.stringify({
       cv: input.cvText, targetRole: input.targetRole, jobDescription: input.jobDescription,
       responseLanguage: "Vietnamese (vi): reason, strengths, weaknesses, practice. Only evidence is quoted in original Japanese.",
@@ -74,17 +75,16 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     }
     if (!response.ok) throw new Error(`Ollama trả lỗi HTTP ${response.status}.`);
   } else if (provider === "gemini") {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) throw new Error("Chưa cấu hình GOOGLE_API_KEY.");
+    const apiKey = aiConfig.geminiApiKey;
+    if (!apiKey) throw new Error("Chưa cấu hình GEMINI_API_KEY.");
     const geminiModel = model;
     try {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
+      response = await fetchGeminiWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
         {
           method: "POST",
-          signal: AbortSignal.timeout(60000),
           cache: "no-store",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [
               { role: "user", parts: [{ text: messages.map((m) => `[${m.role}]\n${m.content}`).join("\n\n") + `\n\nFormat required: JSON matching this schema:\n${JSON.stringify(evaluationSchema)}` }] },
@@ -99,6 +99,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     } catch (error) {
       if (error instanceof Error && error.name === "TimeoutError")
         throw new Error("AI mất quá lâu để chấm điểm. Hãy thử lại.");
+      if (error instanceof GeminiUnavailableError) throw error;
       throw new Error("Không kết nối được Gemini API.");
     }
     if (!response.ok) {

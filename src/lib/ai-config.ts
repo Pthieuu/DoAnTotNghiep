@@ -24,13 +24,13 @@ export function getAiConfig() {
   }
 
   const groqApiKey = env.GROQ_API_KEY || process.env.GROQ_API_KEY || "";
-  const rawProvider = env.CV_AI_PROVIDER || process.env.CV_AI_PROVIDER;
-  const provider = (rawProvider || (groqApiKey ? "groq" : "ollama")).toLowerCase();
+  // All AI features use Gemini; legacy provider settings cannot enable a fallback.
+  const provider = "gemini";
   const groqModel = env.GROQ_MODEL || process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
   const ollamaBaseUrl = env.OLLAMA_BASE_URL || process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
   const ollamaModel = env.OLLAMA_MODEL || process.env.OLLAMA_MODEL || "qwen3:4b";
   const geminiApiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
-  const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
   return {
     provider,

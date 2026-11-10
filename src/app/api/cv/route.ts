@@ -4,14 +4,7 @@ import { emptyCv, validateCv } from "@/lib/cv-schema";
 import { getAiConfig } from "@/lib/ai-config";
 
 function aiConfigured() {
-  const aiConfig = getAiConfig();
-  const provider = aiConfig.provider;
-  return (
-    provider === "ollama" ||
-    (provider === "openai" && Boolean(process.env.OPENAI_API_KEY)) ||
-    (provider === "gemini" && Boolean(process.env.GOOGLE_API_KEY)) ||
-    (provider === "groq" && Boolean(aiConfig.groqApiKey))
-  );
+  return Boolean(getAiConfig().geminiApiKey);
 }
 
 function storageErrorMessage(error: { message?: string; statusCode?: string; name?: string }) {
