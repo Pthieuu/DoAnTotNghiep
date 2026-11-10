@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
-import { validateCv, type CvData } from "@/lib/cv-schema";
+import { emptyCv, validateCv, type CvData } from "@/lib/cv-schema";
 import { generateInterviewQuestions } from "@/lib/interview-generation";
 
 export const maxDuration = 150;
@@ -33,14 +33,29 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Vui lòng đăng nhập để tạo buổi phỏng vấn." }, 401);
 
-    const { data: cvRow, error: cvError } = await supabase.from("candidate_cvs")
-      .select("id,file_name,confirmed_data,status")
-      .eq("user_id", user.id).eq("status", "confirmed")
-      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-    if (cvError) return json({ error: "Không thể tải CV đã xác nhận. Hãy kiểm tra cấu hình cơ sở dữ liệu." }, 500);
-    if (!cvRow || !validateCv(cvRow.confirmed_data)) return json({ error: "Bạn cần xác nhận thông tin CV trước khi tạo buổi phỏng vấn." }, 409);
+    let cvSnapshot: CvData = emptyCv;
+    let cvId: string | null = null;
 
-    const cvSnapshot = cvRow.confirmed_data as CvData;
+    if (body?.cvData && validateCv(body.cvData)) {
+      cvSnapshot = body.cvData as CvData;
+    } else {
+      const { data: cvRow, error: cvError } = await supabase.from("candidate_cvs")
+        .select("id,file_name,confirmed_data,status")
+        .eq("user_id", user.id).eq("status", "confirmed")
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      if (cvError) return json({ error: "Không thể tải CV đã xác nhận. Hãy kiểm tra cấu hình cơ sở dữ liệu." }, 500);
+
+      if (cvRow && validateCv(cvRow.confirmed_data)) {
+        cvSnapshot = cvRow.confirmed_data as CvData;
+        cvId = cvRow.id;
+      } else if (body?.isManual === true) {
+        cvSnapshot = emptyCv;
+        cvId = null;
+      } else {
+        return json({ error: "Bạn cần kiểm tra CV hoặc xác nhận thông tin CV trước khi tạo buổi phỏng vấn." }, 409);
+      }
+    }
+
     const questions = await generateInterviewQuestions({
       cv: cvSnapshot,
       role,
@@ -62,7 +77,7 @@ export async function POST(request: Request) {
       question_count: Number(questionCount),
       interview_type: String(interviewType),
       interview_language: String(interviewLanguage),
-      cv_id: cvRow.id,
+      cv_id: cvId,
       cv_snapshot: cvSnapshot,
       questions,
       status: "in_progress",

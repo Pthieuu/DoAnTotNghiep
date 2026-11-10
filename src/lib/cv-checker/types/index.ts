@@ -57,6 +57,7 @@ export interface CvCheckerReport {
     companyUrl?: string;
     targetRole?: string;
   };
+  parsedCvData?: import("@/lib/cv-schema").CvData;
 }
 
 export interface CvParsedSections {

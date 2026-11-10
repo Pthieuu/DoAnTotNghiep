@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Icon from "@/components/icon";
 import type { CvCheckerReport, IssueSeverity, SectionKey } from "@/lib/cv-checker";
 import { getScoreTier } from "@/lib/cv-checker/config/score-tier";
+import {
+  saveInterviewSessionContext,
+  clearInterviewSessionContext,
+  type InterviewSessionContext,
+} from "@/lib/interview-session-context";
 
 function ScoreProgressRing({ score }: { score: number }) {
   const [displayedScore, setDisplayedScore] = useState(0);
@@ -144,6 +150,7 @@ const SEVERITY_CONFIG: Record<
 };
 
 export default function CvCheckerClient() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [companyUrl, setCompanyUrl] = useState("");
@@ -254,7 +261,27 @@ export default function CvCheckerClient() {
     setFile(null);
     setErrorMessage(null);
     setIsExpandedSummary(false);
+    clearInterviewSessionContext();
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleProceedToInterview = () => {
+    if (!report) return;
+    const hasCritical = urgentIssues.some((i) => i.severity === "critical");
+    const sessionData: InterviewSessionContext = {
+      cvFileName: report.metadata.fileName,
+      companyName: companyName.trim() || report.metadata.companyName || "",
+      jobPosition: targetRole.trim() || report.metadata.targetRole || "",
+      jlptTarget: targetJlpt || "N3",
+      companyUrl: companyUrl.trim() || report.metadata.companyUrl || "",
+      jobDescription: jobDescription.trim() || "",
+      cvAnalysisId: report.metadata.analyzedAt,
+      cvData: report.parsedCvData || null,
+      checkedAt: report.metadata.analyzedAt || new Date().toISOString(),
+      hasCriticalIssues: hasCritical,
+    };
+    saveInterviewSessionContext(sessionData);
+    router.push("/interview-setup");
   };
 
   const allIssues = report
@@ -961,6 +988,61 @@ export default function CvCheckerClient() {
               })}
             </div>
           )}
+
+          {/* Bottom Action Card & CTA Transition to Interview Setup */}
+          <div className="bg-white border border-surface-container rounded-2xl p-6 sm:p-7 shadow-sm space-y-4">
+            {urgentIssues.some((i) => i.severity === "critical") && (
+              <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs sm:text-sm">
+                <Icon name="info" className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <p>
+                  CV vẫn còn một số điểm nên sửa trước khi phỏng vấn. Bạn vẫn có thể tiếp tục.
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+              <div className="text-center sm:text-left">
+                <h3 className="text-base sm:text-lg font-bold text-primary">
+                  Sẵn sàng luyện phỏng vấn?
+                </h3>
+                <p className="text-xs sm:text-sm text-on-surface-variant mt-0.5">
+                  Bộ câu hỏi sẽ được cá nhân hóa tự động theo hồ sơ CV bạn vừa kiểm tra.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-4 py-2.5 text-xs font-semibold bg-surface-container-low hover:bg-surface-container text-primary rounded-xl border border-outline-variant/60 transition-colors cursor-pointer w-full sm:w-auto text-center"
+                >
+                  Kiểm tra CV khác
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProceedToInterview}
+                  className="px-6 py-2.5 text-sm font-semibold bg-primary hover:bg-secondary text-white rounded-xl shadow-sm hover:shadow transition-all inline-flex items-center justify-center gap-2 cursor-pointer w-full sm:w-auto"
+                >
+                  Tiếp tục: Thiết lập phỏng vấn
+                  <Icon name="arrow_forward" className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Sticky CTA Bar */}
+          <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-surface-container p-3 px-4 shadow-lg flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-primary truncate">Điểm: {report.overallScore}/100</p>
+              <p className="text-[11px] text-on-surface-variant truncate">Sẵn sàng luyện tập</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleProceedToInterview}
+              className="px-4 py-2 text-xs font-semibold bg-primary text-white rounded-xl shadow transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              Tiếp tục <Icon name="arrow_forward" className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
     </div>

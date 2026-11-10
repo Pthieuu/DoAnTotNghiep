@@ -4,6 +4,7 @@ import { parseCvFile } from "./parsers/cv-file-parser";
 import { runRuleEngine } from "./rule-engine";
 import { runLlmAnalyzers } from "./llm-analyzers";
 import { buildCvReport } from "./report/score-calculator";
+import { convertParsedSectionsToCvData } from "@/lib/interview-session-context";
 
 export * from "./types";
 
@@ -24,6 +25,7 @@ export async function analyzeCv(
   // 4. Synthesize final report with rubric scoring and checklist
   const report = buildCvReport(parsed, ruleIssues, llmResults, context);
   report.metadata.fileSizeBytes = fileBuffer.byteLength;
+  report.parsedCvData = convertParsedSectionsToCvData(parsed);
 
   return report;
 }
