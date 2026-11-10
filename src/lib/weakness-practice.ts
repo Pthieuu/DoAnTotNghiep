@@ -28,6 +28,12 @@ export type WeaknessPracticeTarget = {
   sources: WeaknessPracticeSource[];
 };
 
+export type WeaknessPracticeContext = {
+  rubricVersion: string;
+  targets: WeaknessPracticeTarget[];
+  previousAnswers: { questionIndex: number; question: string; answer: string }[];
+};
+
 const SUGGESTIONS: Record<CriterionId, string> = {
   C01: "Trả lời trực tiếp ý chính của câu hỏi trước khi giải thích thêm.",
   C02: "Bổ sung một ví dụ thật, nêu rõ việc bạn đã làm và kết quả hoặc bài học.",
