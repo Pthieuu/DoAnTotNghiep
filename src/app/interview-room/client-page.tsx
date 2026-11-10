@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import RubricDetails from "@/components/rubric-details";
 import type { RubricResult } from "@/lib/interview-rubric";
+import type { WeaknessPracticeSession } from "@/lib/weakness-practice";
+import WeaknessPracticeGoals from "@/components/weakness-practice-goals";
 
 type AIState = "idle" | "speaking" | "listening" | "thinking";
 
@@ -18,7 +20,8 @@ type RoomSession = {
   id: string; title: string; company: string | null; level: string | null;
   interviewType: string; interviewLanguage: string;
   total: number; currentQuestion: StoredQuestion | null; turns: StoredTurn[];
-  completed: boolean; loadError?: "session" | "answers"
+  completed: boolean; loadError?: "session" | "answers";
+  practice?: WeaknessPracticeSession | null;
 };
 
 function checkAndCleanFinishPhrase(text: string): { finished: boolean; cleanText: string; matchedPhrase: string } {
@@ -226,6 +229,8 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         onResume={handleResume}
         onExit={handleExitClick}
       />
+
+      {session.practice && <WeaknessPracticeGoals practice={session.practice} />}
 
       {(error || session.loadError) && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{error || "Không thể tải dữ liệu phỏng vấn. Vui lòng thử lại."}</div>}
       {live.error && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{live.error}</div>}

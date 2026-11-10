@@ -34,6 +34,22 @@ export type WeaknessPracticeContext = {
   previousAnswers: { questionIndex: number; question: string; answer: string }[];
 };
 
+export type WeaknessPracticeSession = {
+  sourceSessionId: string;
+  selectedCriteria: CriterionId[];
+};
+
+export function getWeaknessPracticeSession(sourceSessionId: unknown, selectedCriteria: unknown): WeaknessPracticeSession | null {
+  if (typeof sourceSessionId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sourceSessionId)
+    || !Array.isArray(selectedCriteria) || !selectedCriteria.length || selectedCriteria.length > CRITERIA.length
+    || new Set(selectedCriteria).size !== selectedCriteria.length
+    || selectedCriteria.some(id => !CRITERIA.some(criterion => criterion.id === id))) return null;
+  return {
+    sourceSessionId,
+    selectedCriteria: CRITERIA.filter(criterion => selectedCriteria.includes(criterion.id)).map(criterion => criterion.id),
+  };
+}
+
 const SUGGESTIONS: Record<CriterionId, string> = {
   C01: "Trả lời trực tiếp ý chính của câu hỏi trước khi giải thích thêm.",
   C02: "Bổ sung một ví dụ thật, nêu rõ việc bạn đã làm và kết quả hoặc bài học.",

@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import DashboardShell from "@/components/dashboard-shell";
 import InterviewRoomClient from "./client-page";
 import { createClient } from "@/lib/supabase/server";
+import { getWeaknessPracticeSession, type WeaknessPracticeSession } from "@/lib/weakness-practice";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,8 @@ type RoomSession = {
   id: string; title: string; company: string | null; level: string | null;
   interviewType: string; interviewLanguage: string;
   total: number; currentQuestion: StoredQuestion | null; turns: StoredTurn[];
-  completed: boolean; loadError?: "session" | "answers"
+  completed: boolean; loadError?: "session" | "answers";
+  practice?: WeaknessPracticeSession | null;
 };
 
 export default async function InterviewRoomPage({ searchParams }: PageProps<"/interview-room">) {
@@ -31,18 +33,19 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
   let session: RoomSession | null = null;
   if (typeof sessionId === "string" && sessionId.length <= 64) {
     const { data, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,title,company,level,status,questions,interview_type,interview_language")
+      .select("id,title,company,level,status,questions,interview_type,interview_language,source_session_id,selected_criteria")
       .eq("id", sessionId).eq("user_id", user.id).maybeSingle();
     if (sessionError) {
       session = { id: sessionId, title: "Interview Room", company: null, level: null, interviewType: "mixed", interviewLanguage: "vi", total: 0, currentQuestion: null, turns: [], completed: false, loadError: "session" };
     } else if (data && Array.isArray(data.questions)) {
+      const practice = getWeaknessPracticeSession(data.source_session_id, data.selected_criteria);
       const { data: answerRows, error: answerError } = await supabase.from("interview_answers")
         .select("question_index,answer,score,feedback,rubric_json")
         .eq("session_id", sessionId)
         .order("question_index", { ascending: true });
       const questions = data.questions as StoredQuestion[];
       if (answerError) {
-        session = { id: data.id, title: data.title, company: data.company, level: data.level, interviewType: data.interview_type || "mixed", interviewLanguage: data.interview_language || "vi", total: questions.length, currentQuestion: null, turns: [], completed: false, loadError: "answers" };
+        session = { id: data.id, title: data.title, company: data.company, level: data.level, interviewType: data.interview_type || "mixed", interviewLanguage: data.interview_language || "vi", total: questions.length, currentQuestion: null, turns: [], completed: false, loadError: "answers", practice };
       } else {
         const answers = answerRows || [];
         const publicQuestion = (question: StoredQuestion): StoredQuestion => ({ text: question.text, translation: question.translation, focus: question.focus });
@@ -60,6 +63,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
           currentQuestion: completed || !questions[currentIndex] ? null : publicQuestion(questions[currentIndex]),
           turns,
           completed,
+          practice,
         };
       }
     }

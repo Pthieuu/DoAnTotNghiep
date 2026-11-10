@@ -1,6 +1,7 @@
 import "server-only";
 import { summarizeScores, type RubricResult } from "./interview-rubric";
 import { getAiConfig } from "./ai-config";
+import type { WeaknessPracticeProgress } from "./weakness-practice-progress";
 
 type SummaryInput = {
   sessionTitle: string;
@@ -24,6 +25,7 @@ export type SummaryResult = {
   strengths: string[];
   weaknesses: string[];
   improvementTips: string[];
+  practiceProgress?: WeaknessPracticeProgress;
 };
 
 const summarySchema = {
