@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { evaluateAnswer } from "@/lib/interview-evaluation";
 import { GeminiUnavailableError } from "@/lib/gemini-retry";
+import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
+import { querySessionWithPractice } from "@/lib/interview-session-query";
 
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score?: number };
@@ -26,11 +28,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Vui lòng đăng nhập để lưu câu trả lời." }, 401);
 
-    const { data: session, error: sessionError } = await supabase.from("interview_sessions")
-      .select("id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language")
-      .eq("id", id).eq("user_id", user.id).maybeSingle();
+    const { data: session, error: sessionError } = await querySessionWithPractice(
+      columns => supabase.from("interview_sessions").select(columns)
+        .eq("id", id).eq("user_id", user.id).maybeSingle(),
+      "id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language",
+    );
     if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
+    const practice = getWeaknessPracticeSession(session.source_session_id, session.selected_criteria);
+    if (session.source_session_id && !practice) return json({ error: "Mục tiêu phiên luyện tập không hợp lệ." }, 409);
+    const practiceMetadata = practice ? { practice } : {};
     const questions = session.questions as Question[];
     if (index >= questions.length) return json({ error: "Câu hỏi này không tồn tại trong buổi phỏng vấn." }, 400);
 
@@ -45,7 +52,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const existing = answers.find((item) => item.question_index === index);
     if (index < answers.length) {
       if (!existing || existing.answer !== answer) return json({ error: "Câu trả lời này đã được gửi. Hãy tiếp tục với câu hỏi hiện tại." }, 409);
-      if (session.status === "completed") return json({ completed: true, answeredCount: questions.length });
+      if (session.status === "completed") return json({ completed: true, answeredCount: questions.length, ...practiceMetadata });
       return json({ error: "Câu trả lời này đã được lưu. Hãy tải lại trang để tiếp tục với câu hỏi hiện tại." }, 409);
     } else if (index !== answers.length) {
       return json({ error: "Hãy trả lời các câu hỏi theo thứ tự trong buổi phỏng vấn." }, 409);
@@ -107,11 +114,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         .eq("id", id).eq("user_id", user.id).eq("status", "in_progress")
         .select("id").maybeSingle();
       if (completeError) return json({ error: "Câu trả lời đã được lưu, nhưng không thể kết thúc buổi phỏng vấn. Hãy tải lại trang." }, 500);
-      return json({ completed: true, answeredCount: questions.length });
+      return json({ completed: true, answeredCount: questions.length, ...practiceMetadata });
     }
 
     const nextQuestion = questions[nextIndex];
-    return json({ completed: false, answeredCount: nextIndex, nextQuestion: { text: nextQuestion.text, translation: nextQuestion.translation } });
+    return json({ completed: false, answeredCount: nextIndex, nextQuestion: { text: nextQuestion.text, translation: nextQuestion.translation }, ...practiceMetadata });
   } catch (err) {
     console.error("API Answers Error:", err);
     return json({ error: "Dịch vụ câu trả lời tạm thời không khả dụng." }, 503);
