@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, type FormEvent, type KeyboardEvent } from "react";
+import { useState, useEffect, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/icon";
+import { HANDOFF_PREFIX, parseHandoff, toInterviewCv, type CvHandoff } from "@/lib/cv-checker/virtual-cv";
 import type { CvData } from "@/lib/cv-schema";
 import {
   getInterviewSessionContext,
@@ -28,8 +29,12 @@ const LANGUAGE_OPTIONS = [
 
 const QUESTION_COUNT_OPTIONS = [4, 6, 8, 10];
 
-export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
+export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: SetupCv | null; draftId?: string }) {
   const router = useRouter();
+
+  // Virtual CV Handoff (from cvDraft URL parameter)
+  const [handoff, setHandoff] = useState<CvHandoff | null>(null);
+  const [handoffError, setHandoffError] = useState("");
 
   // Session Context & Hydration
   const [sessionCtx, setSessionCtx] = useState<InterviewSessionContext | null>(null);
@@ -51,20 +56,33 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
 
-  // Read session context & user preferences on client mount
+  // Read draftId handoff and session context on client mount
   useEffect(() => {
     try {
+      if (draftId) {
+        const item = sessionStorage.getItem(HANDOFF_PREFIX + draftId);
+        const parsed = item ? parseHandoff(JSON.parse(item)) : null;
+        if (parsed) {
+          setHandoff(parsed);
+          if (parsed.role) setRole(parsed.role);
+          if (parsed.company) setCompany(parsed.company);
+        } else {
+          setHandoffError("Không tìm thấy CV chuyển tiếp từ Check CV hoặc CV đã hết hạn.");
+        }
+      }
+
       const stored = getInterviewSessionContext();
       const prefs = getInterviewQuickPrefs();
 
       if (stored) {
         setSessionCtx(stored);
-        if (stored.jobPosition) setRole(stored.jobPosition);
-        if (stored.companyName) setCompany(stored.companyName);
+        if (!draftId) {
+          if (stored.jobPosition) setRole(stored.jobPosition);
+          if (stored.companyName) setCompany(stored.companyName);
+        }
         if (stored.jobDescription) setJobDescription(stored.jobDescription);
         if (stored.jlptTarget) setLevel(stored.jlptTarget);
-      } else if (cv) {
-        // Fallback to database CV
+      } else if (savedCv && !draftId) {
         setRole("Backend Developer");
       }
 
@@ -80,7 +98,16 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
     } finally {
       setIsInitialized(true);
     }
-  }, [cv]);
+  }, [draftId, savedCv]);
+
+  // Derived effective CV
+  const effectiveCv: SetupCv | null = draftId
+    ? handoff
+      ? { fileName: handoff.fileName, data: toInterviewCv(handoff) }
+      : null
+    : sessionCtx?.cvData
+    ? { fileName: sessionCtx.cvFileName, data: sessionCtx.cvData }
+    : savedCv;
 
   // Save quick preferences when options change
   const handleTypeChange = (val: string) => {
@@ -148,6 +175,7 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(handoff ? { checkerCv: handoff } : {}),
           role: cleanRole,
           company: company.trim(),
           jobDescription: jobDescription.trim(),
@@ -155,8 +183,8 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
           questionCount,
           interviewType,
           interviewLanguage,
-          cvData: sessionCtx?.cvData || cv?.data || null,
-          isManual: !sessionCtx && !cv,
+          cvData: effectiveCv?.data || null,
+          isManual: !effectiveCv,
         }),
       });
 
@@ -185,7 +213,27 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
     );
   }
 
-  const hasContextOrCv = Boolean(sessionCtx || cv);
+  // Draft loading error if draftId is supplied but invalid
+  if (draftId && !handoff) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 pb-16">
+        <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6 space-y-3">
+          <p role={handoffError ? "alert" : "status"} className="text-sm font-semibold text-indigo-950">
+            {handoffError || "Đang nhận CV đã chỉnh sửa…"}
+          </p>
+          <Link
+            href="/cv-checker"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white hover:bg-secondary rounded-lg transition-colors"
+          >
+            <Icon name="arrow_back" className="w-4 h-4" /> Quay lại Check CV
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  const hasContextOrCv = Boolean(handoff || sessionCtx || savedCv);
+  const displayFileName = handoff?.fileName || sessionCtx?.cvFileName || savedCv?.fileName || "CV";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-20">
@@ -206,8 +254,8 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
         </p>
       </header>
 
-      {/* Case 1: Has Session Context (Synced from Check CV) */}
-      {sessionCtx ? (
+      {/* Case 1: Has Session Context or Handoff (Synced from Check CV) */}
+      {handoff || sessionCtx ? (
         <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 sm:p-4 text-emerald-950 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -218,13 +266,13 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
                 </p>
                 <p
                   className="text-[11px] sm:text-xs text-emerald-800 truncate mt-0.5"
-                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${sessionCtx.cvFileName}`}
+                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${displayFileName}`}
                 >
                   <strong className="font-medium text-emerald-950">
                     {company || "Công ty chưa đặt"}
                   </strong>{" "}
                   · {role || "Vị trí chưa đặt"} ·{" "}
-                  <span className="opacity-80">{sessionCtx.cvFileName}</span>
+                  <span className="opacity-80">{displayFileName}</span>
                 </p>
               </div>
             </div>
@@ -279,7 +327,7 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
             </div>
           )}
         </section>
-      ) : cv ? (
+      ) : savedCv ? (
         /* Case 2: No Session Context, but CV confirmed in database */
         <section className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 sm:p-4 text-sky-950 shadow-2xs">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -291,12 +339,12 @@ export default function InterviewSetupForm({ cv }: { cv: SetupCv | null }) {
                 </p>
                 <p
                   className="text-[11px] sm:text-xs text-sky-800 truncate mt-0.5"
-                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${cv.fileName}`}
+                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${savedCv.fileName}`}
                 >
                   <strong className="font-medium text-sky-950">
                     {company || "Công ty chưa đặt"}
                   </strong>{" "}
-                  · {role || "Vị trí chưa đặt"} · <span className="opacity-80">{cv.fileName}</span>
+                  · {role || "Vị trí chưa đặt"} · <span className="opacity-80">{savedCv.fileName}</span>
                 </p>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { emptyCv, validateCv, type CvData } from "@/lib/cv-schema";
+import { parseHandoff, toInterviewCv } from "@/lib/cv-checker/virtual-cv";
 import { generateInterviewQuestions } from "@/lib/interview-generation";
 
 export const maxDuration = 150;
@@ -36,7 +37,11 @@ export async function POST(request: Request) {
     let cvSnapshot: CvData = emptyCv;
     let cvId: string | null = null;
 
-    if (body?.cvData && validateCv(body.cvData)) {
+    if (body.checkerCv !== undefined) {
+      const handoff = parseHandoff(body.checkerCv);
+      if (!handoff) return json({ error: "Dữ liệu CV chuyển từ Check CV không hợp lệ. Hãy chuyển lại CV." }, 400);
+      cvSnapshot = toInterviewCv(handoff);
+    } else if (body.cvData && validateCv(body.cvData)) {
       cvSnapshot = body.cvData as CvData;
     } else {
       const { data: cvRow, error: cvError } = await supabase.from("candidate_cvs")

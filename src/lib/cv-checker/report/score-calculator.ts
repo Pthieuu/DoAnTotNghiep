@@ -7,6 +7,7 @@ import {
   SectionScore,
   TargetCompanyContext,
 } from "../types";
+import { ISSUE_DEDUCTIONS } from "../virtual-cv";
 import checklistRubric from "../config/checklist-rubric.json";
 import { getScoreTier } from "../config/score-tier";
 import { LlmAnalysisResult } from "../llm-analyzers";
@@ -61,9 +62,7 @@ export function buildCvReport(
     const issues = sectionIssuesMap[secKey];
     let deduction = 0;
     for (const issue of issues) {
-      if (issue.severity === "critical") deduction += 25;
-      else if (issue.severity === "major") deduction += 12;
-      else if (issue.severity === "minor") deduction += 5;
+      deduction += ISSUE_DEDUCTIONS[issue.severity];
     }
 
     let calculatedScore = Math.max(0, 100 - deduction);
@@ -84,6 +83,7 @@ export function buildCvReport(
 
     sections[secKey] = {
       key: secKey,
+      ruleScoreWeight: (secKey === "jiko_pr" && llmResults.jikoPrResult) || (secKey === "shibou_douki" && llmResults.shibouDoukiResult) ? 0.4 : secKey === "education_work" && llmResults.workExpResult ? 0.6 : 1,
       titleVi: config.titleVi,
       titleJa: config.titleJa,
       weight: config.weight,
@@ -216,6 +216,7 @@ export function buildCvReport(
       : "CV còn một số điểm quan trọng cần điều chỉnh trước khi gửi tới nhà tuyển dụng Nhật Bản.";
 
   return {
+    virtualCv: { originalText: parsed.rawText, sections: { personal_info: parsed.personalInfoText, education_work: parsed.educationWorkText, certificates: parsed.certificatesText, skills_hobbies: parsed.skillsHobbiesText, jiko_pr: parsed.jikoPrText, shibou_douki: parsed.shibouDoukiText, formatting_layout: parsed.otherText } },
     overallScore,
     ratingVi,
     summaryVi,
