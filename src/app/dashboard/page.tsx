@@ -5,6 +5,8 @@ import Icon from "@/components/icon";
 import DashboardShell from "@/components/dashboard-shell";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import DashboardPractice from "@/components/dashboard-practice";
+import { loadDashboardPractice } from "@/lib/dashboard-practice";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
-  const { data, error } = await supabase.from("interview_sessions")
-    .select("id,title,company,level,score,status,completed_at")
-    .eq("user_id", user.id).order("completed_at", { ascending: false, nullsFirst: false });
+  const [{ data, error }, practiceData] = await Promise.all([
+    supabase.from("interview_sessions").select("id,title,company,level,score,status,completed_at")
+      .eq("user_id", user.id).order("completed_at", { ascending: false, nullsFirst: false }),
+    loadDashboardPractice(supabase, user.id),
+  ]);
   const sessions = (data || []) as Interview[];
   const params = await searchParams;
   const pageSize = 5;
@@ -83,10 +87,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 <span className="inline-flex shrink-0 items-center justify-center text-[20px] text-secondary"><Icon name="rocket_launch" /></span>
 <span>Start New Interview</span>
 </Link>
-<button type="button" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-space-md py-3 rounded-lg bg-surface-container-lowest/15 hover:bg-surface-container-lowest/25 text-on-primary backdrop-blur-md font-label-lg text-label-lg font-medium transition-all" data-mock="practice-weaknesses">
+<Link href="/dashboard#practice" className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-space-md py-3 rounded-lg bg-surface-container-lowest/15 hover:bg-surface-container-lowest/25 text-on-primary backdrop-blur-md font-label-lg text-label-lg font-medium transition-all">
 <span className="inline-flex shrink-0 items-center justify-center text-[18px] text-tertiary-fixed"><Icon name="bolt" /></span>
-<span>Quick Practice (5 min)</span>
-</button>
+<span>Practice Weaknesses</span>
+</Link>
 </div>
 </div>
 </div>
@@ -319,127 +323,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 </div>
 </div>
 <div className="pt-space-md">
-<button type="button" className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md font-semibold transition-colors" data-mock="practice-weaknesses">
+<Link href="/dashboard#practice" className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md font-semibold transition-colors">
 <span className="inline-flex shrink-0 items-center justify-center text-[16px]"><Icon name="tune" /></span>
           Practice Focus Areas
-        </button>
+        </Link>
 </div>
 </div>
 </div>
 {/* ==========================================
        4. AI RECOMMENDED PRACTICE (弱点克服ドリル)
        ========================================== */}
-<div id="practice" className="scroll-mt-24 space-y-space-sm">
-<div className="flex flex-wrap items-center justify-between gap-space-sm">
-<div className="flex items-center gap-2">
-<span className="p-1.5 rounded-lg bg-primary text-on-primary">
-<span className="inline-flex shrink-0 items-center justify-center text-[18px]"><Icon name="psychology" /></span>
-</span>
-<div>
-<h2 className="font-headline-sm text-headline-sm font-bold text-primary">
-            Recommended Practice
-          </h2>
-<span className="font-body-sm text-body-sm text-on-surface-variant">Personalized drills based on your recent mock interviews.</span>
-</div>
-</div>
-<button type="button" className="font-label-md text-label-md text-secondary hover:text-primary font-semibold flex items-center gap-1" data-mock="practice-weaknesses">
-        View All (5)
-        <span className="inline-flex shrink-0 items-center justify-center text-[16px]"><Icon name="arrow_forward" /></span>
-</button>
-</div>
-<div className="rounded-xl bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">No personalized practice recommendations yet.</div>
-<div className="hidden grid-cols-1 md:grid-cols-3 gap-space-md">
-{/* Drill Card 1: High Priority */}
-<div className="relative bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-<div className="absolute -top-2.5 left-4">
-<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-[10px] font-bold uppercase tracking-wider shadow-sm">
-<span className="inline-flex shrink-0 items-center justify-center text-[12px]"><Icon name="priority_high" /></span> High Priority
-          </span>
-</div>
-<div className="pt-2">
-<div className="flex items-center justify-between text-on-surface-variant mb-2">
-<span className="font-label-sm text-label-sm flex items-center gap-1">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px] text-secondary"><Icon name="contact_support" /></span>
-              Questions for the Interviewer
-            </span>
-<span className="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-low font-medium">10 min</span>
-</div>
-<h3 className="font-title text-title font-bold text-primary group-hover:text-secondary transition-colors">
-            Ask Better Questions · <span lang="ja">逆質問</span>
-          </h3>
-<p className="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
-            Go beyond <span lang="ja">「特に質問はありません」</span> (“I have no questions”). Practice 5 thoughtful questions about engineering teams and CI/CD pipelines.
-          </p>
-<div className="mt-3 flex items-center gap-1 text-on-tertiary-fixed-variant bg-tertiary-fixed/30 px-2 py-1 rounded font-furigana text-furigana">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px]"><Icon name="lightbulb" /></span>
-            Example: <span lang="ja">「貴社のマイクロサービス移行における課題について伺えますか」</span> — Could you share the challenges of your microservices migration?
-          </div>
-</div>
-<div className="mt-space-md pt-space-sm">
-<button type="button" className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary text-on-primary hover:bg-secondary font-label-md text-label-md font-semibold transition-colors shadow-sm" data-mock="practice-weaknesses">
-<span className="inline-flex shrink-0 items-center justify-center text-[18px]"><Icon name="play_circle" /></span>
-            Start Drill
-          </button>
-</div>
-</div>
-{/* Drill Card 2 */}
-<div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-<div>
-<div className="flex items-center justify-between text-on-surface-variant mb-2">
-<span className="font-label-sm text-label-sm flex items-center gap-1">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px] text-tertiary-container"><Icon name="spellcheck" /></span>
-              Grammar &amp; Particles
-            </span>
-<span className="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-low font-medium">5 min</span>
-</div>
-<h3 className="font-title text-title font-bold text-primary group-hover:text-secondary transition-colors">
-            Master Particles · <span lang="ja">「〜に興味があります」</span>
-          </h3>
-<p className="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
-            Practice <span lang="ja">「〜に興味があります」</span> (“I am interested in…”). Identify missing or incorrect particles and build natural interview answers.
-          </p>
-<div className="mt-3 flex items-center gap-1 text-on-surface-variant bg-surface-container-low px-2 py-1 rounded font-furigana text-furigana">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px]"><Icon name="autorenew" /></span>
-            Build fluency by listening and repeating aloud.
-          </div>
-</div>
-<div className="mt-space-md pt-space-sm">
-<button type="button" className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md font-semibold transition-colors" data-mock="practice-weaknesses">
-<span className="inline-flex shrink-0 items-center justify-center text-[18px]"><Icon name="play_circle" /></span>
-            Practice Particles (5 min)
-          </button>
-</div>
-</div>
-{/* Drill Card 3 */}
-<div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
-<div>
-<div className="flex items-center justify-between text-on-surface-variant mb-2">
-<span className="font-label-sm text-label-sm flex items-center gap-1">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px] text-secondary"><Icon name="terminal" /></span>
-              Technical Interview · PREP
-            </span>
-<span className="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-low font-medium">15 min</span>
-</div>
-<h3 className="font-title text-title font-bold text-primary group-hover:text-secondary transition-colors">
-            Explain Technical Challenges with PREP
-          </h3>
-<p className="font-body-sm text-body-sm text-on-surface-variant mt-2 leading-relaxed">
-            Tell AI interviewer Tanaka about a difficult bug and how you solved it. Structure your answer with PREP: Point, Reason, Example, Point.
-          </p>
-<div className="mt-3 flex items-center gap-1 text-on-surface-variant bg-surface-container-low px-2 py-1 rounded font-furigana text-furigana">
-<span className="inline-flex shrink-0 items-center justify-center text-[14px]"><Icon name="smart_toy" /></span>
-            AI interviewer: Tanaka · Senior Tech Lead
-          </div>
-</div>
-<div className="mt-space-md pt-space-sm">
-<button type="button" className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md font-semibold transition-colors" data-mock="practice-weaknesses">
-<span className="inline-flex shrink-0 items-center justify-center text-[18px]"><Icon name="play_circle" /></span>
-            Practice with AI (15 min)
-          </button>
-</div>
-</div>
-</div>
-</div>
+<DashboardPractice key={practiceData.session?.id || "no-practice"} data={practiceData} />
 {/* ==========================================
        5. ACTIVE PREP CONTEXT & TARGET JOB PROFILE
        ========================================== */}
