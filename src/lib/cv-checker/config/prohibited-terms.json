@@ -1,0 +1,52 @@
+{
+  "prohibitedTerms": [
+    {
+      "term": "Credly",
+      "pattern": "credly",
+      "flags": "i",
+      "category": "certificates",
+      "severity": "critical",
+      "ruleCode": "RULE_CREDLY_BANNED",
+      "title": "Nên bỏ các dòng huy hiệu Credly trong mục chứng chỉ",
+      "problemVi": "Mục 資格 đang có các dòng Credly バッジ.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật thường chú trọng các chứng chỉ năng lực chính thức (như JLPT, văn bằng hoặc giải thưởng thực tế). Các huy hiệu khóa học trực tuyến dạng Credly thường làm mục này bị loãng và giảm trọng tâm chuyên môn.",
+      "solutionVi": "Bạn nên bỏ các dòng Credly バッジ và chỉ giữ học bổng, JLPT và các chứng chỉ chính thức khác để mục này gọn và đúng trọng tâm hơn."
+    },
+    {
+      "term": "UPD",
+      "pattern": "\\bUPD\\b",
+      "flags": "",
+      "category": "education_work",
+      "severity": "critical",
+      "ruleCode": "RULE_ABBR_UPD",
+      "title": "Nên ghi đầy đủ tên trường thay vì viết tắt UPD",
+      "problemVi": "Tên trường đang được viết tắt là 'UPD'.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật Bản thường không quen thuộc với các tên viết tắt của trường đại học tại Việt Nam, điều này có thể gây khó khăn khi đối chiếu hồ sơ.",
+      "solutionVi": "Bạn nên ghi tên trường đầy đủ bằng tiếng Nhật: フォンドン大学／ソフトウェアサイエンス学部"
+    },
+    {
+      "term": "越間",
+      "pattern": "越間",
+      "flags": "",
+      "category": "education_work",
+      "severity": "critical",
+      "ruleCode": "RULE_VKU_TYPO",
+      "title": "Cần chỉnh lại chữ Hán tên trường VKU (越間 -> 越韓)",
+      "problemVi": "Tên trường đang viết chữ Hán là 越間.",
+      "whyWrongVi": "Chữ 'Hàn' trong Việt - Hàn cần được viết chính xác là 韓 để thể hiện sự chuẩn chỉnh trong hồ sơ gửi doanh nghiệp.",
+      "solutionVi": "Bạn nên sửa chữ 間 thành 韓: 越韓情報通信技術大学／コンピューターサイエンス学部"
+    },
+    {
+      "term": "CNTT Việt Nhật",
+      "pattern": "CNTT\\s*Việt\\s*Nhật",
+      "flags": "i",
+      "category": "education_work",
+      "severity": "major",
+      "ruleCode": "RULE_ABBR_CNTT_VN",
+      "title": "Nên dùng tên ngành đào tạo bằng tiếng Nhật",
+      "problemVi": "Phần học vấn đang để cụm từ tiếng Việt 'CNTT Việt Nhật'.",
+      "whyWrongVi": "Nhà tuyển dụng Nhật sẽ dễ nắm bắt chuyên môn đào tạo của bạn hơn khi tên ngành được viết bằng tiếng Nhật tương đương.",
+      "solutionVi": "Bạn nên ghi tên chuyên ngành bằng tiếng Nhật theo hướng dẫn của khoa đào tạo."
+    }
+  ]
+}

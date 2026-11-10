@@ -43,11 +43,11 @@ const navigation: NavItem[] = [
     aliases: ["my cv", "cv"],
   },
   {
-    label: "Job Description",
-    icon: "business_center",
-    anchor: "/dashboard#profile",
+    label: "Check CV",
+    icon: "fact_check",
+    anchor: "/cv-checker",
     section: "Overview",
-    aliases: ["job description", "job-description"],
+    aliases: ["check cv", "cv-checker"],
   },
 
   // Interview Lab
