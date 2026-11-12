@@ -61,6 +61,9 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
   const [failedAnswer, setFailedAnswer] = useState<{ sessionId: string; index: number; text: string } | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [finishError, setFinishError] = useState("");
+  const finishingRef = useRef(false);
 
   const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
   const transcript = live.candidateTranscript;
@@ -85,6 +88,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   const handleExitClick = useCallback(() => {
     live.stop();
+    setFinishError("");
     setShowExitModal(true);
   }, [live]);
 
@@ -111,7 +115,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   // 1. Tự động đọc câu hỏi khi bắt đầu hoặc khi chuyển câu hỏi mới
   useEffect(() => {
-    if (!session || session.completed || !session.currentQuestion || isPaused) return;
+    if (!session || session.completed || !session.currentQuestion || isPaused || showExitModal || isFinishing) return;
     if (hasAutoStartedRef.current === currentQuestionIndex) return;
 
     const timer = setTimeout(() => {
@@ -124,7 +128,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live, isPaused]);
+  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live, isPaused, showExitModal, isFinishing]);
 
   const toggleMic = () => {
     if (isListening) {
@@ -137,7 +141,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   const submitAnswer = useCallback(async (customAnswer?: string) => {
     const answerToSend = (typeof customAnswer === "string" ? customAnswer : transcript).trim();
-    if (!session || !session.currentQuestion || !answerToSend || isSubmittingRef.current) return;
+    if (!session || !session.currentQuestion || !answerToSend || isSubmittingRef.current || finishingRef.current) return;
 
     isSubmittingRef.current = true;
     setIsSubmitting(true);
@@ -179,7 +183,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   // 2. Tự động nhận diện câu "Tôi xin hết" để kết thúc và gửi câu trả lời
   useEffect(() => {
-    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current || isPaused) return;
+    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current || isPaused || showExitModal || isFinishing) return;
     if (live.clarifying || live.state !== "listening" || !transcript.trim()) return;
 
     const { finished, cleanText, matchedPhrase } = checkAndCleanFinishPhrase(transcript);
@@ -189,7 +193,25 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
       setAutoFinishMessage(`Đã nhận diện "${matchedPhrase}" - Đang gửi câu trả lời...`);
       void submitAnswer(cleanText);
     }
-  }, [transcript, live.state, isSubmitting, submitAnswer, live, isPaused]);
+  }, [transcript, live.state, isSubmitting, submitAnswer, live, isPaused, showExitModal, isFinishing]);
+
+  async function finishSession() {
+    if (!session || finishingRef.current || isSubmittingRef.current || isSubmitting) return;
+    finishingRef.current = true;
+    setIsFinishing(true);
+    setFinishError("");
+    live.stop();
+    try {
+      const response = await fetch(`/api/interviews/${session.id}/finish`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || data.completed !== true) throw new Error(data.error || "Không thể kết thúc phiên phỏng vấn.");
+      router.push(`/summary?sessionId=${session.id}`);
+    } catch (error) {
+      setFinishError(error instanceof Error ? error.message : "Không thể kết thúc phiên phỏng vấn.");
+      setIsFinishing(false);
+      finishingRef.current = false;
+    }
+  }
 
   if (!session) {
     return (
@@ -273,6 +295,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
                 ? "Hãy hỏi AI bằng giọng nói, có thể dùng tiếng Việt. Phần hỏi lại không được ghi vào câu trả lời. Khi AI giải thích xong, bấm ‘Đã hiểu’ trước khi trả lời."
                 : "Khi AI nói xong, bạn có thể bật ‘Hỏi lại’ để yêu cầu giải thích từ, ngữ pháp, xác nhận cách hiểu hoặc nhắc lại câu hỏi."}
             </p>
+
           </div>}
           <InterviewControls
             isCompleted={!!isCompleted}
@@ -348,6 +371,9 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
                 : `Bạn chưa hoàn thành câu trả lời nào. Nếu thoát bây giờ, bạn có thể quay lại luyện tập bất kỳ lúc nào từ Dashboard.`}
             </p>
 
+            {session.turns.length > 0 && <p className="text-sm text-on-surface-variant">Kết thúc sớm sẽ chỉ tổng kết {session.turns.length}/{session.total} câu đã gửi. Câu trả lời đang nói hoặc chưa gửi không được tính.</p>}
+            {finishError && <p role="alert" className="rounded-lg bg-error-container p-3 text-sm text-on-error-container">{finishError}</p>}
+
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
@@ -355,6 +381,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
                   live.stop();
                   router.push("/dashboard");
                 }}
+                disabled={isFinishing}
                 className="w-full py-2.5 px-4 rounded-xl bg-primary text-white hover:bg-secondary font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
               >
                 <Icon name="dashboard" />
@@ -364,20 +391,19 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
               {session.turns.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    live.stop();
-                    router.push(`/summary?sessionId=${session.id}`);
-                  }}
+                  onClick={() => void finishSession()}
+                  disabled={isFinishing || isSubmitting}
                   className="w-full py-2.5 px-4 rounded-xl border border-surface-container hover:bg-surface-container-high text-primary font-semibold transition-colors flex items-center justify-center gap-2"
                 >
                   <Icon name="assessment" />
-                  <span>Kết thúc sớm &amp; Xem kết quả</span>
+                  <span>{isFinishing ? "Đang kết thúc phiên..." : "Kết thúc sớm & Xem kết quả"}</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={() => setShowExitModal(false)}
+                disabled={isFinishing}
                 className="w-full py-2 px-4 rounded-xl text-on-surface-variant hover:bg-surface-container text-sm font-medium transition-colors"
               >
                 Ở lại tiếp tục phỏng vấn

@@ -120,6 +120,11 @@ export default function SummaryClient({
         <button type="button" onClick={retrySummary} className="font-semibold underline underline-offset-4">Thử lại cập nhật kết quả</button>
       </div>}
       {progress && <WeaknessPracticeProgressReport progress={progress} />}
+      {summary.completionScope && <section aria-label="Phạm vi tổng kết" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-1">
+        <h2 className="font-semibold">Phiên phỏng vấn đã kết thúc sớm</h2>
+        <p>Đã trả lời {summary.completionScope.answeredCount}/{summary.completionScope.plannedCount} câu. Tổng kết chỉ dựa trên các câu đã gửi: {summary.completionScope.questionNumbers.join(", ")}.</p>
+        <p>Các câu chưa trả lời không được chấm và không bị tính 0 điểm. Điểm hiển thị là điểm tạm tính cho phần đã trả lời.</p>
+      </section>}
 
       <div className="bg-white rounded-3xl p-8 border border-surface-container shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-16 justify-center">
         <div className="text-center">
