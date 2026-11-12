@@ -114,6 +114,20 @@ test('ordinary uncached sessions still generate their standard summary without p
   assert.ok(!instance.state.calls.some(call => call.filters.id === sourceId));
 });
 
+test('early completion summarizes only persisted answers and records the original scope without assigning zeros', async () => {
+  const instance = fixture({ normal: true, currentRows: rows(3, 2) });
+  const response = await instance.post();
+  assert.equal(response.status, 200);
+  const result = (await response.json()).summary;
+  assert.deepEqual(result.completionScope, { answeredCount: 2, plannedCount: 4, questionNumbers: [1, 2] });
+  assert.equal(result.provisional, true);
+  assert.equal(result.grade, 'Chưa xếp loại');
+  assert.equal(instance.state.generated[0].answers.length, 2);
+  assert.equal(instance.state.generated[0].totalQuestions, 4);
+  assert.deepEqual(instance.state.generated[0].answers.map(answer => answer.questionNumber), [1, 2]);
+  assert.equal(instance.state.updates[0].value.score, null);
+});
+
 test('ordinary summaries still load and generate when practice migrations are absent', async () => {
   for (const cached of [summary, null]) {
     const instance = fixture({ normal: true, cached, missingPracticeColumns: true });

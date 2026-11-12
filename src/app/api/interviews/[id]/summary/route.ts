@@ -112,7 +112,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         answer: a.answer,
         score: a.score,
         rubric: a.rubric_json,
-        feedback: a.feedback
+        feedback: a.feedback,
+        ...(answers.length < questions.length ? { questionNumber: a.question_index + 1 } : {})
       };
     });
 
@@ -131,6 +132,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
     }
     if (practiceProgress) summaryResult = { ...summaryResult, practiceProgress };
+    if (answers.length < questions.length) {
+      summaryResult = {
+        ...summaryResult,
+        provisional: true,
+        grade: "Chưa xếp loại",
+        completionScope: {
+          answeredCount: answers.length,
+          plannedCount: questions.length,
+          questionNumbers: answers.map(answer => answer.question_index + 1),
+        },
+      };
+    }
 
     const overallScore = summaryResult.totalScore === null || summaryResult.provisional ? null : Math.round(summaryResult.totalScore);
     const { error: updateError } = await supabase.from("interview_sessions")
