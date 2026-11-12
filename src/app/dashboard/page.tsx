@@ -29,15 +29,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const user = await getUser();
   if (!user) redirect("/login");
   const supabase = await createClient();
-  const [data, practiceData, params] = await Promise.all([
-    loadDashboardData(supabase, user.id), loadDashboardPractice(supabase, user.id), searchParams,
+  const params = await searchParams;
+  const [data, practiceData] = await Promise.all([
+    loadDashboardData(supabase, user.id, params.historyPage), loadDashboardPractice(supabase, user.id),
   ]);
-  const pageSize = 5;
-  const pageCount = Math.max(1, Math.ceil(data.sessions.length / pageSize));
-  const requestedPage = typeof params.historyPage === "string" ? Number(params.historyPage) : 1;
-  const historyPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, pageCount) : 1;
+  const { page: historyPage, pageSize, totalCount } = data.history;
+  const pageCount = Math.max(1, Math.ceil((totalCount ?? 0) / pageSize));
   const startIndex = (historyPage - 1) * pageSize;
-  const visibleSessions = data.sessions.slice(startIndex, startIndex + pageSize);
+  const visibleSessions = data.sessions;
   function historyHref(page: number) {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
@@ -80,8 +79,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </table>
           {data.sessionsError ? <p role="alert" className="py-6 text-center text-sm text-error">Không tải được lịch sử phỏng vấn.</p> : data.sessions.length === 0 && <p className="py-8 text-center text-sm text-on-surface-variant">Chưa có phiên phỏng vấn. Bắt đầu một phiên mới để theo dõi tiến độ.</p>}
         </div>
-        {!data.sessionsError && data.sessions.length > pageSize && <nav aria-label="Interview history pagination" className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-surface-container pt-4 text-sm">
-          <p className="text-on-surface-variant">{startIndex + 1}–{Math.min(startIndex + pageSize, data.sessions.length)} / {data.sessions.length} phiên</p>
+        {!data.sessionsError && totalCount !== null && totalCount > pageSize && <nav aria-label="Interview history pagination" className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-surface-container pt-4 text-sm">
+          <p className="text-on-surface-variant">{startIndex + 1}–{Math.min(startIndex + pageSize, totalCount)} / {totalCount} phiên</p>
           <div className="flex items-center gap-3">
             {historyPage > 1 ? <Link href={historyHref(historyPage - 1)} className="rounded-lg border border-surface-container px-3 py-2 font-medium text-primary">Trước</Link> : <span aria-disabled="true" className="text-on-surface-variant opacity-40">Trước</span>}
             <span aria-live="polite">Trang {historyPage} / {pageCount}</span>

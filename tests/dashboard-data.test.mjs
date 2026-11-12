@@ -105,18 +105,25 @@ function clientFixture(options = {}) {
     const call = { table, filters: {} };
     calls.push(call);
     const builder = {
-      select: columns => { call.columns = columns; return builder; },
+      select: (columns, selectOptions) => { call.columns = columns; call.selectOptions = selectOptions; return builder; },
       eq: (key, value) => { call.filters[key] = value; return builder; },
       in: (key, value) => { call.filters[key] = plain(value); return builder; },
       order: () => builder, limit: count => { call.limit = count; return builder; },
-      maybeSingle: async () => ({ data: table === 'candidate_profiles' ? profile : cv, error: options.failedTable === table ? { code: 'failed' } : null }),
-      then: (resolve, reject) => Promise.resolve({
-        data: table === 'interview_sessions' ? [session()] : [row()], error: options.failedTable === table ? { code: 'failed' } : null,
-      }).then(resolve, reject),
+      range: (from, to) => { call.range = [from, to]; return builder; },
+      maybeSingle: async () => ({ data: table === 'candidate_profiles' ? profile : table === 'candidate_cvs' ? cv : session(), error: options.failedTable === table ? { code: 'failed' } : null }),
+      then: (resolve, reject) => {
+        let data;
+        let count = null;
+        if (table === 'interview_answers') data = options.answers ?? [row()];
+        else if (call.selectOptions?.head) { data = null; count = options.totalCount ?? 1; }
+        else if (call.filters.status === 'completed') { data = options.recent ?? [session()]; count = options.completedCount ?? data.length; }
+        else data = (options.historyRows ?? [session()]).slice(call.range[0], call.range[1] + 1);
+        return Promise.resolve({ data, count, error: options.failedTable === table ? { code: 'failed' } : null }).then(resolve, reject);
+      },
     };
     return builder;
   } };
-  return { calls, get: () => loadDashboardData(client, userId) };
+  return { calls, get: page => loadDashboardData(client, userId, page) };
 }
 
 test('loader filters profile, CV and sessions by owner and restricts rubric reads to those completed sessions', async () => {
@@ -134,7 +141,7 @@ test('loader filters profile, CV and sessions by owner and restricts rubric read
 test('source failures remain visible while successfully loaded sections keep their own data', async () => {
   for (const table of ['candidate_profiles', 'candidate_cvs', 'interview_sessions', 'interview_answers']) {
     const data = await clientFixture({ failedTable: table }).get();
-    assert.equal(data.errors.length, 1);
+    assert.ok(data.errors.length >= 1);
     if (table === 'interview_sessions') assert.equal(data.completedCount, null);
     if (table === 'interview_answers') {
       assert.equal(data.averageScore, null);
@@ -142,6 +149,75 @@ test('source failures remain visible while successfully loaded sections keep the
       assert.equal(data.profile.target, profile.target);
     }
   }
+});
+
+test('queries bound history and analytics independently while using database counts for full account totals', async () => {
+  const historyRows = Array.from({ length: 12 }, (_, index) => session(`history-${index}`));
+  const instance = clientFixture({ totalCount: 12, completedCount: 9, historyRows });
+  const result = await instance.get('2');
+  assert.deepEqual(plain(result.history), { page: 2, pageSize: 5, totalCount: 12 });
+  assert.equal(result.sessions.length, 5);
+  assert.equal(result.completedCount, 9);
+  assert.equal(result.skillSession.id, 'latest');
+  assert.equal(result.latest.id, 'latest');
+  const history = instance.calls.find(call => call.range);
+  assert.deepEqual(history.range, [5, 9]);
+  assert.equal(history.columns.includes('job_description'), false);
+  const recent = instance.calls.find(call => call.filters.status === 'completed');
+  assert.equal(recent.limit, 20);
+  assert.equal(recent.selectOptions.count, 'exact');
+  assert.ok(instance.calls.some(call => call.selectOptions?.head && call.selectOptions.count === 'exact'));
+  assert.equal(instance.calls.find(call => call.table === 'interview_answers').limit, 300);
+  for (const call of instance.calls.filter(call => call.table !== 'interview_answers')) assert.equal(call.filters.user_id, userId);
+});
+
+test('history pages are clamped by database totals and invalid page values use the first page', async () => {
+  for (const [requested, expected] of [['999', 3], ['-1', 1], ['NaN', 1], ['Infinity', 1], ['1.5', 1], [['2'], 1]]) {
+    const instance = clientFixture({ totalCount: 12 });
+    const result = await instance.get(requested);
+    assert.equal(result.history.page, expected);
+    assert.deepEqual(instance.calls.find(call => call.range).range, [(expected - 1) * 5, expected * 5 - 1]);
+  }
+});
+
+test('empty accounts do not fetch history rows or rubric answers', async () => {
+  const instance = clientFixture({ totalCount: 0, completedCount: 0, recent: [] });
+  const result = await instance.get('999');
+  assert.equal(result.history.page, 1);
+  assert.equal(result.history.totalCount, 0);
+  assert.equal(result.completedCount, 0);
+  assert.equal(result.sessions.length, 0);
+  assert.equal(result.averageScore, null);
+  assert.ok(!instance.calls.some(call => call.range || call.table === 'interview_answers'));
+});
+
+test('each valid answer rubric is accessed once and reused across skill and score calculations', () => {
+  const sessions = Array.from({ length: 20 }, (_, index) => session(`session-${index}`, { question_count: 15 }));
+  let reads = 0;
+  let sessionReads = 0;
+  const inputs = sessions.flatMap(session => Array.from({ length: 15 }, (_, index) => {
+    const input = row(session.id, 3, { question_index: index });
+    const rubric = input.rubric_json;
+    const sessionId = input.session_id;
+    Object.defineProperty(input, 'rubric_json', { get() { reads++; return rubric; } });
+    Object.defineProperty(input, 'session_id', { get() { sessionReads++; return sessionId; } });
+    return input;
+  }));
+  const result = build({ sessions, answers: inputs });
+  assert.equal(reads, 300);
+  assert.equal(sessionReads, 300);
+  assert.equal(result.scoredCount, 20);
+  assert.equal(result.averageScore, 75);
+  assert.equal(result.skills[0].assessedAnswers, 15);
+});
+
+test('duplicated criteria remain unassessed after indexing, including a third occurrence', () => {
+  const input = row();
+  input.rubric_json.criteria.push({ ...input.rubric_json.criteria[0] }, { ...input.rubric_json.criteria[0] });
+  const result = build({ answers: [input] });
+  assert.equal(result.skills[0].percent, null);
+  assert.equal(result.skills[1].percent, 75);
+  assert.equal(result.averageScore, null);
 });
 
 const ui = load('src/components/dashboard-overview.tsx', {
@@ -174,12 +250,14 @@ test('dashboard page wires real data and preserves history pagination links and 
   const partial = data.sessions.find(item => item.id === 'session-0');
   partial.score = null;
   partial.summary_json = { provisional: true, totalScore: 60 };
+  data.sessions = data.sessions.slice(5);
+  data.history = { page: 2, pageSize: 5, totalCount: 7 };
   const { default: Page } = load('src/app/dashboard/page.tsx', {
     'react/jsx-runtime': jsxRuntime, 'next/link': { __esModule: true, default: () => null },
     'next/navigation': { redirect: () => { throw new Error('Unexpected redirect'); } },
     '@/lib/auth': { getUser: async () => ({ id: userId, name: 'User' }) },
     '@/lib/supabase/server': { createClient: async () => ({}) },
-    '@/lib/dashboard-data': { loadDashboardData: async (_client, owner) => { assert.equal(owner, userId); return data; } },
+    '@/lib/dashboard-data': { loadDashboardData: async (_client, owner, page) => { assert.equal(owner, userId); assert.equal(page, '2'); return data; } },
     '@/lib/dashboard-practice': { loadDashboardPractice: async () => ({ session: null, targets: [] }) },
     '@/components/dashboard-shell': { __esModule: true, default: () => null },
     '@/components/dashboard-practice': { __esModule: true, default: () => null },
