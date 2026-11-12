@@ -234,6 +234,36 @@ test('empty dashboard renders unassessed skills without zero bars, fabricated cr
   ] }));
   assert.ok(html.includes('Chưa đánh giá'));
   for (const obsolete of ['0%', 'JLPT N2', 'Rakuten', 'Tanaka', 'Estimated Pass Rate', 'role="progressbar"']) assert.ok(!html.includes(obsolete), obsolete);
+  const tree = ui.DashboardAnalytics({ data });
+  for (const heading of ['score-progression-heading', 'skill-breakdown-heading']) {
+    const section = nodes(tree, node => node.props?.['aria-labelledby'] === heading)[0];
+    const sectionHtml = renderToStaticMarkup(section);
+    assert.ok(sectionHtml.includes('href="/interview-setup"'));
+    assert.ok(sectionHtml.includes('Start New Interview'));
+    assert.ok(sectionHtml.includes('<h3'));
+  }
+});
+
+test('empty analytics for completed but unassessed sessions offers their summary and a new interview', () => {
+  const data = build({ sessions: [session('unassessed', { score: null })], answers: [] });
+  const html = renderToStaticMarkup(jsxRuntime.jsx(ui.DashboardAnalytics, { data }));
+  assert.equal((html.match(/href="\/summary\?sessionId=unassessed"/g) ?? []).length, 2);
+  assert.equal((html.match(/Start New Interview/g) ?? []).length, 2);
+  assert.ok(!html.includes('0%'));
+});
+
+test('partial skill data stays visible with a nearby action to obtain missing assessments', () => {
+  const input = row();
+  input.rubric_json.criteria[4].status = 'not_applicable';
+  input.rubric_json.criteria[4].level = null;
+  const data = build({ answers: [input] });
+  const tree = ui.DashboardAnalytics({ data });
+  const section = nodes(tree, node => node.props?.['aria-labelledby'] === 'skill-breakdown-heading')[0];
+  const html = renderToStaticMarkup(section);
+  assert.ok(html.includes('75%'));
+  assert.ok(html.includes('Chưa đánh giá'));
+  assert.ok(html.includes('Một số tiêu chí chưa được đánh giá'));
+  assert.ok(html.includes('href="/interview-setup"'));
 });
 
 test('populated dashboard renders profile preferences, confirmed CV and JD; valid zero scores are visible', () => {
@@ -243,6 +273,8 @@ test('populated dashboard renders profile preferences, confirmed CV and JD; vali
     jsxRuntime.jsx(ui.DashboardAnalytics, { data }), jsxRuntime.jsx(ui.DashboardContext, { data }),
   ] }));
   for (const expected of ['Data Engineer', 'JLPT N4', 'resume.pdf', 'Kinh nghiệm từ CV đã xác nhận.', 'JD riêng của tài khoản', 'SQL', 'TypeScript', '0%', '0/100']) assert.ok(html.includes(expected), expected);
+  assert.ok(!html.includes('Bắt đầu hành trình theo dõi tiến bộ'));
+  assert.ok(!html.includes('Khám phá điểm mạnh và mục tiêu cải thiện'));
 });
 
 test('dashboard page wires real data and preserves history pagination links and cancelled states', async () => {

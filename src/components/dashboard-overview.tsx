@@ -18,6 +18,19 @@ function Metric({ title, value, detail, icon }: { title: string; value: string; 
   </article>;
 }
 
+function AnalyticsEmptyState({ icon, title, description, sessionId }: {
+  icon: IconName; title: string; description: string; sessionId?: string;
+}) {
+  return <div className="mt-5 flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-secondary/25 bg-surface-container-low/60 px-5 py-7 text-center">
+    <span aria-hidden="true" className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-secondary-fixed/60 text-secondary"><Icon name={icon} className="text-2xl" /></span>
+    <span className="mb-2 text-xs font-semibold text-secondary">Chưa đánh giá</span>
+    <h3 className="text-base font-bold text-primary">{title}</h3>
+    <p className="mt-2 max-w-sm text-sm leading-relaxed text-on-surface-variant">{description}</p>
+    <Link href="/interview-setup" className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary"><Icon name="rocket_launch" />Start New Interview</Link>
+    {sessionId && <Link href={`/summary?sessionId=${sessionId}`} className="mt-3 text-sm font-medium text-secondary underline underline-offset-4">Xem kết quả phiên gần nhất</Link>}
+  </div>;
+}
+
 export function DashboardHero({ user, data }: { user: AuthUser; data: DashboardData }) {
   const target = text(data.profile?.target);
   const level = text(data.profile?.jlpt_level);
@@ -46,6 +59,7 @@ export function DashboardAnalytics({ data }: { data: DashboardData }) {
   const japanese = data.skills.find(skill => skill.id === "C05");
   const structure = data.skills.find(skill => skill.id === "C03");
   const percent = (value: number | null | undefined) => value === null || value === undefined ? "Chưa đánh giá" : `${value}%`;
+  const hasSkillData = data.skills.some(skill => skill.percent !== null);
   return <>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Metric title="Completed Interviews" value={data.completedCount === null ? "Chưa tải được" : String(data.completedCount)} detail="Số phiên đã hoàn thành trong tài khoản, bao gồm phiên kết thúc sớm." icon="video_chat" />
@@ -54,8 +68,8 @@ export function DashboardAnalytics({ data }: { data: DashboardData }) {
       <Metric title="Cấu trúc PREP/STAR · C03" value={percent(structure?.percent)} detail={structure?.assessedAnswers ? `Dựa trên ${structure.assessedAnswers} câu được chấm ở phiên hoàn thành gần nhất.` : "Chưa có dữ liệu chấm cấu trúc hợp lệ."} icon="analytics" />
     </div>
     <section id="analytics" aria-label="Phân tích phỏng vấn" className="grid scroll-mt-24 gap-5 lg:grid-cols-12">
-      <div className={`${card} lg:col-span-7`}>
-        <h2 className="text-lg font-bold text-primary">Interview Scores &amp; Progress</h2>
+      <section aria-labelledby="score-progression-heading" className={`${card} lg:col-span-7`}>
+        <h2 id="score-progression-heading" className="text-lg font-bold text-primary">Interview Scores &amp; Progress</h2>
         <p className="mt-1 text-sm text-on-surface-variant">Tối đa 5 phiên có điểm chính thức, cùng phạm vi đánh giá với phiên được chấm gần nhất.</p>
         {data.scores.length ? <div aria-label="Điểm các phiên phỏng vấn" className="mt-5 flex h-56 items-end justify-center gap-3 sm:gap-6">
           {data.scores.map(session => <Link key={session.id} href={`/summary?sessionId=${session.id}`} aria-label={`${session.title}: ${session.score}/100`} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
@@ -63,19 +77,27 @@ export function DashboardAnalytics({ data }: { data: DashboardData }) {
             <div className="flex h-40 w-full max-w-12 items-end rounded-t-lg bg-surface-container-low"><div className="w-full rounded-t-lg bg-secondary" style={{ height: `${session.score}%`, minHeight: session.score === 0 ? 2 : undefined }} /></div>
             <span className="max-w-full truncate text-xs text-on-surface-variant">{session.completed_at ? new Date(session.completed_at).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "Chưa rõ ngày"}</span>
           </Link>)}
-        </div> : <p className="mt-5 flex min-h-48 items-center justify-center rounded-xl bg-surface-container-low p-5 text-sm text-on-surface-variant">Chưa đánh giá — biểu đồ sẽ xuất hiện khi có điểm tổng kết chính thức.</p>}
-        <p className="mt-4 rounded-lg bg-surface-container-low p-3 text-sm text-on-surface-variant">{data.trend === null ? "Chưa đủ hai phiên cùng phạm vi để tính thay đổi điểm." : `Thay đổi giữa phiên đầu và cuối trên biểu đồ: ${data.trend > 0 ? "+" : ""}${data.trend} điểm.`} Điểm luyện tập không dự đoán khả năng đậu phỏng vấn.</p>
-      </div>
-      <div className={`${card} lg:col-span-5`}>
-        <h2 className="text-lg font-bold text-primary">Skill Breakdown</h2>
+        </div> : <AnalyticsEmptyState icon="ssid_chart" title="Bắt đầu hành trình theo dõi tiến bộ"
+          description={data.skillSession ? "Chưa có điểm tổng kết chính thức phù hợp để vẽ biểu đồ. Xem kết quả phiên gần nhất hoặc hoàn thành một buổi phỏng vấn mới để tiếp tục theo dõi." : "Hoàn thành buổi phỏng vấn đầu tiên và xem kết quả. Điểm số thực tế sẽ xuất hiện tại đây để bạn theo dõi qua từng lần luyện tập."}
+          sessionId={data.skillSession?.id} />}
+        {data.scores.length > 0 && <p className="mt-4 rounded-lg bg-surface-container-low p-3 text-sm text-on-surface-variant">{data.trend === null ? "Chưa đủ hai phiên cùng phạm vi để tính thay đổi điểm." : `Thay đổi giữa phiên đầu và cuối trên biểu đồ: ${data.trend > 0 ? "+" : ""}${data.trend} điểm.`} Điểm luyện tập không dự đoán khả năng đậu phỏng vấn.</p>}
+      </section>
+      <section aria-labelledby="skill-breakdown-heading" className={`${card} lg:col-span-5`}>
+        <h2 id="skill-breakdown-heading" className="text-lg font-bold text-primary">Skill Breakdown</h2>
         <p className="mt-1 text-sm text-on-surface-variant">{data.skillSession ? `Rubric của phiên hoàn thành gần nhất: ${data.skillSession.title}` : "Chưa có phiên phỏng vấn hoàn thành."}</p>
-        <ul className="mt-5 space-y-5">{data.skills.map(skill => <li key={skill.id} className="space-y-2">
+        {hasSkillData ? <><ul className="mt-5 space-y-5">{data.skills.map(skill => <li key={skill.id} className="space-y-2">
           <div className="flex justify-between gap-3 text-sm"><span className="font-medium text-primary">{skill.name}</span><span className="shrink-0 font-semibold text-secondary">{percent(skill.percent)}</span></div>
           {skill.percent !== null && <div role="progressbar" aria-label={skill.name} aria-valuenow={skill.percent} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-secondary" style={{ width: `${skill.percent}%` }} /></div>}
           <p className="text-xs text-on-surface-variant">{skill.assessedAnswers ? `${skill.assessedAnswers} câu được chấm · mức 0–4 quy đổi sang %` : "Chưa có dữ liệu chấm hợp lệ; không tính là 0 điểm."}</p>
         </li>)}</ul>
         <Link href="/dashboard#practice" className="mt-5 inline-block text-sm font-semibold text-secondary underline underline-offset-4">Practice Focus Areas</Link>
-      </div>
+        {data.skills.some(skill => skill.percent === null) && <div className="mt-4 rounded-lg bg-surface-container-low p-3 text-sm text-on-surface-variant">
+          <p>Một số tiêu chí chưa được đánh giá. Luyện thêm một phiên mới để bổ sung dữ liệu.</p>
+          <Link href="/interview-setup" className="mt-2 inline-block font-semibold text-secondary underline underline-offset-4">Start New Interview</Link>
+        </div>}</> : <AnalyticsEmptyState icon="stacked_bar_chart" title="Khám phá điểm mạnh và mục tiêu cải thiện"
+          description={data.skillSession ? "Phiên gần nhất chưa có dữ liệu chấm kỹ năng hợp lệ. Bắt đầu một phiên mới và gửi câu trả lời để nhận đánh giá theo từng tiêu chí." : "Bắt đầu phỏng vấn và gửi câu trả lời của bạn. Khi được chấm, từng kỹ năng sẽ hiển thị ở đây để giúp bạn chọn mục tiêu luyện tập tiếp theo."}
+          sessionId={data.skillSession?.id} />}
+      </section>
     </section>
   </>;
 }
