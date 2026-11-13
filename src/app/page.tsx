@@ -1,7 +1,14 @@
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
 import Icon from "@/components/icon";
 import Image from "next/image";
 
-export default function Home() {
+export default async function Home() {
+  const user = await getUser();
+  if (user) {
+    redirect("/dashboard");
+  }
+
   return (
     <>
       <header className="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest/95 backdrop-blur-xl shadow-[0_1px_8px_rgba(4,21,52,0.05)]">
