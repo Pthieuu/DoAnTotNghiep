@@ -59,3 +59,4 @@ Kiểm tra kiểu dữ liệu:
 npm run typecheck
 ```
 Kết quả: **0 lỗi TypeScript (Exit code 0)**.
+
