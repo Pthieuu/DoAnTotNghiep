@@ -4,9 +4,7 @@ import type { Metadata } from "next";
 import DashboardShell from "@/components/dashboard-shell";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import DashboardPractice from "@/components/dashboard-practice";
 import { DashboardHero, DashboardAnalytics, DashboardContext } from "@/components/dashboard-overview";
-import { loadDashboardPractice } from "@/lib/dashboard-practice";
 import { loadDashboardData, type DashboardSession } from "@/lib/dashboard-data";
 
 export const dynamic = "force-dynamic";
@@ -30,9 +28,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   if (!user) redirect("/login");
   const supabase = await createClient();
   const params = await searchParams;
-  const [data, practiceData] = await Promise.all([
-    loadDashboardData(supabase, user.id, params.historyPage), loadDashboardPractice(supabase, user.id),
-  ]);
+  const data = await loadDashboardData(supabase, user.id, params.historyPage);
   const { page: historyPage, pageSize, totalCount } = data.history;
   const pageCount = Math.max(1, Math.ceil((totalCount ?? 0) / pageSize));
   const startIndex = (historyPage - 1) * pageSize;
@@ -52,7 +48,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <DashboardHero user={user} data={data} />
       {data.errors.length > 0 && <div role="alert" className="rounded-xl bg-error-container p-4 text-sm text-on-error-container"><ul className="list-inside list-disc space-y-1">{data.errors.map(error => <li key={error}>{error}</li>)}</ul></div>}
       <DashboardAnalytics data={data} />
-      <DashboardPractice key={practiceData.session?.id || "no-practice"} data={practiceData} />
       <DashboardContext data={data} />
       <section id="history" aria-labelledby="interview-history-heading" className="min-w-0 scroll-mt-24 rounded-xl border border-surface-container bg-surface-container-lowest p-5 shadow-sm">
         <h2 id="interview-history-heading" className="text-lg font-bold text-primary">Recent Interviews &amp; AI Reports</h2>

@@ -48,4 +48,4 @@ export async function proxy(request: NextRequest) {
 
 export const middleware = proxy;
 
-export const config = { matcher: ["/", "/dashboard/:path*", "/profile/:path*", "/login"] };
+export const config = { matcher: ["/", "/dashboard/:path*", "/profile/:path*", "/login", "/practice/:path*", "/weakness-practice/:path*"] };

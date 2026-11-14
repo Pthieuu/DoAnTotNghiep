@@ -72,7 +72,7 @@ const navigation: NavItem[] = [
   {
     label: "Practice Weaknesses",
     icon: "track_changes",
-    anchor: "/dashboard#practice",
+    anchor: "/practice",
     section: "Interview Lab",
     aliases: ["practice weaknesses", "practice-weaknesses", "practice"],
   },
@@ -152,11 +152,12 @@ export default function DashboardShell({
   activePage = "Dashboard",
 }: {
   children: ReactNode;
-  user: AuthUser;
+  user?: AuthUser | null;
   activePage?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -164,6 +165,10 @@ export default function DashboardShell({
   const dialog = useRef<HTMLDialogElement>(null);
   const menuToggle = useRef<HTMLButtonElement>(null);
   const mobileClose = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setPendingAnchor(null);
+  }, [pathname]);
 
   async function signOut() {
     setSigningOut(true);
@@ -220,7 +225,8 @@ export default function DashboardShell({
     return false;
   }
 
-  const userInitial = user.name.trim().split(/\s+/).at(-1)?.[0]?.toUpperCase() || "U";
+  const userDisplayName = user?.name?.trim() || "Candidate";
+  const userInitial = userDisplayName.split(/\s+/).at(-1)?.[0]?.toUpperCase() || "U";
 
   // Group navigation items by section while preserving ordering
   const sections: { title: string; items: NavItem[] }[] = [];
@@ -324,9 +330,12 @@ export default function DashboardShell({
               </p>
               {section.items.map((item) => {
                 const isActive = isItemActive(item);
+                const isPending = !!item.anchor && pendingAnchor === item.anchor;
                 const itemClass = `group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all ${
                   isActive
                     ? "bg-primary text-white font-semibold shadow-sm shadow-primary/20"
+                    : isPending
+                    ? "bg-slate-100 text-primary font-semibold"
                     : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900"
                 }`;
 
@@ -336,13 +345,27 @@ export default function DashboardShell({
                       className={`flex size-8 shrink-0 items-center justify-center rounded-lg transition-all ${
                         isActive
                           ? "bg-white/15 text-white"
+                          : isPending
+                          ? "bg-primary/10 text-primary"
                           : "bg-slate-100 text-slate-500 group-hover:bg-slate-200/80 group-hover:text-slate-800"
                       }`}
                     >
-                      <Icon name={item.icon} className="text-[18px]" />
+                      {isPending ? (
+                        <svg className="size-4 animate-spin text-current" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                      ) : (
+                        <Icon name={item.icon} className="text-[18px]" />
+                      )}
                     </span>
                     <span className="flex-1 truncate text-left">{item.label}</span>
-                    {item.badge && (
+                    {isPending ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary animate-pulse">
+                        <span className="size-1.5 rounded-full bg-primary animate-ping" />
+                        Đang tải...
+                      </span>
+                    ) : item.badge ? (
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide transition-colors ${
                           isActive
@@ -354,8 +377,8 @@ export default function DashboardShell({
                       >
                         {item.badge}
                       </span>
-                    )}
-                    {isActive && !item.badge && (
+                    ) : null}
+                    {isActive && !item.badge && !isPending && (
                       <span className="size-1.5 rounded-full bg-secondary-container" aria-hidden="true" />
                     )}
                   </>
@@ -367,7 +390,12 @@ export default function DashboardShell({
                       key={item.label}
                       href={item.anchor}
                       aria-current={isActive ? "page" : undefined}
-                      onClick={() => setMenuOpen(false)}
+                      onClick={() => {
+                        if (item.anchor && item.anchor !== pathname) {
+                          setPendingAnchor(item.anchor);
+                        }
+                        setMenuOpen(false);
+                      }}
                       className={itemClass}
                     >
                       {content}
@@ -419,9 +447,9 @@ export default function DashboardShell({
               {userInitial}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-slate-900">{user.name}</p>
-              <p className="truncate text-[10.5px] text-slate-500" title={user.email}>
-                {user.email}
+              <p className="truncate text-xs font-semibold text-slate-900">{userDisplayName}</p>
+              <p className="truncate text-[10.5px] text-slate-500" title={user?.email || ""}>
+                {user?.email || "Candidate account"}
               </p>
             </div>
             <button
@@ -440,6 +468,15 @@ export default function DashboardShell({
 
       {/* Main Content Area */}
       <div className="lg:pl-64">
+        {pendingAnchor && (
+          <div
+            role="progressbar"
+            aria-label="Đang tải trang"
+            className="fixed top-0 left-0 right-0 z-[100] h-1 bg-slate-100 overflow-hidden"
+          >
+            <div className="h-full bg-gradient-to-r from-primary via-secondary to-primary animate-pulse w-full" />
+          </div>
+        )}
         <header className="sticky top-0 z-30 flex h-16 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6">
           <div className="flex items-center gap-3">
             <button
@@ -519,7 +556,7 @@ export default function DashboardShell({
         </p>
         {preview === "settings" && (
           <p className="mt-3 text-sm">
-            Signed in as {user.name} · {user.email}
+            Signed in as {userDisplayName} · {user?.email || "Candidate"}
           </p>
         )}
         <form method="dialog" className="mt-6 flex justify-end">
