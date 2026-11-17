@@ -5,7 +5,12 @@ Tính năng **Weakness Practice** giúp người dùng xem lại các tiêu chí
 
 ## 2. Luồng hoạt động (User Flow)
 ```
-Dashboard (Recommended Practice)
+Điều hướng vào Luyện tập:
+  ├── Sidebar: Mục "Practice Weaknesses" (/practice)
+  ├── Dashboard: Nút "Practice Weaknesses" (Hero) hoặc "Practice Focus Areas"
+  └── URL Alias: /weakness-practice (tự động chuyển hướng về /practice)
+        ↓
+Trang Luyện tập (/practice)
   ├── Đề xuất các tiêu chí C01–C05 điểm 0–2/4 từ phiên hoàn thành gần nhất
   └── Bấm "Luyện: [Tên tiêu chí]"
         ↓
@@ -27,7 +32,10 @@ Summary Report (/summary?sessionId=...)
 ## 3. Kiến trúc mã nguồn
 
 ### Giao diện & Component
-- `src/components/dashboard-practice.tsx`: Thẻ gợi ý luyện tập trên Dashboard, số lượng View All thực tế, nút mở panel.
+- `src/app/practice/page.tsx`: Trang luyện tập điểm yếu chuyên biệt (`/practice`), bảo vệ với xác thực người dùng.
+- `src/app/practice/loading.tsx`: Giao diện Skeleton Loading tức thì khi điều hướng sang trang luyện tập.
+- `src/app/weakness-practice/page.tsx`: Route alias điều hướng tự động sang `/practice`.
+- `src/components/dashboard-practice.tsx`: Component hiển thị các thẻ gợi ý luyện tập (Recommended Practice), số lượng View All thực tế và nút chọn tiêu chí.
 - `src/components/weakness-practice-panel.tsx`: Panel chọn tiêu chí với checkbox, xử lý loading, error, retry và gọi API tạo phiên.
 - `src/components/weakness-practice-goals.tsx`: Huy hiệu và danh sách mục tiêu tiêu chí trong phòng phỏng vấn.
 - `src/components/weakness-practice-progress.tsx`: Bảng đối chiếu điểm trước/sau của các tiêu chí mục tiêu trong màn hình tổng kết.
@@ -51,9 +59,9 @@ Trước khi chạy phiên luyện tập, đảm bảo đã áp dụng các migr
 ## 5. Bằng chứng kiểm thử (Automated Tests)
 Chạy bộ kiểm thử tự động với lệnh:
 ```bash
-node --test tests/dashboard-practice.test.mjs tests/weakness-practice*.test.mjs
+node --test tests/dashboard-practice.test.mjs tests/weakness-practice*.test.mjs tests/practice-page.test.mjs
 ```
-Kết quả: **76/76 tests passed (100%)**.
+Kết quả: **100/100 tests passed (100%)**.
 Kiểm tra kiểu dữ liệu:
 ```bash
 npm run typecheck
