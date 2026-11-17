@@ -35,7 +35,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Vui lòng đăng nhập để xem tổng kết." }, 401);
+    if (!user) return json({ error: "Please sign in to view summary." }, 401);
 
     const { data: session, error: sessionError } = await querySessionWithPractice(
       columns => supabase.from("interview_sessions").select(columns)
@@ -43,15 +43,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       "id,status,questions,title,interview_type,interview_language,level,target_role,job_description,question_count,summary_json",
     );
 
-    if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
-    if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
+    if (sessionError) return json({ error: "Could not load interview session." }, 500);
+    if (!session || !Array.isArray(session.questions)) return json({ error: "Interview session not found." }, 404);
 
     if (session.status !== "completed") {
-      return json({ error: "Buổi phỏng vấn chưa kết thúc." }, 400);
+      return json({ error: "Interview session has not ended." }, 400);
     }
 
     const practice = getWeaknessPracticeSession(session.source_session_id, session.selected_criteria);
-    if (session.source_session_id && !practice) return json({ error: "Mục tiêu phiên luyện tập không hợp lệ." }, 409);
+    if (session.source_session_id && !practice) return json({ error: "Invalid practice session target." }, 409);
     if (session.summary_json && !practice) return json({ summary: session.summary_json }, 200);
 
     const { data: previousAnswers, error: answersError } = await supabase.from("interview_answers")
@@ -60,19 +60,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .order("question_index", { ascending: true });
 
     if (answersError) {
-      return json({ error: "Không thể tải dữ liệu câu trả lời." }, 500);
+      return json({ error: "Could not load answer data." }, 500);
     }
 
     const answers = (previousAnswers || []) as AnswerRow[];
     const questions = session.questions as Question[];
 
     if (answers.length === 0) {
-      return json({ error: "Không có câu trả lời nào để tổng kết." }, 400);
+      return json({ error: "No answers found to summarize." }, 400);
     }
 
     if (answers.some(answer => !Number.isInteger(answer.question_index) || answer.question_index < 0
       || typeof questions[answer.question_index]?.text !== "string" || !questions[answer.question_index].text.trim())) {
-      return json({ error: "Dữ liệu câu hỏi và câu trả lời không khớp." }, 500);
+      return json({ error: "Question and answer data do not match." }, 500);
     }
 
     let practiceProgress: SummaryResult["practiceProgress"];
@@ -80,12 +80,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const { data: source, error: sourceError } = await supabase.from("interview_sessions")
         .select("id,status,questions,interview_type,interview_language,level,target_role,job_description,title")
         .eq("id", practice.sourceSessionId).eq("user_id", user.id).maybeSingle();
-      if (sourceError) return json({ error: "Không thể tải phiên nguồn để so sánh." }, 500);
-      if (!source) return json({ error: "Không tìm thấy phiên nguồn để so sánh." }, 404);
+      if (sourceError) return json({ error: "Could not load source session for comparison." }, 500);
+      if (!source) return json({ error: "Source session not found for comparison." }, 404);
       const { data: sourceAnswers, error: sourceAnswersError } = await supabase.from("interview_answers")
         .select("question_index,answer,rubric_json")
         .eq("session_id", source.id).order("question_index", { ascending: true });
-      if (sourceAnswersError) return json({ error: "Không thể tải câu trả lời phiên nguồn để so sánh." }, 500);
+      if (sourceAnswersError) return json({ error: "Could not load source session answers for comparison." }, 500);
 
       practiceProgress = calculateWeaknessPracticeProgress({
         sourceSessionId: source.id,
@@ -128,7 +128,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         });
       } catch (err) {
         console.error("Summary generation failed", err);
-        return json({ error: err instanceof Error ? err.message : "Lỗi tổng kết AI." }, 500);
+        return json({ error: err instanceof Error ? err.message : "AI summary error." }, 500);
       }
     }
     if (practiceProgress) summaryResult = { ...summaryResult, practiceProgress };
@@ -155,12 +155,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     if (updateError) {
       console.error("Interview summary save failed", { code: updateError.code, message: updateError.message });
-      return json({ error: "Không lưu được bản tổng kết. Vui lòng thử lại." }, 500);
+      return json({ error: "Could not save summary. Please try again." }, 500);
     }
 
     return json({ summary: summaryResult }, 200);
   } catch (err) {
     console.error("API Summary Error:", err);
-    return json({ error: "Dịch vụ tổng kết tạm thời không khả dụng." }, 503);
+    return json({ error: "Summary service is temporarily unavailable." }, 503);
   }
 }

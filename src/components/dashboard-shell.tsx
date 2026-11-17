@@ -381,7 +381,7 @@ export default function DashboardShell({
                     {isPending ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary animate-pulse">
                         <span className="size-1.5 rounded-full bg-primary animate-ping" />
-                        Đang tải...
+                        Loading...
                       </span>
                     ) : item.badge ? (
                       <span
@@ -477,8 +477,8 @@ export default function DashboardShell({
               type="button"
               onClick={signOut}
               disabled={signingOut}
-              title="Đăng xuất"
-              aria-label="Đăng xuất"
+              title="Sign out"
+              aria-label="Sign out"
               className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors disabled:opacity-50"
             >
               <Icon name="logout" className="text-[17px]" />
@@ -492,7 +492,7 @@ export default function DashboardShell({
         {pendingAnchor && (
           <div
             role="progressbar"
-            aria-label="Đang tải trang"
+            aria-label="Loading page"
             className="fixed top-0 left-0 right-0 z-[100] h-1 bg-slate-100 overflow-hidden"
           >
             <div className="h-full bg-gradient-to-r from-primary via-secondary to-primary animate-pulse w-full" />

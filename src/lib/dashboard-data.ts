@@ -161,10 +161,10 @@ export async function loadDashboardData(
       .order("created_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const errors: string[] = [];
-  const labels = ["hồ sơ cá nhân", "CV", "tổng số phiên phỏng vấn", "thống kê phiên hoàn thành", "ngữ cảnh phỏng vấn gần nhất"];
+  const labels = ["user profile", "resume", "total interview sessions", "completed session metrics", "latest interview context"];
   const values = results.map((result, index) => {
     if (result.status === "rejected" || result.value.error) {
-      errors.push(`Không tải được ${labels[index]}. Vui lòng tải lại trang.`);
+      errors.push(`Failed to load ${labels[index]}. Please reload the page.`);
       return null;
     }
     return result.value;
@@ -191,11 +191,11 @@ export async function loadDashboardData(
   let answers: DashboardAnswer[] = [];
   if (historyResult.status === "rejected" || historyResult.value.error) {
     historyError = true;
-    errors.push("Không tải được lịch sử phỏng vấn. Vui lòng tải lại trang.");
+    errors.push("Failed to load interview history. Please reload the page.");
   } else sessions = (historyResult.value.data ?? []) as DashboardSession[];
   if (answersResult.status === "rejected" || answersResult.value.error) {
     answersError = true;
-    errors.push("Không tải được rubric chấm điểm. Các chỉ số kỹ năng tạm thời chưa hiển thị.");
+    errors.push("Failed to load scoring rubric. Skill metrics are temporarily unavailable.");
   } else answers = (answersResult.value.data ?? []) as DashboardAnswer[];
 
   return buildDashboardData({

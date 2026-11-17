@@ -47,10 +47,10 @@ function editor(options = {}) {
 
 test('loads saved profile data into a two-column layout and computes completion from actual content', async () => {
   const instance = editor();
-  assert.equal(instance.button('Lưu thay đổi').props.disabled, true);
+  assert.equal(instance.button('Save Changes').props.disabled, true);
   await instance.harness.settle();
-  assert.equal(instance.field('Họ và tên').props.value, stored.full_name);
-  assert.equal(instance.field('Email tài khoản').props.value, 'an@example.com');
+  assert.equal(instance.field('Full Name').props.value, stored.full_name);
+  assert.equal(instance.field('Account Email').props.value, 'an@example.com');
   assert.equal(instance.progress(), 100);
   assert.ok(nodes(instance.harness.tree, node => node.props?.className?.includes('lg:grid-cols-2')).length);
   assert.deepEqual(plain(instance.list('language').props.rows), stored.languages);
@@ -61,9 +61,9 @@ test('adding, editing and deleting list entries can all be undone along with pre
   const instance = editor();
   await instance.harness.settle();
   instance.list('language').props.onRemove(0);
-  instance.field('Số điện thoại').props.onChange('0999999999');
+  instance.field('Phone Number').props.onChange('0999999999');
   nodes(instance.harness.tree, node => node.type === 'select')[0].props.onChange({ target: { value: 'N1' } });
-  instance.button('Sinh viên').props.onClick();
+  instance.button('Student').props.onClick();
   instance.harness.render();
   assert.ok(instance.progress() < 100);
   instance.list('skill').props.onAdd();
@@ -71,30 +71,30 @@ test('adding, editing and deleting list entries can all be undone along with pre
   instance.list('skill').props.onChange(1, 'name', 'Docker');
   instance.harness.render();
   assert.equal(instance.list('skill').props.rows[1].name, 'Docker');
-  instance.button('Hoàn tác').props.onClick();
+  instance.button('Undo').props.onClick();
   instance.harness.render();
-  assert.equal(instance.field('Số điện thoại').props.value, stored.phone);
+  assert.equal(instance.field('Phone Number').props.value, stored.phone);
   assert.equal(instance.progress(), 100);
   assert.deepEqual(plain(instance.list('language').props.rows), stored.languages);
   assert.deepEqual(plain(instance.list('skill').props.rows), stored.technical_skills);
   assert.equal(nodes(instance.harness.tree, node => node.type === 'select')[0].props.value, 'N3');
-  assert.equal(instance.button('Đã đi làm').props['aria-pressed'], true);
+  assert.equal(instance.button('Employed').props['aria-pressed'], true);
 });
 
 test('failed saves preserve edits; successful retry saves every list and establishes the undo baseline', async () => {
   const instance = editor();
   await instance.harness.settle();
-  instance.field('Họ và tên').props.onChange('Tên đã đổi');
+  instance.field('Full Name').props.onChange('Tên đã đổi');
   instance.list('language').props.onChange(0, 'level', 'JLPT N2');
   instance.harness.render();
   instance.state.failSave = true;
-  await instance.button('Lưu thay đổi').props.onClick();
+  await instance.button('Save Changes').props.onClick();
   await instance.harness.settle();
   assert.match(content(instance.harness.tree), /Save failed/);
-  assert.equal(instance.field('Họ và tên').props.value, 'Tên đã đổi');
+  assert.equal(instance.field('Full Name').props.value, 'Tên đã đổi');
   assert.equal(instance.list('language').props.rows[0].level, 'JLPT N2');
   instance.state.failSave = false;
-  await instance.button('Lưu thay đổi').props.onClick();
+  await instance.button('Save Changes').props.onClick();
   await instance.harness.settle();
   const saved = instance.state.requests[1];
   assert.equal(saved.fullName, 'Tên đã đổi');
@@ -102,11 +102,11 @@ test('failed saves preserve edits; successful retry saves every list and establi
   assert.deepEqual(saved.educationExperience, stored.education_experience);
   assert.deepEqual(saved.technicalSkills, stored.technical_skills);
   assert.equal(saved.employmentStatus, 'working');
-  instance.field('Họ và tên').props.onChange('Thay đổi chưa lưu');
+  instance.field('Full Name').props.onChange('Thay đổi chưa lưu');
   instance.harness.render();
-  instance.button('Hoàn tác').props.onClick();
+  instance.button('Undo').props.onClick();
   instance.harness.render();
-  assert.equal(instance.field('Họ và tên').props.value, 'Tên đã đổi');
+  assert.equal(instance.field('Full Name').props.value, 'Tên đã đổi');
 });
 
 test('empty profiles do not show sample achievements or count empty arrays as completed', async () => {
@@ -115,15 +115,15 @@ test('empty profiles do not show sample achievements or count empty arrays as co
   assert.equal(instance.progress(), 0);
   assert.equal(instance.list('language').props.rows.length, 0);
   assert.equal(instance.list('experience').props.rows.length, 0);
-  assert.equal(instance.field('Họ và tên').props.value, 'Account Name');
+  assert.equal(instance.field('Full Name').props.value, 'Account Name');
 });
 
 test('load failures prevent overwriting an existing profile with unloaded values', async () => {
   const instance = editor({ loadError: true });
   await instance.harness.settle();
   assert.match(content(instance.harness.tree), /Load failed/);
-  assert.equal(instance.button('Lưu thay đổi').props.disabled, true);
-  await instance.button('Lưu thay đổi').props.onClick();
+  assert.equal(instance.button('Save Changes').props.disabled, true);
+  await instance.button('Save Changes').props.onClick();
   assert.equal(instance.state.requests.length, 0);
 });
 
@@ -132,24 +132,24 @@ test('list cards start in reading mode and preserve text when closing and reopen
   let rows = plain(stored.languages);
   const { default: Cards } = load('src/components/profile-list-cards.tsx', { react: harness.hooks, 'react/jsx-runtime': jsxRuntime, '@/components/icon': Icon });
   function Wrapper() {
-    return Cards({ kind: 'language', rows, fields: [{ key: 'name', label: 'Ngôn ngữ' }, { key: 'level', label: 'Chứng chỉ' }, { key: 'details', label: 'Ghi chú' }],
+    return Cards({ kind: 'language', rows, fields: [{ key: 'name', label: 'Language' }, { key: 'level', label: 'Certificate' }, { key: 'details', label: 'Notes' }],
       onChange: (index, key, value) => { rows = rows.map((row, i) => i === index ? { ...row, [key]: value } : row); },
       onRemove: index => { rows = rows.filter((_, i) => i !== index); },
-      onAdd: () => { rows = [...rows, { name: '', level: '', details: '' }]; }, addLabel: 'Thêm ngôn ngữ',
+      onAdd: () => { rows = [...rows, { name: '', level: '', details: '' }]; }, addLabel: 'Add Language',
     });
   }
   harness.mount(Wrapper, {});
   assert.equal(nodes(harness.tree, node => node.type === 'input').length, 0);
   assert.match(content(harness.tree), /JLPT N3/);
-  nodes(harness.tree, node => node.props?.['aria-label']?.startsWith('Chỉnh sửa'))[0].props.onClick();
+  nodes(harness.tree, node => node.props?.['aria-label']?.startsWith('Edit'))[0].props.onClick();
   harness.render();
-  nodes(harness.tree, node => node.type === 'textarea')[0].props.onChange({ target: { value: 'Ghi chú mới' } });
+  nodes(harness.tree, node => node.type === 'textarea')[0].props.onChange({ target: { value: 'New note' } });
   harness.render();
-  nodes(harness.tree, node => node.type === 'button' && content(node) === 'Xong')[0].props.onClick();
+  nodes(harness.tree, node => node.type === 'button' && content(node) === 'Done')[0].props.onClick();
   harness.render();
   assert.equal(nodes(harness.tree, node => node.type === 'input').length, 0);
-  assert.match(content(harness.tree), /Ghi chú mới/);
-  nodes(harness.tree, node => node.type === 'button' && content(node).includes('Thêm ngôn ngữ'))[0].props.onClick();
+  assert.match(content(harness.tree), /New note/);
+  nodes(harness.tree, node => node.type === 'button' && content(node).includes('Add Language'))[0].props.onClick();
   harness.render();
   assert.equal(rows.length, 2);
   assert.equal(nodes(harness.tree, node => node.type === 'input').length, 2);

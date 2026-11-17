@@ -3,7 +3,7 @@ import DashboardShell from "@/components/dashboard-shell";
 export default function InterviewSetupLoading() {
   return (
     <DashboardShell activePage="Interview Setup">
-      <div className="flex w-full flex-col space-y-6" role="status" aria-busy="true" aria-label="Đang nạp cấu hình phỏng vấn">
+      <div className="flex w-full flex-col space-y-6" role="status" aria-busy="true" aria-label="Loading interview setup">
         <div className="flex items-center gap-4 rounded-xl border border-indigo-100 bg-indigo-50/70 p-5 text-indigo-900 shadow-xs">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-xs">
             <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -12,8 +12,8 @@ export default function InterviewSetupLoading() {
             </svg>
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-bold text-primary">Đang nạp cấu hình phỏng vấn...</p>
-            <p className="text-xs text-slate-600">Chuẩn bị thông tin CV và thiết lập câu hỏi.</p>
+            <p className="text-sm font-bold text-primary">Loading interview setup...</p>
+            <p className="text-xs text-slate-600">Preparing CV details and question configurations.</p>
           </div>
         </div>
 

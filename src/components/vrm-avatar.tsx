@@ -76,7 +76,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
     } catch {
       setTimeout(() => {
         if (!disposed) {
-          setError("Trình duyệt không thể khởi tạo WebGL. Hãy bật tăng tốc phần cứng hoặc thử trình duyệt khác.");
+          setError("Your browser cannot initialize WebGL. Please enable hardware acceleration or try another browser.");
           setStatus("error");
         }
       }, 0);
@@ -243,7 +243,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
     }, undefined, (cause) => {
       if (disposed) return;
       console.error("Failed to load Hiro.vrm", cause);
-      setError("Không tải được /models/Hiro.vrm. Hãy kiểm tra file có ở public/models/Hiro.vrm và thử tải lại trang.");
+      setError("Could not load /models/Hiro.vrm. Please check if the file is at public/models/Hiro.vrm and reload the page.");
       setStatus("error");
     });
 
@@ -265,7 +265,7 @@ export default function VrmAvatar({ state, className, onReady, horizontalOffset 
   return <div className={`relative h-full min-h-[340px] w-full overflow-hidden rounded-2xl ${className ?? ""}`}>
     <div ref={hostRef} className="absolute inset-0" />
     {status !== "ready" && <div role={status === "error" ? "alert" : "status"} className={`absolute inset-0 z-10 flex items-center justify-center p-6 text-center ${status === "error" ? "bg-red-50 text-red-800" : "bg-[#edf3fb]/90 text-slate-700"}`}>
-      {status === "loading" ? <div><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" /><p className="font-medium">Đang tải nhân vật Hiro…</p></div> : <p className="max-w-sm text-sm">{error}</p>}
+      {status === "loading" ? <div><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-700" /><p className="font-medium">Loading Hiro character...</p></div> : <p className="max-w-sm text-sm">{error}</p>}
     </div>}
   </div>;
 }

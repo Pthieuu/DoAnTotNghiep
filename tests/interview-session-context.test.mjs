@@ -53,12 +53,12 @@ test('estimateInterviewDuration: maps question counts to user-friendly estimated
     sessionStorage: mockStorage,
   });
 
-  assert.equal(contextModule.estimateInterviewDuration(4), '~7–10 phút');
-  assert.equal(contextModule.estimateInterviewDuration(5), '~8–12 phút');
-  assert.equal(contextModule.estimateInterviewDuration(6), '~10–15 phút');
-  assert.equal(contextModule.estimateInterviewDuration(8), '~15–20 phút');
-  assert.equal(contextModule.estimateInterviewDuration(10), '~20–25 phút');
-  assert.equal(contextModule.estimateInterviewDuration(15), '~30–40 phút');
+  assert.equal(contextModule.estimateInterviewDuration(4), '~7–10 mins');
+  assert.equal(contextModule.estimateInterviewDuration(5), '~8–12 mins');
+  assert.equal(contextModule.estimateInterviewDuration(6), '~10–15 mins');
+  assert.equal(contextModule.estimateInterviewDuration(8), '~15–20 mins');
+  assert.equal(contextModule.estimateInterviewDuration(10), '~20–25 mins');
+  assert.equal(contextModule.estimateInterviewDuration(15), '~30–40 mins');
 });
 
 test('Session context: read/write/clear lifecycle with mock sessionStorage', () => {

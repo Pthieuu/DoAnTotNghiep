@@ -26,10 +26,10 @@ export function historyScore(session: DashboardSession): string {
   const summary = session.summary_json;
   if (summary && typeof summary === "object" && "provisional" in summary && summary.provisional === true) {
     return "totalScore" in summary && typeof summary.totalScore === "number" && Number.isFinite(summary.totalScore)
-      && summary.totalScore >= 0 && summary.totalScore <= 100 ? `${summary.totalScore}/100 (tạm tính)` : "Chưa đánh giá";
+      && summary.totalScore >= 0 && summary.totalScore <= 100 ? `${summary.totalScore}/100 (provisional)` : "Not assessed";
   }
   return typeof session.score === "number" && Number.isFinite(session.score) && session.score >= 0 && session.score <= 100
-    ? `${session.score}/100` : "Chưa đánh giá";
+    ? `${session.score}/100` : "Not assessed";
 }
 
 const HISTORY_COLUMNS = "id,title,company,level,score,status,completed_at,created_at,summary_json,interview_type,interview_language,question_count";
@@ -102,7 +102,7 @@ export async function loadInterviewHistory(
         pageCount,
         filter,
         counts,
-        error: "Không tải được danh sách phỏng vấn. Vui lòng tải lại trang.",
+        error: "Unable to load interview sessions. Please refresh the page.",
       };
     }
 
@@ -127,8 +127,7 @@ export async function loadInterviewHistory(
       pageCount: 1,
       filter,
       counts: { all: 0, completed: 0, in_progress: 0, cancelled: 0 },
-      error: "Dịch vụ lịch sử phỏng vấn tạm thời không khả dụng. Vui lòng thử lại sau.",
+      error: "Interview history service is temporarily unavailable. Please try again later.",
     };
   }
 }
-

@@ -51,11 +51,11 @@ export function getWeaknessPracticeSession(sourceSessionId: unknown, selectedCri
 }
 
 const SUGGESTIONS: Record<CriterionId, string> = {
-  C01: "Trả lời trực tiếp ý chính của câu hỏi trước khi giải thích thêm.",
-  C02: "Bổ sung một ví dụ thật, nêu rõ việc bạn đã làm và kết quả hoặc bài học.",
-  C03: "Sắp xếp câu trả lời đủ bốn bước PREP hoặc STAR theo đúng thứ tự.",
-  C04: "Liên hệ kinh nghiệm hoặc động lực của bạn với yêu cầu vị trí ứng tuyển.",
-  C05: "Diễn đạt lại ý chính bằng các câu tiếng Nhật ngắn, rõ nghĩa.",
+  C01: "Answer the core point directly before elaborating further.",
+  C02: "Include a concrete example, clearly stating your actions and the outcome or lesson learned.",
+  C03: "Structure your answer following the four steps of PREP or STAR in proper order.",
+  C04: "Connect your experience or motivation directly to the role requirements.",
+  C05: "Express your main point using concise, clear Japanese sentences.",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

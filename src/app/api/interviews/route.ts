@@ -20,26 +20,26 @@ export async function POST(request: Request) {
   const interviewLanguage = body?.interviewLanguage || "vi";
 
   if (!body || !role || role.length > 160 || companyInput.length > 160 || jobDescriptionInput.length > 12000 || !["N5", "N4", "N3", "N2", "N1"].includes(String(level)) || ![4, 5, 6, 8, 10, 15].includes(Number(questionCount))) {
-    return json({ error: "Cấu hình không hợp lệ. Kiểm tra vị trí, công ty, JD, trình độ và số câu hỏi." }, 400);
+    return json({ error: "Invalid configuration. Check role, company, JD, JLPT level, and question count." }, 400);
   }
   if (!["technical", "behavioral", "mixed"].includes(String(interviewType))) {
-    return json({ error: "Loại phỏng vấn không hợp lệ." }, 400);
+    return json({ error: "Invalid interview type." }, 400);
   }
   if (!["ja", "vi"].includes(String(interviewLanguage))) {
-    return json({ error: "Ngôn ngữ không hợp lệ." }, 400);
+    return json({ error: "Invalid interview language." }, 400);
   }
 
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Vui lòng đăng nhập để tạo buổi phỏng vấn." }, 401);
+    if (!user) return json({ error: "Please sign in to create an interview session." }, 401);
 
     let cvSnapshot: CvData = emptyCv;
     let cvId: string | null = null;
 
     if (body.checkerCv !== undefined) {
       const handoff = parseHandoff(body.checkerCv);
-      if (!handoff) return json({ error: "Dữ liệu CV chuyển từ Check CV không hợp lệ. Hãy chuyển lại CV." }, 400);
+      if (!handoff) return json({ error: "Invalid CV data transferred from CV Checker. Please retry transfer." }, 400);
       cvSnapshot = toInterviewCv(handoff);
     } else if (body.cvData && validateCv(body.cvData)) {
       cvSnapshot = body.cvData as CvData;
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
         .select("id,file_name,confirmed_data,status")
         .eq("user_id", user.id).eq("status", "confirmed")
         .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      if (cvError) return json({ error: "Không thể tải CV đã xác nhận. Hãy kiểm tra cấu hình cơ sở dữ liệu." }, 500);
+      if (cvError) return json({ error: "Could not load confirmed CV. Please check database configuration." }, 500);
 
       if (cvRow && validateCv(cvRow.confirmed_data)) {
         cvSnapshot = cvRow.confirmed_data as CvData;
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
         cvSnapshot = emptyCv;
         cvId = null;
       } else {
-        return json({ error: "Bạn cần kiểm tra CV hoặc xác nhận thông tin CV trước khi tạo buổi phỏng vấn." }, 409);
+        return json({ error: "Please review your CV or confirm CV information before creating an interview session." }, 409);
       }
     }
 
@@ -91,14 +91,14 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error("Interview session create failed", { code: insertError.code, message: insertError.message });
       if (insertError.code === "42703" || insertError.code === "PGRST204" || insertError.code === "42P01" || insertError.code === "PGRST205") {
-        return json({ error: "Cơ sở dữ liệu chưa được cập nhật cho buổi phỏng vấn. Hãy chạy migration 202609300003_extend_interview_sessions.sql rồi thử lại." }, 503);
+        return json({ error: "Database not migrated for interview sessions. Please run migration 202609300003_extend_interview_sessions.sql." }, 503);
       }
-      return json({ error: "Không thể lưu buổi phỏng vấn. Hãy kiểm tra quyền truy cập database rồi thử lại." }, 500);
+      return json({ error: "Could not save interview session. Check database permissions and retry." }, 500);
     }
 
     return json({ session }, 201);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Không tạo được buổi phỏng vấn.";
+    const message = error instanceof Error ? error.message : "Could not create interview session.";
     console.error("Interview session generation failed", { reason: message });
     return json({ error: message }, 503);
   }

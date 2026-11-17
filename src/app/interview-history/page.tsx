@@ -15,26 +15,29 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Interview History | Aizuchi.AI",
-  description: "Lịch sử phỏng vấn và các báo cáo đánh giá AI chi tiết của bạn.",
+  description: "Your detailed mock interview history, rubric evaluations, and AI reports.",
 };
 
-const dateFormat = new Intl.DateTimeFormat("vi-VN", {
-  dateStyle: "medium",
-  timeStyle: "short",
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
   timeZone: "Asia/Ho_Chi_Minh",
 });
 
 const statuses: Record<string, { label: string; className: string }> = {
   completed: {
-    label: "Đã hoàn thành",
+    label: "Completed",
     className: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20",
   },
   in_progress: {
-    label: "Đang luyện",
+    label: "In Progress",
     className: "bg-amber-50 text-amber-700 ring-1 ring-amber-600/20",
   },
   cancelled: {
-    label: "Đã hủy",
+    label: "Cancelled",
     className: "bg-slate-100 text-slate-600 ring-1 ring-slate-200",
   },
 };
@@ -71,10 +74,10 @@ export default async function InterviewHistoryPage({
   }
 
   const filterTabs: { id: HistoryFilter; label: string; count: number }[] = [
-    { id: "all", label: "Tất cả", count: counts.all },
-    { id: "completed", label: "Đã hoàn thành", count: counts.completed },
-    { id: "in_progress", label: "Đang luyện", count: counts.in_progress },
-    { id: "cancelled", label: "Đã hủy", count: counts.cancelled },
+    { id: "all", label: "All", count: counts.all },
+    { id: "completed", label: "Completed", count: counts.completed },
+    { id: "in_progress", label: "In Progress", count: counts.in_progress },
+    { id: "cancelled", label: "Cancelled", count: counts.cancelled },
   ];
 
   return (
@@ -91,7 +94,7 @@ export default async function InterviewHistoryPage({
                 Interview History &amp; AI Reports
               </h1>
               <p className="mt-1 text-sm text-on-surface-variant">
-                Lịch sử phỏng vấn và các báo cáo đánh giá AI chi tiết của bạn.
+                Your detailed mock interview history, rubric evaluations, and AI reports.
               </p>
             </div>
             <Link
@@ -119,10 +122,10 @@ export default async function InterviewHistoryPage({
           {/* Filter Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-container pb-4">
             <h2 id="history-list-heading" className="text-base font-bold text-primary">
-              Danh sách các buổi phỏng vấn ({counts.all})
+              Interview Sessions ({counts.all})
             </h2>
 
-            <nav aria-label="Lọc trạng thái phỏng vấn" className="flex flex-wrap gap-1.5 text-xs">
+            <nav aria-label="Filter interview status" className="flex flex-wrap gap-1.5 text-xs">
               {filterTabs.map((tab) => {
                 const isSelected = filter === tab.id;
                 return (
@@ -154,15 +157,15 @@ export default async function InterviewHistoryPage({
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <table aria-label="Bảng lịch sử phỏng vấn" className="w-full border-collapse text-left text-sm">
+            <table aria-label="Interview history table" className="w-full border-collapse text-left text-sm">
               <thead className="bg-surface-container-low text-xs text-on-surface-variant">
                 <tr>
-                  <th scope="col" className="p-3 font-semibold">Ngày / giờ</th>
-                  <th scope="col" className="p-3 font-semibold">Vị trí &amp; Công ty</th>
+                  <th scope="col" className="p-3 font-semibold">Date / Time</th>
+                  <th scope="col" className="p-3 font-semibold">Role &amp; Company</th>
                   <th scope="col" className="p-3 font-semibold">JLPT</th>
-                  <th scope="col" className="p-3 font-semibold">Điểm số</th>
-                  <th scope="col" className="p-3 font-semibold">Trạng thái</th>
-                  <th scope="col" className="p-3 text-right font-semibold">Thao tác</th>
+                  <th scope="col" className="p-3 font-semibold">Score</th>
+                  <th scope="col" className="p-3 font-semibold">Status</th>
+                  <th scope="col" className="p-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container">
@@ -177,17 +180,17 @@ export default async function InterviewHistoryPage({
                   return (
                     <tr key={session.id} className="transition-colors hover:bg-surface">
                       <td className="whitespace-nowrap p-3 text-on-surface-variant">
-                        {date && !Number.isNaN(date.getTime()) ? dateFormat.format(date) : "Chưa rõ"}
+                        {date && !Number.isNaN(date.getTime()) ? dateFormat.format(date) : "Unknown"}
                       </td>
                       <td className="p-3">
                         <p className="font-semibold text-primary">{session.title}</p>
                         <p className="mt-0.5 text-xs text-on-surface-variant">
-                          {session.company || "Chưa cung cấp công ty"}
+                          {session.company || "Company not specified"}
                         </p>
                       </td>
                       <td className="whitespace-nowrap p-3">
                         <span className="rounded-md bg-surface-container-low px-2 py-1 text-xs font-semibold text-primary">
-                          {session.level || "Chưa chọn"}
+                          {session.level || "Not set"}
                         </span>
                       </td>
                       <td className="whitespace-nowrap p-3 font-semibold text-primary">
@@ -206,7 +209,7 @@ export default async function InterviewHistoryPage({
                             href={`/summary?sessionId=${session.id}`}
                             className="inline-flex items-center gap-1 rounded-lg bg-surface-container px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-secondary hover:text-white"
                           >
-                            Xem kết quả
+                            View Results
                             <Icon name="arrow_forward" className="text-[14px]" />
                           </Link>
                         ) : session.status === "in_progress" ? (
@@ -214,7 +217,7 @@ export default async function InterviewHistoryPage({
                             href={`/interview-room?sessionId=${session.id}`}
                             className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-secondary"
                           >
-                            Tiếp tục
+                            Resume
                             <Icon name="play_arrow" className="text-[14px]" />
                           </Link>
                         ) : (
@@ -235,11 +238,11 @@ export default async function InterviewHistoryPage({
                 </span>
                 <p className="text-sm font-semibold text-primary">
                   {filter === "all"
-                    ? "Chưa có buổi phỏng vấn nào được ghi nhận."
-                    : `Chưa có buổi phỏng vấn nào ở trạng thái "${filterTabs.find((t) => t.id === filter)?.label}".`}
+                    ? "No interview sessions recorded yet."
+                    : `No interview sessions found with status "${filterTabs.find((t) => t.id === filter)?.label}".`}
                 </p>
                 <p className="text-xs text-on-surface-variant">
-                  Bắt đầu một phiên phỏng vấn mới để AI đồng hành và lưu kết quả đánh giá của bạn.
+                  Start a new mock interview session to practice and receive detailed AI feedback.
                 </p>
                 <div className="pt-2">
                   <Link
@@ -247,7 +250,7 @@ export default async function InterviewHistoryPage({
                     className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-secondary transition-colors"
                   >
                     <Icon name="play_arrow" className="text-[16px]" />
-                    Bắt đầu phỏng vấn
+                    Start Interview
                   </Link>
                 </div>
               </div>
@@ -257,11 +260,11 @@ export default async function InterviewHistoryPage({
           {/* Pagination Controls */}
           {!error && filteredCount > pageSize && (
             <nav
-              aria-label="Phân trang lịch sử phỏng vấn"
+              aria-label="Interview history pagination"
               className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-container pt-4 text-sm"
             >
               <p className="text-xs text-on-surface-variant">
-                {`Hiển thị ${startIndex + 1}–${Math.min(startIndex + pageSize, filteredCount)} / ${filteredCount} phiên`}
+                {`Showing ${startIndex + 1}–${Math.min(startIndex + pageSize, filteredCount)} of ${filteredCount} sessions`}
               </p>
               <div className="flex items-center gap-2">
                 {page > 1 ? (
@@ -269,26 +272,26 @@ export default async function InterviewHistoryPage({
                     href={buildPaginationHref(page - 1)}
                     className="rounded-lg border border-surface-container px-3 py-1.5 text-xs font-medium text-primary hover:bg-surface-container transition-colors"
                   >
-                    Trước
+                    Previous
                   </Link>
                 ) : (
                   <span aria-disabled="true" className="rounded-lg border border-surface-container/60 px-3 py-1.5 text-xs text-on-surface-variant/40 cursor-not-allowed">
-                    Trước
+                    Previous
                   </span>
                 )}
                 <span aria-live="polite" className="px-2 text-xs font-medium text-on-surface-variant">
-                  {`Trang ${page} / ${pageCount}`}
+                  {`Page ${page} of ${pageCount}`}
                 </span>
                 {page < pageCount ? (
                   <Link
                     href={buildPaginationHref(page + 1)}
                     className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-secondary transition-colors"
                   >
-                    Sau
+                    Next
                   </Link>
                 ) : (
                   <span aria-disabled="true" className="rounded-lg bg-primary/40 px-3 py-1.5 text-xs text-white/60 cursor-not-allowed">
-                    Sau
+                    Next
                   </span>
                 )}
               </div>

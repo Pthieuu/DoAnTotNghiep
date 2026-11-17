@@ -12,12 +12,12 @@ test('practice goals render selected criterion names and a link to the source su
     'react/jsx-runtime': jsxRuntime, 'next/link': { __esModule: true, default: props => jsxRuntime.jsx('a', props) }, '@/lib/interview-rubric': rubric,
   });
   const html = renderToStaticMarkup(jsxRuntime.jsx(Goals, { practice: practiceMetadata }));
-  assert.match(html, /Mục tiêu luyện tập điểm yếu/);
+  assert.match(html, /Weakness Practice Goals/);
   assert.ok(html.includes(rubric.CRITERIA[0].name));
   assert.ok(html.includes(rubric.CRITERIA[1].name));
   assert.ok(!html.includes(rubric.CRITERIA[4].name));
   assert.ok(html.includes(`/summary?sessionId=${sourceId}`));
-  assert.match(html, /đầy đủ 5 tiêu chí/);
+  assert.match(html, /all 5 standard rubric criteria/);
 });
 
 test('room client renders goals only for practice sessions and retains the interview controls', () => {
@@ -42,8 +42,8 @@ test('room client renders goals only for practice sessions and retains the inter
       total: 4, currentQuestion: questions()[0], turns: [], completed: false,
       practice: targeted ? practiceMetadata : null,
     } }));
-    assert.equal(html.includes('Mục tiêu luyện tập điểm yếu'), targeted);
-    for (const control of ['Tạm dừng', 'Thoát', 'Hỏi lại từ vựng / ngữ pháp', 'Gửi câu trả lời']) assert.ok(html.includes(control));
+    assert.equal(html.includes('Weakness Practice Goals'), targeted);
+    for (const control of ['Pause', 'Exit', 'Ask Clarification', 'Submit Answer']) assert.ok(html.includes(control));
   }
 });
 

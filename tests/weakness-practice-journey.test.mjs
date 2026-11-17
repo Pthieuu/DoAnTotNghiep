@@ -149,7 +149,7 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
     const { default: Client } = load('src/app/summary/client-page.tsx', {
       react: harness.hooks, 'react/jsx-runtime': jsxRuntime, 'next/link': Link,
       '@/components/icon': { __esModule: true, default: () => null },
-      '@/components/weakness-practice-panel': { __esModule: true, default: props => jsxRuntime.jsx('div', { children: props.continuePractice ? 'Luyện tiếp điểm yếu' : 'Luyện tập điểm yếu' }) },
+      '@/components/weakness-practice-panel': { __esModule: true, default: props => jsxRuntime.jsx('div', { children: props.continuePractice ? 'Continue Practice' : 'Start Practice' }) },
       '@/components/weakness-practice-progress': { __esModule: true, default: Report },
     }, { fetch: browserFetch, AbortController });
     harness.mount(Client, page.props.children.props);
@@ -165,7 +165,7 @@ for (const dropCreatedResponse of [false, true]) {
     const fixture = journeyFixture({ dropCreatedResponse });
     try {
       const oldSummary = await fixture.openSummary(sourceId);
-      assert.ok(oldSummary.html.includes('Kết quả phỏng vấn'));
+      assert.ok(oldSummary.html.includes('Interview Results'));
       assert.equal(oldSummary.props.practice, null);
       const panel = fixture.mountPanel(sourceId);
       await panel.settle();
@@ -173,7 +173,7 @@ for (const dropCreatedResponse of [false, true]) {
       assert.equal(selected.length, 2);
       selected.forEach(checkbox => checkbox.props.onChange());
       panel.render();
-      const create = () => nodes(panel.tree, node => node.type === 'button' && /Luyện tập điểm yếu|Thử lại tạo/.test(content(node)))[0];
+      const create = () => nodes(panel.tree, node => node.type === 'button' && /Start Practice|Retry creating drill/.test(content(node)))[0];
       create().props.onClick();
       await panel.settle();
       if (dropCreatedResponse) {
@@ -204,17 +204,17 @@ for (const dropCreatedResponse of [false, true]) {
       assert.ok(fixture.storedAnswers.filter(row => row.session_id === practiceId).every(row => row.rubric_json.criteria.length === 5));
 
       const newSummary = await fixture.openSummary(practiceId);
-      assert.ok(newSummary.html.includes('Kết quả luyện tập điểm yếu'));
-      assert.ok(newSummary.html.includes('Tăng +1'));
-      assert.ok(newSummary.html.includes('Tăng +2'));
+      assert.ok(newSummary.html.includes('Weakness Practice Results'));
+      assert.ok(newSummary.html.includes('+1 Improvement'));
+      assert.ok(newSummary.html.includes('+2 Improvement'));
       assert.ok(newSummary.html.includes(`/summary?sessionId=${sourceId}`));
-      assert.ok(newSummary.html.includes('hai bộ câu hỏi khác nhau'));
-      assert.ok(newSummary.html.includes('Luyện tiếp điểm yếu'));
+      assert.ok(newSummary.html.includes('different question sets'));
+      assert.ok(newSummary.html.includes('Continue Practice'));
       assert.equal(fixture.state.ai.summary, 1);
 
       const reloaded = await fixture.openSummary(practiceId);
       assert.equal(reloaded.props.practice.sourceSessionId, sourceId);
-      assert.ok(reloaded.html.includes('Tăng +1'));
+      assert.ok(reloaded.html.includes('+1 Improvement'));
       assert.equal(fixture.state.ai.summary, 1);
       const next = fixture.mountPanel(practiceId, true);
       await next.settle();
@@ -223,7 +223,7 @@ for (const dropCreatedResponse of [false, true]) {
       assert.equal(remaining[0].props.value, 'C01');
       remaining[0].props.onChange();
       next.render();
-      nodes(next.tree, node => node.type === 'button' && content(node) === 'Luyện tiếp điểm yếu')[0].props.onClick();
+      nodes(next.tree, node => node.type === 'button' && content(node) === 'Continue Practice')[0].props.onClick();
       await next.settle();
       const nextId = new URL(fixture.state.navigation[1], 'http://localhost').searchParams.get('sessionId');
       assert.equal(fixture.sessions.get(nextId).source_session_id, practiceId);

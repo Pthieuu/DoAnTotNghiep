@@ -22,8 +22,8 @@ test('compares selected criterion levels and reports improvement, decline and no
   assert.deepEqual(result.criteria.map(item => [item.delta, item.trend]), [[2, 'improved'], [-2, 'declined'], [0, 'unchanged']]);
   assert.equal(result.sourceSessionId, sourceId);
   assert.equal(result.rubricVersion, rubric.RUBRIC_VERSION);
-  assert.match(result.comparisonNote, /hai bộ câu hỏi khác nhau/);
-  assert.match(result.comparisonNote, /tham khảo/);
+  assert.match(result.comparisonNote, /different question sets/);
+  assert.match(result.comparisonNote, /reference only/);
 });
 
 test('averages all valid source scores, including high scores, instead of only weak examples', () => {

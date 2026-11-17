@@ -40,10 +40,10 @@ export default function SummaryClient({
             signal: controller.signal,
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Có lỗi xảy ra khi tổng kết.");
+          if (!res.ok) throw new Error(data.error || "An error occurred while generating the summary.");
           if (!controller.signal.aborted) setSummary(data.summary);
         } catch (err) {
-          if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Có lỗi xảy ra.");
+          if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "An error occurred.");
         } finally {
           if (!controller.signal.aborted) setLoading(false);
         }
@@ -64,10 +64,10 @@ export default function SummaryClient({
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-surface-container max-w-md">
           <Icon name="info" className="text-4xl text-secondary mb-4 block mx-auto" />
-          <h2 className="text-xl font-bold text-primary mb-2">Chưa hoàn thành</h2>
-          <p className="text-on-surface-variant mb-6">Buổi phỏng vấn này chưa kết thúc nên chưa có bảng tổng kết.</p>
+          <h2 className="text-xl font-bold text-primary mb-2">Interview Incomplete</h2>
+          <p className="text-on-surface-variant mb-6">This interview session has not finished yet, so no summary is available.</p>
           <Link href={`/interview-room?sessionId=${sessionId}`} className="px-6 py-2.5 bg-primary text-white hover:bg-secondary rounded-lg font-semibold transition-colors inline-block">
-            Tiếp tục phỏng vấn
+            Resume Interview
           </Link>
         </div>
       </div>
@@ -79,8 +79,8 @@ export default function SummaryClient({
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Icon name="autorenew" className="text-4xl text-primary animate-spin mb-4 mx-auto block" />
-          <h2 className="text-xl font-bold text-primary mb-2">Đang phân tích kết quả</h2>
-          <p className="text-on-surface-variant">AI đang tổng hợp điểm số và đưa ra lời khuyên cho bạn...</p>
+          <h2 className="text-xl font-bold text-primary mb-2">Analyzing Results</h2>
+          <p className="text-on-surface-variant">AI is calculating your scores and generating feedback...</p>
         </div>
       </div>
     );
@@ -90,11 +90,11 @@ export default function SummaryClient({
     return (
       <div className="p-8 max-w-3xl mx-auto">
         <div className="bg-error-container text-on-error-container p-6 rounded-2xl">
-          <h2 className="font-bold text-lg mb-2">Không thể tạo bảng tổng kết</h2>
+          <h2 className="font-bold text-lg mb-2">Unable to generate summary</h2>
           <p>{error}</p>
-          <button type="button" onClick={retrySummary} className="mt-4 mr-3 rounded-lg bg-primary px-4 py-2 font-semibold text-white">Thử lại tổng kết</button>
+          <button type="button" onClick={retrySummary} className="mt-4 mr-3 rounded-lg bg-primary px-4 py-2 font-semibold text-white">Retry Summary</button>
           <Link href="/dashboard" className="mt-4 inline-block px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold">
-            Về trang chủ
+            Back to Dashboard
           </Link>
         </div>
       </div>
@@ -109,21 +109,21 @@ export default function SummaryClient({
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-primary mb-2">Kết quả phỏng vấn</h1>
+        <h1 className="text-3xl font-bold text-primary mb-2">Interview Results</h1>
         <p className="text-on-surface-variant text-lg">{title}</p>
-        {practice && !progress && <Link href={`/summary?sessionId=${practice.sourceSessionId}`} className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">Xem phiên nguồn</Link>}
+        {practice && !progress && <Link href={`/summary?sessionId=${practice.sourceSessionId}`} className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">View source session</Link>}
       </div>
 
-      {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Đang cập nhật kết quả luyện tập...</p>}
+      {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Updating practice progress...</p>}
       {error && <div role="alert" className="rounded-xl bg-error-container p-4 text-sm text-on-error-container space-y-2">
         <p>{error}</p>
-        <button type="button" onClick={retrySummary} className="font-semibold underline underline-offset-4">Thử lại cập nhật kết quả</button>
+        <button type="button" onClick={retrySummary} className="font-semibold underline underline-offset-4">Retry updating progress</button>
       </div>}
       {progress && <WeaknessPracticeProgressReport progress={progress} />}
-      {summary.completionScope && <section aria-label="Phạm vi tổng kết" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-1">
-        <h2 className="font-semibold">Phiên phỏng vấn đã kết thúc sớm</h2>
-        <p>Đã trả lời {summary.completionScope.answeredCount}/{summary.completionScope.plannedCount} câu. Tổng kết chỉ dựa trên các câu đã gửi: {summary.completionScope.questionNumbers.join(", ")}.</p>
-        <p>Các câu chưa trả lời không được chấm và không bị tính 0 điểm. Điểm hiển thị là điểm tạm tính cho phần đã trả lời.</p>
+      {summary.completionScope && <section aria-label="Summary Scope" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-1">
+        <h2 className="font-semibold">Interview ended early</h2>
+        <p>Answered {summary.completionScope.answeredCount} of {summary.completionScope.plannedCount} questions. Summary reflects only submitted questions: {summary.completionScope.questionNumbers.join(", ")}.</p>
+        <p>Unanswered questions were not graded and not penalized as 0. Displayed score is provisional for the submitted portion.</p>
       </section>}
 
       <div className="bg-white rounded-3xl p-8 border border-surface-container shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-16 justify-center">
@@ -136,7 +136,7 @@ export default function SummaryClient({
             <div className="relative flex flex-col items-center">
               <span className={`text-5xl md:text-6xl font-black ${scoreColor}`}>{summary.totalScore ?? "—"}</span>
               <span className="text-sm font-semibold text-on-surface-variant">/ 100</span>
-              {summary.provisional && <span className="text-sm text-amber-700">Điểm tạm tính</span>}
+              {summary.provisional && <span className="text-sm text-amber-700">Provisional Score</span>}
             </div>
           </div>
         </div>
@@ -148,14 +148,14 @@ export default function SummaryClient({
                 {["A", "B", "C", "D"].includes(summary.grade) ? summary.grade : "—"}
               </div>
               <div>
-                <h3 className="font-bold text-primary text-lg">Xếp loại: {summary.grade}</h3>
+                <h3 className="font-bold text-primary text-lg">Grade: {summary.grade}</h3>
                 <p className="text-sm text-on-surface-variant">
-                  {summary.totalScore === null ? 'Chưa đủ dữ liệu cùng phạm vi để tính điểm chung. Xem chi tiết từng câu.' :
-                   summary.provisional ? 'Chưa chấm đủ tiêu chí; xem phạm vi đánh giá ở từng câu.' :
-                   summary.grade === 'A' ? 'Bài luyện đạt kết quả tốt theo phạm vi đã đánh giá.' :
-                   summary.grade === 'B' ? 'Khá tốt. Bạn có nền tảng vững nhưng cần cải thiện một số điểm.' :
-                   summary.grade === 'C' ? 'Cần cố gắng hơn. Hãy xem kỹ phần gợi ý cải thiện bên dưới.' :
-                   'Kết quả chưa tốt. Đừng nản lòng, hãy luyện tập thêm nhé!'}
+                  {summary.totalScore === null ? 'Insufficient data in the same scope to calculate overall score. View individual question details.' :
+                   summary.provisional ? 'Not all criteria assessed; check evaluation scope per question.' :
+                   summary.grade === 'A' ? 'Great performance within the assessed scope.' :
+                   summary.grade === 'B' ? 'Good job. Solid foundation with a few areas for improvement.' :
+                   summary.grade === 'C' ? 'Needs improvement. Review the feedback and suggestions below.' :
+                   'Needs more practice. Keep training to build confidence!'}
                 </p>
               </div>
             </div>
@@ -163,12 +163,12 @@ export default function SummaryClient({
         </div>
       </div>
 
-      <p className="text-sm text-on-surface-variant">Điểm luyện tập không dự đoán khả năng đậu phỏng vấn. Chỉ so sánh các lần luyện có cùng phạm vi đánh giá.</p>
+      <p className="text-sm text-on-surface-variant">Practice scores do not predict actual interview outcomes. Only compare practice sessions with identical evaluation scope.</p>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 h-full">
           <h3 className="text-lg font-bold text-emerald-900 mb-4 flex items-center gap-2">
-            <Icon name="thumb_up" /> Điểm mạnh
+            <Icon name="thumb_up" /> Strengths
           </h3>
           <ul className="space-y-3">
             {summary.strengths.map((s, i) => (
@@ -182,7 +182,7 @@ export default function SummaryClient({
         
         <div className="bg-rose-50 rounded-2xl p-6 border border-rose-100 h-full">
           <h3 className="text-lg font-bold text-rose-900 mb-4 flex items-center gap-2">
-            <Icon name="trending_down" /> Điểm cần cải thiện
+            <Icon name="trending_down" /> Areas for Improvement
           </h3>
           <ul className="space-y-3">
             {summary.weaknesses.map((w, i) => (
@@ -197,7 +197,7 @@ export default function SummaryClient({
 
       <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
         <h3 className="text-lg font-bold text-indigo-900 mb-4 flex items-center gap-2">
-          <Icon name="psychology" /> Lời khuyên từ AI Interviewer
+          <Icon name="psychology" /> AI Interviewer Recommendations
         </h3>
         <ul className="space-y-4">
           {summary.improvementTips.map((tip, i) => (
@@ -211,14 +211,14 @@ export default function SummaryClient({
 
       {practiceAvailable
         ? <WeaknessPracticePanel key={sessionId} sessionId={sessionId} continuePractice={practice !== null || !!progress} />
-        : <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Chức năng luyện tập điểm yếu chưa được kích hoạt. Bạn vẫn có thể xem kết quả phỏng vấn và chi tiết từng câu.</p>}
+        : <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Weakness practice is currently unavailable. You can still review your interview results and individual questions.</p>}
 
       <div className="flex flex-wrap justify-center gap-4 pt-4">
         <Link href="/dashboard" className="px-6 py-3 bg-white border border-surface-container text-primary hover:bg-surface-container rounded-xl font-semibold transition-colors flex items-center gap-2">
-          Về trang chủ
+          Back to Dashboard
         </Link>
         <Link href={`/interview-room/history/${sessionId}`} className="px-6 py-3 bg-primary text-white hover:bg-secondary rounded-xl font-semibold transition-colors flex items-center gap-2 shadow-md">
-          <Icon name="list_alt" /> Xem chi tiết từng câu
+          <Icon name="list_alt" /> View Question Details
         </Link>
       </div>
     </div>

@@ -14,7 +14,7 @@ type AnswerRow = { question_index: number; answer: string | null; rubric_json: u
 function replay(session: PracticeSession, sourceId: string, criteria: CriterionId[]) {
   if (session.source_session_id !== sourceId || session.selected_criteria.length !== criteria.length
     || !criteria.every(id => session.selected_criteria.includes(id))) {
-    return json({ error: "Khóa chống trùng đã được dùng cho yêu cầu luyện tập khác." }, 409);
+    return json({ error: "Idempotency key has already been used for another practice request." }, 409);
   }
   return json({ session, sessionId: session.id, reused: true });
 }
@@ -26,41 +26,41 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return json({ error: "Vui lòng đăng nhập để tạo bài luyện tập." }, 401);
+    if (authError || !user) return json({ error: "Please sign in to create a practice session." }, 401);
 
     const { id: rawId } = await context.params;
     const id = rawId.toLowerCase();
     const body: unknown = await request.json().catch(() => null);
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
       || !body || typeof body !== "object" || Array.isArray(body)) {
-      return json({ error: "Yêu cầu luyện tập không hợp lệ." }, 400);
+      return json({ error: "Invalid practice request." }, 400);
     }
     const { selectedCriteria, idempotencyKey } = body as Record<string, unknown>;
     if (!Array.isArray(selectedCriteria) || selectedCriteria.length < 1 || selectedCriteria.length > 5
       || new Set(selectedCriteria).size !== selectedCriteria.length
       || selectedCriteria.some(value => !CRITERIA.some(criterion => criterion.id === value))
       || typeof idempotencyKey !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(idempotencyKey)) {
-      return json({ error: "Chọn tiêu chí hợp lệ và cung cấp khóa chống trùng từ 8–128 ký tự chữ, số, gạch ngang hoặc gạch dưới." }, 400);
+      return json({ error: "Select valid criteria and provide an idempotency key of 8–128 alphanumeric characters, hyphens or underscores." }, 400);
     }
     const criteria = CRITERIA.filter(criterion => selectedCriteria.includes(criterion.id)).map(criterion => criterion.id);
 
     const { data: source, error: sourceError } = await supabase.from("interview_sessions")
       .select("id,title,status,questions,cv_id,cv_snapshot,target_role,company,job_description,level,interview_type,interview_language")
       .eq("id", id).eq("user_id", user.id).maybeSingle();
-    if (sourceError) return json({ error: "Không thể tải phiên phỏng vấn nguồn." }, 500);
-    if (!source) return json({ error: "Không tìm thấy phiên phỏng vấn nguồn." }, 404);
-    if (source.status !== "completed") return json({ error: "Phiên nguồn chưa hoàn thành." }, 409);
+    if (sourceError) return json({ error: "Could not load source interview session." }, 500);
+    if (!source) return json({ error: "Source interview session not found." }, 404);
+    if (source.status !== "completed") return json({ error: "Source session has not been completed." }, 409);
 
     const findExisting = () => supabase.from("interview_sessions").select(SESSION_FIELDS)
       .eq("user_id", user.id).eq("practice_idempotency_key", idempotencyKey).maybeSingle();
     const existing = await findExisting();
-    if (existing.error) return json({ error: "Không thể kiểm tra yêu cầu luyện tập đã tạo." }, 500);
+    if (existing.error) return json({ error: "Could not check existing practice request." }, 500);
     if (existing.data) return replay(existing.data as PracticeSession, id, criteria);
 
     const { data: rows, error: answersError } = await supabase.from("interview_answers")
       .select("question_index,answer,rubric_json").eq("session_id", id)
       .order("question_index", { ascending: true });
-    if (answersError) return json({ error: "Không thể tải câu trả lời của phiên nguồn." }, 500);
+    if (answersError) return json({ error: "Could not load answers from source session." }, 500);
     const questions: unknown[] = Array.isArray(source.questions) ? source.questions : [];
     const answers: WeaknessPracticeAnswer[] = (rows ?? []).map((row: AnswerRow) => {
       const question = questions[row.question_index];
@@ -74,13 +74,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     try {
       buildWeaknessPracticeContext(criteria, answers);
     } catch {
-      return json({ error: "Tiêu chí đã chọn không thuộc điểm yếu hợp lệ của phiên nguồn." }, 400);
+      return json({ error: "Selected criteria do not belong to valid weaknesses of the source session." }, 400);
     }
     if ((source.cv_snapshot !== null && !validateCv(source.cv_snapshot))
       || !["N5", "N4", "N3", "N2", "N1"].includes(source.level)
       || !["technical", "behavioral", "mixed"].includes(source.interview_type)
       || !["ja", "vi"].includes(source.interview_language)) {
-      return json({ error: "Cấu hình phiên nguồn không đủ hợp lệ để luyện tập." }, 409);
+      return json({ error: "Source session configuration is not valid for practice." }, 409);
     }
 
     const role = source.target_role || source.title;
@@ -119,10 +119,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const winner = await findExisting();
       if (!winner.error && winner.data) return replay(winner.data as PracticeSession, id, criteria);
     }
-    if (insertError || !session) return json({ error: "Không thể lưu phiên luyện tập. Vui lòng thử lại với cùng khóa chống trùng." }, 500);
+    if (insertError || !session) return json({ error: "Could not save practice session. Please try again with the same idempotency key." }, 500);
     return json({ session, sessionId: session.id, reused: false }, 201);
   } catch (error) {
     console.error("Weakness practice creation failed", error);
-    return json({ error: "Không tạo được bài luyện tập lúc này. Vui lòng thử lại với cùng khóa chống trùng." }, 503);
+    return json({ error: "Could not create practice session at this time. Please try again with the same idempotency key." }, 503);
   }
 }

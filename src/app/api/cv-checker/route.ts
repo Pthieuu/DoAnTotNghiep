@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: "Vui lòng chọn tệp CV (PDF hoặc DOCX) để kiểm tra." },
+        { error: "Please select a CV file (PDF or DOCX) to review." },
         { status: 400 }
       );
     }
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     const maxSizeBytes = 10 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return NextResponse.json(
-        { error: "Dung lượng tệp vượt quá giới hạn 10MB. Vui lòng nén hoặc tối ưu dung lượng tệp." },
+        { error: "File size exceeds the 10MB limit. Please compress or optimize your file." },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const ext = file.name.toLowerCase().split(".").pop();
     if (ext !== "pdf" && ext !== "docx") {
       return NextResponse.json(
-        { error: "Định dạng tệp không được hỗ trợ. Vui lòng chỉ tải lên tệp .pdf hoặc .docx." },
+        { error: "Unsupported file format. Please upload a .pdf or .docx file." },
         { status: 400 }
       );
     }
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     console.error("CV Checker error:", error);
     return NextResponse.json(
       {
-        error: error.message || "Đã xảy ra lỗi trong quá trình thẩm định CV. Vui lòng thử lại.",
+        error: error.message || "An error occurred during CV review. Please try again.",
       },
       { status: 500 }
     );

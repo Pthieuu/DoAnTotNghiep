@@ -42,14 +42,14 @@ export default async function DashboardPage() {
                 Interview History &amp; AI Reports
               </h2>
               <p className="mt-1 text-sm text-on-surface-variant">
-                Xem lại toàn bộ lịch sử các buổi phỏng vấn đã thực hiện, điểm số rubric và nhận xét AI.
+                Review your full mock interview history, rubric evaluations, and AI feedback.
               </p>
             </div>
             <Link
               href="/interview-history"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-secondary"
             >
-              Xem toàn bộ lịch sử
+              View Full History
               <Icon name="arrow_forward" className="text-[16px]" />
             </Link>
           </div>

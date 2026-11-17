@@ -41,10 +41,10 @@ export function analysisNotes(data: CvData) {
   const notes: { type: "content"; section: string; message: string; evidence: Evidence[] }[] = [];
   data.projects.forEach((p, i) => {
     if (!p.description || !/\b(role|responsib|led|built|implemented|designed|developed|vai trò|phụ trách|thực hiện|thiết kế|担当|役割|開発|実装)\b/i.test(p.description))
-      notes.push({ type: "content", section: `projects.${i}`, message: "Mô tả vai trò cá nhân hoặc phần việc bạn trực tiếp thực hiện để luyện câu hỏi đi sâu hơn.", evidence: p.evidence });
+      notes.push({ type: "content", section: `projects.${i}`, message: "Describe your personal role or tasks you directly performed to practice more in-depth questions.", evidence: p.evidence });
   });
   data.experience.forEach((x, i) => {
-    if (!x.description) notes.push({ type: "content", section: `experience.${i}`, message: "Có thể bổ sung nhiệm vụ cụ thể để câu hỏi phỏng vấn bám sát trải nghiệm của bạn.", evidence: x.evidence });
+    if (!x.description) notes.push({ type: "content", section: `experience.${i}`, message: "You can add specific tasks to help interview questions closely match your experience.", evidence: x.evidence });
   });
   return notes;
 }

@@ -10,7 +10,7 @@ export function useSpeechRecognition(language: string = "vi-VN") {
     // @ts-ignore
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setError("Trình duyệt của bạn không hỗ trợ nhận dạng giọng nói. Hãy dùng Chrome hoặc Edge.");
+      setError("Your browser does not support speech recognition. Please use Chrome or Edge.");
       return;
     }
 
@@ -30,7 +30,7 @@ export function useSpeechRecognition(language: string = "vi-VN") {
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error", event.error);
       if (event.error !== "no-speech") {
-        setError(`Lỗi mic: ${event.error}`);
+        setError(`Microphone error: ${event.error}`);
         setIsListening(false);
       }
     };

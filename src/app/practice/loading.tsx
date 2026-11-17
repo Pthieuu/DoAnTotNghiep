@@ -3,14 +3,14 @@ import DashboardShell from "@/components/dashboard-shell";
 export default function PracticeLoading() {
   return (
     <DashboardShell activePage="Practice Weaknesses">
-      <div className="flex w-full flex-col space-y-space-lg" role="status" aria-busy="true" aria-label="Đang tải dữ liệu luyện tập điểm yếu">
+      <div className="flex w-full flex-col space-y-space-lg" role="status" aria-busy="true" aria-label="Loading practice recommendations">
         {/* Header Skeleton */}
         <header className="rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
           <div className="flex flex-col gap-2">
             <span className="h-3 w-28 rounded bg-slate-200 animate-pulse" />
             <h1 className="text-2xl font-bold tracking-tight text-primary">Practice Weaknesses</h1>
             <p className="text-sm text-on-surface-variant">
-              Luyện tập tập trung theo các tiêu chí cần cải thiện từ buổi phỏng vấn hoàn thành gần nhất của bạn.
+              Targeted drills focused on improvement areas from your latest completed interview.
             </p>
           </div>
         </header>
@@ -24,9 +24,9 @@ export default function PracticeLoading() {
             </svg>
           </span>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-sm font-bold text-primary">Đang nạp gợi ý luyện tập...</p>
+            <p className="text-sm font-bold text-primary">Loading practice recommendations...</p>
             <p className="text-xs text-slate-600">
-              Hệ thống đang đối soát dữ liệu rubric C01–C05 từ buổi phỏng vấn gần nhất để đề xuất các bài luyện phù hợp.
+              Analyzing C01–C05 rubric evaluations from your latest session to suggest focused drills.
             </p>
           </div>
         </div>

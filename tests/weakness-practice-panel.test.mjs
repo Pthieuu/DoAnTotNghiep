@@ -7,7 +7,7 @@ import { componentHarness, nodes, content } from './helpers/component-harness.mj
 
 const Link = { __esModule: true, default: props => jsxRuntime.jsx('a', props) };
 const targets = practice.identifyWeaknesses(answers());
-const button = tree => nodes(tree, node => node.type === 'button' && /Luyện tập điểm yếu|Luyện tiếp điểm yếu|Thử lại tạo|Đang tạo/.test(content(node)))[0];
+const button = tree => nodes(tree, node => node.type === 'button' && /Start Practice|Continue Practice|Retry creating drill|Creating practice drill|Luyện tập điểm yếu|Luyện tiếp điểm yếu/.test(content(node)))[0];
 
 function panel(fetch, extra = {}) {
   const harness = componentHarness();
@@ -22,7 +22,7 @@ function panel(fetch, extra = {}) {
 
 test('loads targets, requires a selection and allows deselection through labeled checkboxes', async () => {
   const instance = panel(async () => Response.json({ weaknesses: targets }));
-  assert.match(content(instance.harness.tree), /Đang tải/);
+  assert.match(content(instance.harness.tree), /Loading practice targets|Đang tải/);
   await instance.harness.settle();
   assert.equal(button(instance.harness.tree).props.disabled, true);
   const checkbox = nodes(instance.harness.tree, node => node.type === 'input')[0];
@@ -42,7 +42,7 @@ test('retries target loading and handles empty or legacy results', async () => {
   assert.match(content(instance.harness.tree), /Load failed/);
   nodes(instance.harness.tree, node => node.type === 'button')[0].props.onClick();
   await instance.harness.settle();
-  assert.match(content(instance.harness.tree), /Chưa có tiêu chí/);
+  assert.match(content(instance.harness.tree), /No criteria|Chưa có tiêu chí/);
   assert.equal(button(instance.harness.tree).props.disabled, true);
 });
 
@@ -86,7 +86,7 @@ test('renders source/practice samples and handles positive, negative, zero and u
     reason: delta === null ? 'insufficient_data' : null,
   })) };
   const html = renderToStaticMarkup(jsxRuntime.jsx(Report, { progress }));
-  for (const expected of ['0/4', 'Tăng +2', 'Giảm -1', 'Không đổi', 'Chưa thể so sánh', '1 câu bị loại', 'Hai bộ câu hỏi khác nhau.']) assert.ok(html.includes(expected), expected);
+  for (const expected of ['0/4', '+2 Improvement', '-1 Decline', 'No change', 'Cannot compare', '1 excluded', 'Hai bộ câu hỏi khác nhau.']) assert.ok(html.includes(expected), expected);
   assert.ok(html.includes(`/summary?sessionId=${sourceId}`));
 });
 
