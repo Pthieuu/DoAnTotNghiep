@@ -49,7 +49,7 @@ export function DashboardHero({ user, data }: { user: AuthUser; data: DashboardD
       </div>
       <div className="flex flex-wrap gap-3">
         <Link href="/interview-setup" className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-bold text-primary"><Icon name="rocket_launch" />Start New Interview</Link>
-        <Link href="/dashboard#practice" className="inline-flex items-center gap-2 rounded-lg border border-white/30 px-4 py-3 text-sm font-semibold"><Icon name="bolt" />Practice Weaknesses</Link>
+        <Link href="/practice" className="inline-flex items-center gap-2 rounded-lg border border-white/30 px-4 py-3 text-sm font-semibold"><Icon name="bolt" />Practice Weaknesses</Link>
       </div>
     </div>
   </header>;
@@ -90,7 +90,7 @@ export function DashboardAnalytics({ data }: { data: DashboardData }) {
           {skill.percent !== null && <div role="progressbar" aria-label={skill.name} aria-valuenow={skill.percent} aria-valuemin={0} aria-valuemax={100} className="h-2 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-secondary" style={{ width: `${skill.percent}%` }} /></div>}
           <p className="text-xs text-on-surface-variant">{skill.assessedAnswers ? `${skill.assessedAnswers} câu được chấm · mức 0–4 quy đổi sang %` : "Chưa có dữ liệu chấm hợp lệ; không tính là 0 điểm."}</p>
         </li>)}</ul>
-        <Link href="/dashboard#practice" className="mt-5 inline-block text-sm font-semibold text-secondary underline underline-offset-4">Practice Focus Areas</Link>
+        <Link href="/practice" className="mt-5 inline-block text-sm font-semibold text-secondary underline underline-offset-4">Practice Focus Areas</Link>
         {data.skills.some(skill => skill.percent === null) && <div className="mt-4 rounded-lg bg-surface-container-low p-3 text-sm text-on-surface-variant">
           <p>Một số tiêu chí chưa được đánh giá. Luyện thêm một phiên mới để bổ sung dữ liệu.</p>
           <Link href="/interview-setup" className="mt-2 inline-block font-semibold text-secondary underline underline-offset-4">Start New Interview</Link>

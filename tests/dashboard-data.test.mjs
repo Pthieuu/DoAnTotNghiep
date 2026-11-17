@@ -277,27 +277,21 @@ test('populated dashboard renders profile preferences, confirmed CV and JD; vali
   assert.ok(!html.includes('Khám phá điểm mạnh và mục tiêu cải thiện'));
 });
 
-test('dashboard page wires real data and preserves history pagination links and cancelled states', async () => {
-  const data = build({ sessions: Array.from({ length: 7 }, (_, i) => session(`session-${i}`, { status: i === 1 ? 'cancelled' : 'completed' })) });
-  const partial = data.sessions.find(item => item.id === 'session-0');
-  partial.score = null;
-  partial.summary_json = { provisional: true, totalScore: 60 };
-  data.sessions = data.sessions.slice(5);
-  data.history = { page: 2, pageSize: 5, totalCount: 7 };
+test('dashboard page wires real data and renders link to interview-history', async () => {
+  const data = build({ sessions: [session('session-0', { status: 'completed' })] });
   const { default: Page } = load('src/app/dashboard/page.tsx', {
-    'react/jsx-runtime': jsxRuntime, 'next/link': { __esModule: true, default: () => null },
+    'react/jsx-runtime': jsxRuntime,
+    'next/link': { __esModule: true, default: props => jsxRuntime.jsx('a', { href: props.href, children: props.children }) },
     'next/navigation': { redirect: () => { throw new Error('Unexpected redirect'); } },
     '@/lib/auth': { getUser: async () => ({ id: userId, name: 'User' }) },
     '@/lib/supabase/server': { createClient: async () => ({}) },
-    '@/lib/dashboard-data': { loadDashboardData: async (_client, owner, page) => { assert.equal(owner, userId); assert.equal(page, '2'); return data; } },
-    '@/lib/dashboard-practice': { loadDashboardPractice: async () => ({ session: null, targets: [] }) },
-    '@/components/dashboard-shell': { __esModule: true, default: () => null },
-    '@/components/dashboard-practice': { __esModule: true, default: () => null },
+    '@/lib/dashboard-data': { loadDashboardData: async (_client, owner) => { assert.equal(owner, userId); return data; } },
+    '@/components/dashboard-shell': { __esModule: true, default: ({ children }) => jsxRuntime.jsx('div', { children }) },
     '@/components/dashboard-overview': ui,
-  }, { URLSearchParams });
-  const tree = await Page({ searchParams: Promise.resolve({ historyPage: '2', filter: 'kept' }) });
-  assert.equal(nodes(tree, node => node.type === 'tr').length, 3);
-  assert.ok(nodes(tree, node => node.props?.href === '/dashboard?filter=kept&historyPage=1#history').length);
-  assert.equal(nodes(tree, node => node.props?.href === '/interview-room?sessionId=session-1').length, 0);
-  assert.ok(content(tree).includes('60/100 (tạm tính)'));
+    '@/components/icon': { __esModule: true, default: () => null },
+  });
+  const tree = await Page();
+  const rendered = content(tree);
+  assert.ok(rendered.includes('Interview History & AI Reports'));
+  assert.ok(nodes(tree, node => node.props?.href === '/interview-history').length);
 });
