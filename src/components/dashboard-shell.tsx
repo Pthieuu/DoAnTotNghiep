@@ -81,7 +81,7 @@ const navigation: NavItem[] = [
   {
     label: "Interview History",
     icon: "history",
-    anchor: "/dashboard#history",
+    anchor: "/interview-history",
     section: "Analytics & History",
     aliases: ["interview history", "interview-history", "history"],
   },
@@ -169,6 +169,24 @@ export default function DashboardShell({
   useEffect(() => {
     setPendingAnchor(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!pendingAnchor) return;
+    const timeout = setTimeout(() => {
+      setPendingAnchor(null);
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [pendingAnchor]);
+
+  useEffect(() => {
+    const handleNavigationEvent = () => setPendingAnchor(null);
+    window.addEventListener("popstate", handleNavigationEvent);
+    window.addEventListener("hashchange", handleNavigationEvent);
+    return () => {
+      window.removeEventListener("popstate", handleNavigationEvent);
+      window.removeEventListener("hashchange", handleNavigationEvent);
+    };
+  }, []);
 
   async function signOut() {
     setSigningOut(true);
@@ -391,8 +409,11 @@ export default function DashboardShell({
                       href={item.anchor}
                       aria-current={isActive ? "page" : undefined}
                       onClick={() => {
-                        if (item.anchor && item.anchor !== pathname) {
-                          setPendingAnchor(item.anchor);
+                        if (item.anchor) {
+                          const targetPath = item.anchor.split(/[?#]/)[0];
+                          if (targetPath && targetPath !== pathname) {
+                            setPendingAnchor(item.anchor);
+                          }
                         }
                         setMenuOpen(false);
                       }}
