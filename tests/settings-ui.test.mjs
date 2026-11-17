@@ -11,6 +11,7 @@ function mountForm(client) {
   const { default: Form } = load('src/components/settings/interview-preferences-form.tsx', {
     react: harness.hooks, 'react/jsx-runtime': jsx, 'lucide-react': icons,
     '@/lib/user-settings': schema, '@/lib/user-settings-client': client,
+    './settings-toast': { default: () => null },
     './settings-skeleton': { default: () => null },
   });
   harness.mount(Form);
@@ -71,8 +72,9 @@ test('tabs support arrow keys and keep practice panel mounted', () => {
     react: h.hooks, 'react/jsx-runtime': jsx, 'lucide-react': icons,
     './interview-preferences-form': { default: () => null },
     './live-audio-settings': { default: () => null },
+    './account-settings': { default: () => null },
   });
-  h.mount(Tabs);
+  h.mount(Tabs, { user: { name: "Test", email: "test@example.com" } });
   const tabs = () => nodes(h.tree, n => n.props.role === 'tab');
   tabs()[0].props.onKeyDown({ key: 'ArrowRight', preventDefault() {} }); h.render();
   assert.equal(tabs()[1].props['aria-selected'], true);

@@ -53,3 +53,15 @@ Các tùy chọn Live được lưu nhưng chưa được áp dụng vào phiên
 Kiểm tra: `node --test tests/user-settings.test.mjs tests/settings-ui.test.mjs tests/settings-audio.test.mjs`.
 
 Kiểm tra thủ công trên HTTPS/localhost: cấp/từ chối quyền micro, hủy khi hộp thoại quyền còn mở, đổi/rút thiết bị, chuyển tab khi micro hoặc giọng đọc hoạt động; kiểm tra giọng tải muộn/không có giọng tiếng Nhật, nghe thử từng tốc độ, lưu và tải lại switch. Test tự động dùng API trình duyệt giả lập, không xác nhận chất lượng âm thanh hoặc quyền thiết bị thực tế.
+
+## Giai đoạn 4 — Tài khoản & Vùng nguy hiểm
+
+Chạy migration `202611170004_user_settings_account.sql` sau các migration trước. Tab 3 hiển thị email/tên từ phiên xác thực và lưu `email_reminders` (mặc định false), `reminder_frequency` (daily/weekly, mặc định weekly). Đây là cấu hình đăng ký nhận nhắc nhở; chưa có scheduler/provider gửi email định kỳ.
+
+Thanh lưu cố định áp dụng cho tab đang mở; mỗi tab giữ bản nháp riêng và chỉ lưu những trường đã thay đổi của tab đó. Toast thành công tự đóng sau 5 giây và có nút đóng.
+
+Danger Zone gọi `DELETE /api/settings/data` với `{ target: "history" | "cvs", confirmation: "XÓA" }`. Endpoint yêu cầu cùng origin, JSON và phiên đăng nhập; không nhận user_id. Modal dùng dialog native, mặc định focus nút Hủy và chặn đóng khi đang xóa.
+
+Xóa history dùng RPC security invoker/RLS, gỡ liên kết source_session_id trong cùng transaction rồi xóa phiên; câu trả lời được cascade. Bao gồm cả phiên đang diễn ra, báo cáo và luyện điểm yếu. Xóa CV theo batch 100: xóa tệp Storage trước rồi metadata theo ID/owner. Nếu lỗi có thể đã xóa một phần; UI báo lỗi và cho phép thử lại. CV snapshots trong lịch sử và bản nháp trình duyệt không thuộc phạm vi xóa CV, được ghi rõ trong modal. Không xóa tài khoản hoặc hồ sơ candidate_profiles.
+
+Kiểm tra bổ sung: `node --test tests/settings-account.test.mjs`. Trên Supabase thử với hai tài khoản, lịch sử có phiên luyện điểm yếu và CV có/không có tệp. Kiểm tra RLS, cascade, lỗi Storage, retry và xác nhận đúng phạm vi trước khi dùng production. Chưa thực hiện xóa dữ liệu thật trong quá trình triển khai.

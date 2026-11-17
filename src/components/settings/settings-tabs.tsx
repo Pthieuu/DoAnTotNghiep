@@ -4,6 +4,8 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { BookOpen, Mic, ShieldCheck } from "lucide-react";
 import InterviewPreferencesForm from "./interview-preferences-form";
 
+import type { AuthUser } from "@/lib/auth-types";
+import AccountSettings from "./account-settings";
 import LiveAudioSettings from "./live-audio-settings";
 
 const tabs = [
@@ -12,7 +14,7 @@ const tabs = [
   { id: "account", label: "Tài khoản & Quyền riêng tư", icon: ShieldCheck },
 ] as const;
 
-export default function SettingsTabs() {
+export default function SettingsTabs({ user }: { user: AuthUser }) {
   const [active, setActive] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -31,15 +33,9 @@ export default function SettingsTabs() {
           </button>
         ))}
       </div>
-      {tabs.map(({ id, label, icon: Icon }, index) => (
+      {tabs.map(({ id }, index) => (
         <div key={id} id={`settings-panel-${id}`} role="tabpanel" aria-labelledby={`settings-tab-${id}`} hidden={active !== index} tabIndex={0}>
-          {index === 0 ? <InterviewPreferencesForm /> : index === 1 ? <LiveAudioSettings active={active === 1} /> : (
-            <section className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
-              <Icon size={28} className="mx-auto mb-4 text-slate-400" aria-hidden="true" />
-              <h2 className="text-lg font-semibold text-primary">{label}</h2>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">{index === 1 ? "Tùy chọn giọng AI và kiểm tra micro sẽ được bổ sung ở giai đoạn tiếp theo." : "Các tùy chọn quản lý tài khoản và quyền riêng tư sẽ được bổ sung ở giai đoạn tiếp theo."}</p>
-            </section>
-          )}
+          {index === 0 ? <InterviewPreferencesForm /> : index === 1 ? <LiveAudioSettings active={active === 1} /> : <AccountSettings user={user} active={active === 2} />}
         </div>
       ))}
     </div>

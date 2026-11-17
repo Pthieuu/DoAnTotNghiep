@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CheckCircle2, LoaderCircle, Save, RotateCcw } from "lucide-react";
 import { getUserSettings, updateUserSettings } from "@/lib/user-settings-client";
 import { settingsOptions, type UserSettings, type UserSettingsUpdate } from "@/lib/user-settings";
+import SettingsToast from "./settings-toast";
 import SettingsSkeleton from "./settings-skeleton";
 
 const fields = ["default_jlpt", "interview_lang", "eval_framework", "question_count"] as const;
@@ -59,7 +60,7 @@ export default function InterviewPreferencesForm() {
   );
   const dirty = fields.some((key) => draft[key] !== saved[key]);
   return (
-    <form onSubmit={submit} aria-busy={saving} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <form onSubmit={submit} aria-busy={saving} className="mb-36 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-100 p-6 sm:px-8">
         <h2 className="text-lg font-bold text-primary">Tùy chọn luyện tập</h2>
         <p className="mt-1 text-sm leading-6 text-slate-500">Thiết lập trình độ và cách bạn muốn luyện phỏng vấn với AI.</p>
@@ -96,7 +97,7 @@ export default function InterviewPreferencesForm() {
         </div>
       </fieldset>
       <div className="mx-6 mb-6 rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600 sm:mx-8">Các tùy chọn được lưu cho tài khoản của bạn. Việc tự động áp dụng vào buổi phỏng vấn sẽ được bổ sung ở bước tiếp theo.</div>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 px-6 py-5 sm:px-8">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur sm:px-8 lg:left-64">
         <div aria-live="polite" className="text-sm">
           {error ? <p role="alert" className="text-red-700">{error}</p> : success ? <p className="flex items-center gap-2 text-emerald-700"><CheckCircle2 size={16} aria-hidden="true" />Đã lưu cài đặt.</p> : <p className="text-slate-500">{dirty ? "Bạn có thay đổi chưa lưu." : "Cài đặt đã được đồng bộ."}</p>}
         </div>
@@ -105,6 +106,7 @@ export default function InterviewPreferencesForm() {
           <button type="submit" disabled={!dirty || saving} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-container disabled:opacity-40">{saving ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}{saving ? "Đang lưu…" : "Lưu thay đổi"}</button>
         </div>
       </div>
+      {success && <SettingsToast message="Đã lưu cài đặt." />}
     </form>
   );
 }

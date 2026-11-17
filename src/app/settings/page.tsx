@@ -18,7 +18,7 @@ export default async function SettingsPage() {
           <div className="rounded-xl bg-primary/5 p-3 text-primary"><Settings2 size={24} aria-hidden="true" /></div>
           <div><h1 className="text-2xl font-bold tracking-tight text-primary sm:text-3xl">Cài đặt</h1><p className="mt-2 text-sm text-slate-500">Cá nhân hóa hành trình luyện phỏng vấn của bạn.</p></div>
         </header>
-        <SettingsTabs />
+        <SettingsTabs user={user} />
       </div>
     </DashboardShell>
   );

@@ -80,6 +80,7 @@ test('live form saves boolean false and speech preferences without overwriting i
     '@/lib/user-settings-client': { getUserSettings: async () => schema.defaultUserSettings, updateUserSettings: async patch => {
       calls.push(plain(patch)); return { ...schema.defaultUserSettings, ...patch };
     } },
+    './settings-toast': { default: () => null },
     './settings-skeleton': { default: () => null }, './mic-tester': { default: () => null }, './speech-preview': { default: () => null },
   });
   h.mount(Form, { active: true }); await h.settle();
