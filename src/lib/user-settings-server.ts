@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { defaultUserSettings, isUserSettingsUpdate, type UserSettings } from "./user-settings";
 
-const columns = "default_jlpt,interview_lang,eval_framework,ai_voice";
+const columns = "default_jlpt,interview_lang,eval_framework,ai_voice,question_count";
 
 export class UserSettingsError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -22,6 +22,9 @@ async function authenticatedClient() {
 function databaseError(code?: string): never {
   if (code === "42P01" || code === "PGRST205") {
     throw new UserSettingsError("Chưa có bảng user_settings. Hãy chạy migration 202611170001_create_user_settings.sql.", 503);
+  }
+  if (code === "42703" || code === "PGRST204") {
+    throw new UserSettingsError("Cần chạy migration 202611170002_user_settings_question_count.sql để cập nhật cài đặt.", 503);
   }
   throw new UserSettingsError("Không thể truy cập cài đặt. Vui lòng thử lại.", 500);
 }

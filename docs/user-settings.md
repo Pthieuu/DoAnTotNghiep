@@ -1,6 +1,6 @@
-# Settings — giai đoạn 1
+# Settings — giai đoạn 1 và 2
 
-Chạy `supabase/migrations/202611170001_create_user_settings.sql` trong Supabase SQL Editor hoặc qua quy trình migration của dự án trước khi dùng API.
+Chạy `supabase/migrations/202611170001_create_user_settings.sql` trong Supabase SQL Editor hoặc qua quy trình migration của dự án trước khi dùng API. Sau đó chạy `supabase/migrations/202611170002_user_settings_question_count.sql` để thêm số câu hỏi.
 
 Mỗi tài khoản có tối đa một dòng, liên kết với `auth.users` và được xóa khi tài khoản bị xóa. RLS chỉ cho phép đọc/thêm/sửa dòng của chính mình. Timestamp do database quản lý. Không cần backfill: GET trả mặc định khi chưa có dòng, PATCH đầu tiên tạo dòng.
 
@@ -9,6 +9,7 @@ Mỗi tài khoản có tối đa một dòng, liên kết với `auth.users` và
 | default_jlpt | N5, N4, N3, N2, N1 | N3 |
 | interview_lang | ja, vi | ja |
 | eval_framework | PREP, STAR | STAR |
+| question_count | 4, 6, 8, 10 (số nguyên) | 6 |
 | ai_voice | Kore, Aoede, Puck, Charon, Fenrir | Kore |
 
 `GET /api/settings` trả `{ settings: UserSettings }`. `PATCH /api/settings` nhận một hoặc nhiều trường trong bảng và trả cùng cấu trúc. Các trường bỏ qua giữ nguyên; bản ghi mới dùng mặc định SQL. Không gửi `user_id` hoặc timestamp. PATCH yêu cầu JSON và Origin cùng nguồn, dùng session cookie hiện có. Response không được cache.
@@ -26,8 +27,10 @@ await updateUserSettings({ default_jlpt: "N2" });
 
 Server Component hoặc Server Action có thể gọi cùng tên hàm từ `@/lib/user-settings-server`. Các hàm server tự xác thực; không nhận ID người dùng từ caller. Client helpers ném Error khi thất bại để UI hiển thị thông báo và cho phép thử lại; UI cần dùng try/catch/finally để quản lý loading.
 
-Giai đoạn này chỉ lưu tùy chọn, chưa thay đổi setup, giọng Gemini Live hoặc rubric chấm điểm. Việc áp dụng tùy chọn vào phiên phỏng vấn, SettingsTabs, Skeleton, Lucide và MicTester (gồm quyền micro bị từ chối) thuộc giai đoạn giao diện tiếp theo. Quyền micro thực tế phải đọc từ trình duyệt, không lưu như một quyền đã cấp trong database.
+Trang `/settings` yêu cầu đăng nhập, có ba tab ngang và hỗ trợ phím mũi tên/Home/End. Tab Luyện tập & Phỏng vấn cho phép sửa JLPT, ngôn ngữ, PREP/STAR và số câu hỏi; có Skeleton, thử tải lại, trạng thái lưu/lỗi và hủy chỉnh sửa. Chuyển tab giữ bản nháp. Hai tab còn lại là khung cho giai đoạn tiếp theo.
 
-Kiểm tra tự động: `node --test tests/user-settings.test.mjs`.
+Giai đoạn này chỉ lưu tùy chọn, chưa thay đổi setup, giọng Gemini Live hoặc rubric chấm điểm. Việc áp dụng tùy chọn vào phiên phỏng vấn và MicTester (gồm quyền micro bị từ chối) thuộc giai đoạn tiếp theo. Quyền micro thực tế phải đọc từ trình duyệt, không lưu như một quyền đã cấp trong database.
+
+Kiểm tra tự động: `node --test tests/user-settings.test.mjs tests/settings-ui.test.mjs`.
 
 Sau khi áp dụng migration, kiểm tra với hai tài khoản A/B: A tạo và sửa settings; B không thể đọc/sửa dòng A hoặc chèn dòng mang user_id của A. Kiểm tra PATCH từng trường giữ nguyên các giá trị còn lại, đăng xuất nhận 401. Các test Node dùng Supabase giả lập; chúng không thay thế kiểm tra RLS trên database thật.

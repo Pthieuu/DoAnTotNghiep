@@ -97,7 +97,7 @@ const navigation: NavItem[] = [
   {
     label: "Settings",
     icon: "settings_suggest",
-    action: "settings",
+    anchor: "/settings",
     section: "System",
     aliases: ["settings"],
   },
