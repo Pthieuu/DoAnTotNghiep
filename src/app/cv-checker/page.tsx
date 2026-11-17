@@ -7,8 +7,8 @@ import CvCheckerClient from "./client-page";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Check CV Tiếng Nhật | Aizuchi.AI",
-  description: "Phân tích và nhận góp ý hoàn thiện CV tiếng Nhật khi ứng tuyển doanh nghiệp Nhật Bản.",
+  title: "Check Japanese CV | Aizuchi.AI",
+  description: "Analyze and improve your Japanese CV for job applications to Japanese enterprises.",
 };
 
 export default async function CvCheckerPage() {

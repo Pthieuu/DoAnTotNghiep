@@ -149,10 +149,10 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
       });
       const tokenData = await tokenResponse.json();
       if (!isCurrent()) return;
-      if (!tokenResponse.ok) throw new Error(tokenData.error || "Không thể kết nối Gemini Live.");
+      if (!tokenResponse.ok) throw new Error(tokenData.error || "Unable to connect to Gemini Live.");
 
       if (tokenData.questionIndex !== questionIndex || tokenData.questionText !== questionText) {
-        throw new Error("Câu hỏi không còn đồng bộ. Hãy tải lại trang để tiếp tục.");
+        throw new Error("Question is out of sync. Please reload the page to continue.");
       }
 
       const audioContext = new AudioContext();
@@ -200,12 +200,12 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           message = JSON.parse(await websocketFrameToText(event.data)) as GeminiLiveServerMessage;
         } catch (cause) {
           console.error("Could not decode Gemini Live WebSocket frame", cause);
-          fail("Gemini Live gửi phản hồi không đọc được. Hãy thử kết nối lại.");
+          fail("Gemini Live sent an unreadable response. Please try reconnecting.");
           return;
         }
         if (!isCurrent()) return;
         if (message.error) {
-          const detail = message.error.message || message.error.status || "Lỗi từ Gemini Live.";
+          const detail = message.error.message || message.error.status || "Error from Gemini Live.";
           console.error("Gemini Live server error", { code: message.error.code, detail });
           fail(`Gemini Live: ${detail}`);
           return;
@@ -274,10 +274,10 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           finishPlayback();
         }
       };
-      socket.onerror = () => fail("Kết nối Gemini Live bị lỗi. Hãy thử lại.");
-      socket.onclose = () => fail("Gemini Live đã ngắt kết nối.");
+      socket.onerror = () => fail("Gemini Live connection error. Please try again.");
+      socket.onclose = () => fail("Gemini Live disconnected.");
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : "Không thể bắt đầu hội thoại giọng nói.";
+      const message = cause instanceof Error ? cause.message : "Unable to start voice conversation.";
       fail(message);
     }
   }, [sessionId, questionIndex, questionText, stop, clearPlayback]);

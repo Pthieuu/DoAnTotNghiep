@@ -21,8 +21,8 @@ function isJsonArray(value: unknown, maxItems: number): value is Record<string, 
 }
 
 function databaseErrorMessage(code: string | undefined) {
-  if (code === "42P01" || code === "PGRST205") return "Chưa tạo bảng hồ sơ trong Supabase. Hãy chạy các migration 202609290002 và 202609290003 trong SQL Editor.";
-  if (code === "42703" || code === "PGRST204") return "Supabase đang thiếu các cột hồ sơ mới. Hãy chạy migration 202609290003_expand_candidate_profile.sql trong SQL Editor.";
+  if (code === "42P01" || code === "PGRST205") return "candidate_profiles table not created in Supabase. Please run migrations 202609290002 and 202609290003.";
+  if (code === "42703" || code === "PGRST204") return "Supabase is missing new profile columns. Please run migration 202609290003_expand_candidate_profile.sql.";
   return null;
 }
 
@@ -38,7 +38,7 @@ export async function GET() {
       .select("full_name,katakana,phone,summary,target,motivation,jlpt_level,employment_status,industries,languages,education_experience,technical_skills")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (error) return json({ error: databaseErrorMessage(error.code) || "Không thể tải hồ sơ. Hãy kiểm tra cấu hình bảng candidate_profiles trong Supabase." }, 500);
+    if (error) return json({ error: databaseErrorMessage(error.code) || "Could not load profile. Check candidate_profiles configuration in Supabase." }, 500);
     return json({ profile: data });
   } catch {
     return json({ error: "Profile service is temporarily unavailable." }, 503);
@@ -91,7 +91,7 @@ export async function PUT(request: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" }).select("full_name,katakana,phone,summary,target,motivation,jlpt_level,employment_status,industries,languages,education_experience,technical_skills").single();
 
-    if (error) return json({ error: databaseErrorMessage(error.code) || "Không thể lưu hồ sơ. Hãy kiểm tra quyền RLS và cấu hình bảng candidate_profiles trong Supabase." }, 500);
+    if (error) return json({ error: databaseErrorMessage(error.code) || "Could not save profile. Check RLS permissions and candidate_profiles configuration in Supabase." }, 500);
     return json({ profile: data });
   } catch {
     return json({ error: "Profile service is temporarily unavailable." }, 503);

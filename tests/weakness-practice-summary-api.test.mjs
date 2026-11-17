@@ -83,7 +83,7 @@ test('practice summary saves backend progress while preserving normal full-rubri
   assert.deepEqual(progress.criteria.map(criterion => criterion.delta), [2, 2]);
   assert.equal(progress.criteria[0].source.assessedAnswers, 2);
   assert.equal(progress.criteria[0].practice.assessedAnswers, 4);
-  assert.match(progress.comparisonNote, /hai bộ câu hỏi khác nhau/);
+  assert.match(progress.comparisonNote, /different question sets/);
   assert.equal(instance.state.generated[0].answers[0].rubric.criteria.length, 5);
   assert.deepEqual(instance.state.updates[0].filters, { id: practiceId, user_id: userId });
   assert.deepEqual(instance.state.updates[0].value.summary_json.practiceProgress, progress);

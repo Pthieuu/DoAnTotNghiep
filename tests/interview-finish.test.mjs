@@ -116,7 +116,7 @@ function room(fetch) {
   } });
   nodes(harness.tree, node => typeof node.props?.onExit === 'function')[0].props.onExit();
   harness.render();
-  return { harness, navigation, finish: () => nodes(harness.tree, node => node.type === 'button' && /Kết thúc sớm|Đang kết thúc phiên/.test(content(node)))[0] };
+  return { harness, navigation, finish: () => nodes(harness.tree, node => node.type === 'button' && /End Early|Ending session/.test(content(node)))[0] };
 }
 
 test('room waits for successful backend completion and blocks duplicate finish clicks before navigation', async () => {
@@ -151,7 +151,7 @@ test('room stays open on finish errors and allows retrying without losing saved 
     await instance.harness.settle();
     assert.equal(instance.navigation.length, 0);
     assert.match(content(instance.harness.tree), /Finish failed/);
-    assert.match(content(instance.harness.tree), /1\s*\/\s*4\s+câu đã gửi/);
+    assert.match(content(instance.harness.tree), /1\s*\/\s*4\s+submitted question\(s\)/);
     instance.finish().props.onClick();
     await instance.harness.settle();
     assert.equal(instance.navigation.length, 1);
@@ -175,11 +175,11 @@ test('summary displays the answered scope for early completion while ordinary su
         ...(partial ? { completionScope: { answeredCount: 2, plannedCount: 4, questionNumbers: [1, 2] } } : {}),
       },
     });
-    const scope = nodes(harness.tree, node => node.props?.['aria-label'] === 'Phạm vi tổng kết');
+    const scope = nodes(harness.tree, node => node.props?.['aria-label'] === 'Summary Scope');
     assert.equal(scope.length, partial ? 1 : 0);
     if (partial) {
-      assert.match(content(scope[0]), /2\s*\/\s*4\s+câu/);
-      assert.match(content(scope[0]), /không bị tính 0 điểm/);
+      assert.match(content(scope[0]), /2\s+of\s+4\s+questions/);
+      assert.match(content(scope[0]), /not penalized as 0/);
     }
     harness.unmount();
   }

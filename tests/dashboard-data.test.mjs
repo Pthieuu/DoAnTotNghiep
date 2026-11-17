@@ -232,7 +232,7 @@ test('empty dashboard renders unassessed skills without zero bars, fabricated cr
     jsxRuntime.jsx(ui.DashboardHero, { user: { name: 'User', email: 'user@example.com' }, data }),
     jsxRuntime.jsx(ui.DashboardAnalytics, { data }), jsxRuntime.jsx(ui.DashboardContext, { data }),
   ] }));
-  assert.ok(html.includes('Chưa đánh giá'));
+  assert.ok(html.includes('Not assessed'));
   for (const obsolete of ['0%', 'JLPT N2', 'Rakuten', 'Tanaka', 'Estimated Pass Rate', 'role="progressbar"']) assert.ok(!html.includes(obsolete), obsolete);
   const tree = ui.DashboardAnalytics({ data });
   for (const heading of ['score-progression-heading', 'skill-breakdown-heading']) {
@@ -261,8 +261,8 @@ test('partial skill data stays visible with a nearby action to obtain missing as
   const section = nodes(tree, node => node.props?.['aria-labelledby'] === 'skill-breakdown-heading')[0];
   const html = renderToStaticMarkup(section);
   assert.ok(html.includes('75%'));
-  assert.ok(html.includes('Chưa đánh giá'));
-  assert.ok(html.includes('Một số tiêu chí chưa được đánh giá'));
+  assert.ok(html.includes('Not assessed'));
+  assert.ok(html.includes('Some criteria have not been assessed yet'));
   assert.ok(html.includes('href="/interview-setup"'));
 });
 
@@ -273,8 +273,8 @@ test('populated dashboard renders profile preferences, confirmed CV and JD; vali
     jsxRuntime.jsx(ui.DashboardAnalytics, { data }), jsxRuntime.jsx(ui.DashboardContext, { data }),
   ] }));
   for (const expected of ['Data Engineer', 'JLPT N4', 'resume.pdf', 'Kinh nghiệm từ CV đã xác nhận.', 'JD riêng của tài khoản', 'SQL', 'TypeScript', '0%', '0/100']) assert.ok(html.includes(expected), expected);
-  assert.ok(!html.includes('Bắt đầu hành trình theo dõi tiến bộ'));
-  assert.ok(!html.includes('Khám phá điểm mạnh và mục tiêu cải thiện'));
+  assert.ok(!html.includes('Start Tracking Your Progress'));
+  assert.ok(!html.includes('Discover Strengths &amp; Improvement Areas'));
 });
 
 test('dashboard page wires real data and renders link to interview-history', async () => {

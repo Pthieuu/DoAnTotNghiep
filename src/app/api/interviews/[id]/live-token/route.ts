@@ -8,35 +8,35 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
   if (failure) return failure;
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return json({ error: "Thiếu GEMINI_API_KEY trong cấu hình máy chủ." }, 503);
+  if (!apiKey) return json({ error: "Missing GEMINI_API_KEY in server configuration." }, 503);
 
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return json({ error: "Vui lòng đăng nhập để bắt đầu phỏng vấn." }, 401);
+    if (!user) return json({ error: "Please sign in to start interview." }, 401);
 
     const { id } = await context.params;
     const { data: session, error } = await supabase.from("interview_sessions")
       .select("id,title,company,level,interview_type,interview_language,questions,status")
       .eq("id", id).eq("user_id", user.id).maybeSingle();
-    if (error) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
-    if (!session || !Array.isArray(session.questions)) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
-    if (session.status !== "in_progress") return json({ error: "Buổi phỏng vấn này đã kết thúc." }, 409);
+    if (error) return json({ error: "Could not load interview session." }, 500);
+    if (!session || !Array.isArray(session.questions)) return json({ error: "Interview session not found." }, 404);
+    if (session.status !== "in_progress") return json({ error: "This interview session has ended." }, 409);
 
     const { data: answerRows, error: answerError } = await supabase.from("interview_answers")
       .select("question_index,answer").eq("session_id", id).order("question_index", { ascending: true });
-    if (answerError) return json({ error: "Không thể tải tiến độ phỏng vấn." }, 500);
+    if (answerError) return json({ error: "Could not load interview progress." }, 500);
     const questions = session.questions as Question[];
     const index = answerRows?.length ?? 0;
     const question = questions[index];
-    if (!question) return json({ error: "Không còn câu hỏi nào trong buổi phỏng vấn." }, 409);
+    if (!question) return json({ error: "No remaining questions in this interview session." }, 409);
 
     const requested = await _request.json().catch(() => null) as { questionIndex?: unknown; questionText?: unknown } | null;
     if (!requested || !Number.isInteger(requested.questionIndex) || typeof requested.questionText !== "string") {
-      return json({ error: "Thiếu thông tin câu hỏi đang hiển thị. Hãy tải lại trang." }, 400);
+      return json({ error: "Missing current question information. Please reload the page." }, 400);
     }
     if (requested.questionIndex !== index || requested.questionText !== question.text) {
-      return json({ error: "Tiến độ phỏng vấn đã thay đổi. Hãy tải lại trang để nhận câu hỏi hiện tại." }, 409);
+      return json({ error: "Interview progress has changed. Please reload the page to get the current question." }, 409);
     }
 
     const language = session.interview_language === "ja" ? "Japanese" : "Vietnamese";
@@ -78,10 +78,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     });
     const tokenBody = await tokenResponse.json().catch(() => null) as { name?: string; error?: { message?: string } } | null;
     if (!tokenResponse.ok || !tokenBody?.name) {
-      const upstreamMessage = tokenBody?.error?.message || "Google không trả về thông tin lỗi.";
+      const upstreamMessage = tokenBody?.error?.message || "Google returned no error details.";
       console.error("Gemini Live token request failed", { status: tokenResponse.status, message: upstreamMessage });
       return json({
-        error: `Gemini không cấp token (${tokenResponse.status}): ${upstreamMessage}`,
+        error: `Gemini did not grant token (${tokenResponse.status}): ${upstreamMessage}`,
       }, 502);
     }
     return json({
@@ -95,8 +95,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     console.error("Gemini Live token error", error instanceof Error ? error.message : "Unknown error");
     return json({
       error: networkError
-        ? "Máy chủ không kết nối được Gemini. Kiểm tra mạng hoặc cấu hình proxy của môi trường chạy ứng dụng."
-        : "Không thể khởi tạo hội thoại giọng nói.",
+        ? "Server cannot connect to Gemini. Check network or proxy configuration."
+        : "Could not initialize voice conversation.",
     }, 503);
   }
 }

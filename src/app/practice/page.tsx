@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Practice Weaknesses | Aizuchi.AI",
-  description: "Luyện tập tập trung theo các tiêu chí điểm yếu từ kết quả phỏng vấn gần nhất.",
+  description: "Targeted practice on weakness criteria from your latest completed interview.",
 };
 
 export default async function PracticePage() {
@@ -29,7 +29,7 @@ export default async function PracticePage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-secondary">Interview Lab</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-primary">Practice Weaknesses</h1>
               <p className="mt-1 text-sm text-on-surface-variant">
-                Luyện tập tập trung theo các tiêu chí cần cải thiện từ buổi phỏng vấn hoàn thành gần nhất của bạn.
+                Targeted drills focused on improvement areas from your latest completed interview.
               </p>
             </div>
           </div>

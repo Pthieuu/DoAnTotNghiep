@@ -8,25 +8,25 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) return json({ error: "Vui lòng đăng nhập để xem điểm cần luyện tập." }, 401);
+    if (authError || !user) return json({ error: "Please sign in to view weaknesses." }, 401);
 
     const { id } = await context.params;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      return json({ error: "Mã buổi phỏng vấn không hợp lệ." }, 400);
+      return json({ error: "Invalid interview session ID." }, 400);
     }
 
     const { data: session, error: sessionError } = await supabase.from("interview_sessions")
       .select("id,status,questions")
       .eq("id", id).eq("user_id", user.id).maybeSingle();
-    if (sessionError) return json({ error: "Không thể tải buổi phỏng vấn." }, 500);
-    if (!session) return json({ error: "Không tìm thấy buổi phỏng vấn." }, 404);
-    if (session.status !== "completed") return json({ error: "Buổi phỏng vấn chưa hoàn thành." }, 409);
+    if (sessionError) return json({ error: "Could not load interview session." }, 500);
+    if (!session) return json({ error: "Interview session not found." }, 404);
+    if (session.status !== "completed") return json({ error: "Interview session has not been completed." }, 409);
 
     const { data: rows, error: answersError } = await supabase.from("interview_answers")
       .select("question_index,answer,rubric_json")
       .eq("session_id", id)
       .order("question_index", { ascending: true });
-    if (answersError) return json({ error: "Không thể tải dữ liệu câu trả lời." }, 500);
+    if (answersError) return json({ error: "Could not load answer data." }, 500);
 
     const questions: unknown[] = Array.isArray(session.questions) ? session.questions : [];
     const answers: WeaknessPracticeAnswer[] = (rows ?? []).map((row: AnswerRow) => {
@@ -42,6 +42,6 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return json({ sessionId: session.id, weaknesses: identifyWeaknesses(answers) });
   } catch (error) {
     console.error("Interview weaknesses load failed", error);
-    return json({ error: "Dịch vụ luyện tập tạm thời không khả dụng." }, 503);
+    return json({ error: "Practice service is temporarily unavailable." }, 503);
   }
 }

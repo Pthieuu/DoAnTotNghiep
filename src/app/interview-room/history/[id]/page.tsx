@@ -50,9 +50,9 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
             <Icon name="arrow_back" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-primary">Chi tiết các câu trả lời</h1>
+            <h1 className="text-2xl font-bold text-primary">Answer Details</h1>
             <p className="text-on-surface-variant text-sm">
-              {session.title} • {session.completed_at ? new Date(session.completed_at).toLocaleString('vi-VN') : 'Chưa hoàn thành'}
+              {session.title} • {session.completed_at ? new Date(session.completed_at).toLocaleString('en-US') : 'In Progress'}
             </p>
           </div>
         </div>
@@ -72,13 +72,13 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                 <div className="bg-surface-container-lowest p-5 border-b border-surface-container flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div className="flex-1">
                     <span className="text-xs font-bold text-secondary uppercase tracking-wider mb-1 block">
-                      Câu hỏi {ans.question_index + 1} • {q.focus === "technical" ? "Kỹ thuật" : q.focus === "behavioral" ? "Kỹ năng mềm" : "Chung"}
+                      Question {ans.question_index + 1} • {q.focus === "technical" ? "Technical" : q.focus === "behavioral" ? "Behavioral" : "General"}
                     </span>
                     <h3 className="text-lg font-bold text-primary leading-relaxed">{q.text}</h3>
                     <p className="text-sm text-on-surface-variant mt-1">{q.translation}</p>
                   </div>
                   <div className={`shrink-0 flex items-center justify-center px-4 py-2 rounded-xl border font-bold text-xl ${scoreColor}`}>
-                    {ans.rubric_json?.provisional ? "Tạm tính: " : ""}{ans.score === null ? "Chưa chấm" : `${Math.round(ans.score * 100) / 100} / 10`}
+                    {ans.rubric_json?.provisional ? "Provisional: " : ""}{ans.score === null ? "Not graded" : `${Math.round(ans.score * 100) / 100} / 10`}
                   </div>
                 </div>
 
@@ -86,7 +86,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                   {ans.rubric_json && <RubricDetails rubric={ans.rubric_json} />}
                   <div>
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-1.5">
-                      <Icon name="person" className="text-on-surface-variant" /> Câu trả lời của bạn
+                      <Icon name="person" className="text-on-surface-variant" /> Your Answer
                     </h4>
                     <div className="bg-surface-container-lowest p-4 rounded-xl text-on-surface leading-relaxed text-sm">
                       {ans.answer}
@@ -95,7 +95,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
 
                   <div>
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-1.5">
-                      <Icon name="psychology" className="text-indigo-600" /> Nhận xét từ AI
+                      <Icon name="psychology" className="text-indigo-600" /> AI Feedback
                     </h4>
                     <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-indigo-900 leading-relaxed text-sm whitespace-pre-line">
                       {ans.feedback}
@@ -105,7 +105,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                   {ans.suggestion && (
                     <div>
                       <h4 className="text-sm font-semibold text-emerald-700 mb-2 flex items-center gap-1.5">
-                        <Icon name="lightbulb" /> Gợi ý cải thiện
+                        <Icon name="lightbulb" /> Improvement Suggestions
                       </h4>
                       <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl text-emerald-900 leading-relaxed text-sm">
                         {ans.suggestion}
@@ -120,7 +120,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
 
         {answers.length === 0 && (
           <div className="text-center p-12 bg-white rounded-2xl border border-surface-container">
-            <p className="text-on-surface-variant">Chưa có câu trả lời nào được lưu.</p>
+            <p className="text-on-surface-variant">No answers have been recorded yet.</p>
           </div>
         )}
       </div>

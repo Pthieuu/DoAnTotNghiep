@@ -25,10 +25,10 @@ export function buildWeaknessPracticeContext(
   const selected = new Set(selectedCriteria);
   if (!selected.size || selected.size !== selectedCriteria.length || selected.size > CRITERIA.length
     || selectedCriteria.some(id => !CRITERIA.some(criterion => criterion.id === id))) {
-    throw new Error("Danh sách tiêu chí luyện tập không hợp lệ.");
+    throw new Error("Invalid practice criteria list.");
   }
   const targets = identifyWeaknesses(answers).filter(target => selected.has(target.criterionId));
-  if (targets.length !== selected.size) throw new Error("Tiêu chí đã chọn không thuộc các điểm yếu được đánh giá của phiên nguồn.");
+  if (targets.length !== selected.size) throw new Error("Selected criteria do not belong to assessed weaknesses of the source session.");
   const indices = new Set(targets.flatMap(target => target.sources.map(source => source.questionIndex)));
   const previousAnswers = answers.filter(answer => indices.has(answer.questionIndex))
     .map(({ questionIndex, question, answer }) => ({ questionIndex, question, answer }))
@@ -44,7 +44,7 @@ export async function generateWeaknessPracticeQuestions(input: WeaknessPracticeG
     || !["N5", "N4", "N3", "N2", "N1"].includes(input.level)
     || !["ja", "vi"].includes(input.interviewLanguage)
     || !["technical", "behavioral", "mixed"].includes(input.interviewType)) {
-    throw new Error("Cấu hình phiên nguồn không hợp lệ để tạo bài luyện tập.");
+    throw new Error("Invalid source session configuration for practice drill creation.");
   }
   const context = buildWeaknessPracticeContext(input.selectedCriteria, input.answers);
   const questions = await generateInterviewQuestions({

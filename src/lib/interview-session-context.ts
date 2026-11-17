@@ -100,19 +100,19 @@ export function getInterviewQuickPrefs(): InterviewQuickPrefs | null {
 export function estimateInterviewDuration(count: number): string {
   switch (count) {
     case 4:
-      return "~7–10 phút";
+      return "~7–10 mins";
     case 5:
-      return "~8–12 phút";
+      return "~8–12 mins";
     case 6:
-      return "~10–15 phút";
+      return "~10–15 mins";
     case 8:
-      return "~15–20 phút";
+      return "~15–20 mins";
     case 10:
-      return "~20–25 phút";
+      return "~20–25 mins";
     case 15:
-      return "~30–40 phút";
+      return "~30–40 mins";
     default:
-      return `~${Math.round(count * 1.8)}–${Math.round(count * 2.5)} phút`;
+      return `~${Math.round(count * 1.8)}–${Math.round(count * 2.5)} mins`;
   }
 }
 
@@ -131,7 +131,7 @@ export function convertParsedSectionsToCvData(parsed: CvParsedSections): CvData 
   const education: CvItem[] = educationWork
     ? [
       {
-        title: "Học vấn & Quá trình làm việc (学歴・職歴)",
+        title: "Education & Work History (学歴・職歴)",
         organization: null,
         period: null,
         description: educationWork.slice(0, 2000),
@@ -144,7 +144,7 @@ export function convertParsedSectionsToCvData(parsed: CvParsedSections): CvData 
   const certificates: CvItem[] = certsText
     ? [
       {
-        title: "Bằng cấp & Chứng chỉ (免許・資格)",
+        title: "Licenses & Certifications (免許・資格)",
         organization: null,
         period: null,
         description: certsText.slice(0, 1000),
@@ -171,8 +171,8 @@ export function convertParsedSectionsToCvData(parsed: CvParsedSections): CvData 
     education,
     experience: [],
     projects: [],
-    skills: skillsList.length > 0 ? skillsList : ["Kỹ năng chuyên môn", "Tiếng Nhật giao tiếp"],
-    languages: [{ name: "Tiếng Nhật", level: null, evidence: [] }],
+    skills: skillsList.length > 0 ? skillsList : ["Technical Skills", "Japanese Communication"],
+    languages: [{ name: "Japanese", level: null, evidence: [] }],
     certificates,
   };
 }

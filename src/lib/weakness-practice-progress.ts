@@ -79,7 +79,7 @@ export function calculateWeaknessPracticeProgress(input: {
   return {
     sourceSessionId: input.sourceSessionId,
     rubricVersion: RUBRIC_VERSION,
-    comparisonNote: "So sánh mức điểm trung bình 0–4 của từng tiêu chí đã được chấm hợp lệ trên hai bộ câu hỏi khác nhau. Mẫu có thể khác về số lượng và độ khó; chênh lệch chỉ mang tính tham khảo, không chứng minh mức tăng năng lực tương đương.",
+    comparisonNote: "Compares average score (0–4) of each validly assessed criterion across two different question sets. Samples may vary in length and difficulty; differences are for reference only and do not guarantee equivalent proficiency gains.",
     criteria,
   };
 }

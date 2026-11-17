@@ -17,14 +17,14 @@ import {
 type SetupCv = { fileName: string; data: CvData | null };
 
 const INTERVIEW_TYPE_OPTIONS = [
-  { value: "mixed", label: "Tổng hợp", badge: "HR & Kỹ thuật" },
-  { value: "technical", label: "Kỹ thuật", badge: "Chuyên môn" },
-  { value: "behavioral", label: "Kỹ năng mềm", badge: "Hành vi STAR" },
+  { value: "mixed", label: "Comprehensive", badge: "HR & Technical" },
+  { value: "technical", label: "Technical", badge: "Specialized" },
+  { value: "behavioral", label: "Behavioral", badge: "STAR Framework" },
 ];
 
 const LANGUAGE_OPTIONS = [
-  { value: "vi", label: "Tiếng Việt" },
-  { value: "ja", label: "Tiếng Nhật" },
+  { value: "vi", label: "Vietnamese" },
+  { value: "ja", label: "Japanese" },
 ];
 
 const QUESTION_COUNT_OPTIONS = [4, 6, 8, 10];
@@ -67,7 +67,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
           if (parsed.role) setRole(parsed.role);
           if (parsed.company) setCompany(parsed.company);
         } else {
-          setHandoffError("Không tìm thấy CV chuyển tiếp từ Check CV hoặc CV đã hết hạn.");
+          setHandoffError("No forwarded CV found from CV Checker or the draft has expired.");
         }
       }
 
@@ -152,20 +152,20 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
 
     const cleanRole = role.trim();
     if (!cleanRole) {
-      setError("Hãy nhập vị trí bạn muốn luyện phỏng vấn.");
+      setError("Please enter the target position for the interview.");
       setIsEditingTarget(true);
       return;
     }
     if (cleanRole.length > 160) {
-      setError("Tên vị trí tối đa 160 ký tự.");
+      setError("Position name must be at most 160 characters.");
       return;
     }
     if (company.trim().length > 160) {
-      setError("Tên công ty tối đa 160 ký tự.");
+      setError("Company name must be at most 160 characters.");
       return;
     }
     if (jobDescription.length > 12000) {
-      setError("Mô tả công việc tối đa 12.000 ký tự.");
+      setError("Job description must be at most 12,000 characters.");
       return;
     }
 
@@ -190,13 +190,13 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
 
       const result = await response.json();
       if (!response.ok) {
-        throw new Error(result.error || "Không thể tạo buổi phỏng vấn. Vui lòng thử lại.");
+        throw new Error(result.error || "Could not create interview session. Please try again.");
       }
 
       // Smooth direct navigation into interview room
       router.push(`/interview-room?sessionId=${encodeURIComponent(result.session.id)}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tạo buổi phỏng vấn. Hãy thử lại.");
+      setError(e instanceof Error ? e.message : "Could not create interview session. Please try again.");
       setWorking(false);
     }
   }
@@ -219,13 +219,13 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
       <div className="mx-auto max-w-2xl space-y-6 pb-16">
         <section className="rounded-2xl border border-indigo-200 bg-indigo-50 p-6 space-y-3">
           <p role={handoffError ? "alert" : "status"} className="text-sm font-semibold text-indigo-950">
-            {handoffError || "Đang nhận CV đã chỉnh sửa…"}
+            {handoffError || "Receiving edited CV…"}
           </p>
           <Link
             href="/cv-checker"
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-primary text-white hover:bg-secondary rounded-lg transition-colors"
           >
-            <Icon name="arrow_back" className="w-4 h-4" /> Quay lại Check CV
+            <Icon name="arrow_back" className="w-4 h-4" /> Back to CV Checker
           </Link>
         </section>
       </div>
@@ -247,10 +247,10 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
       {/* Header */}
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-primary">
-          Thiết lập buổi phỏng vấn
+          Interview Setup
         </h1>
         <p className="mt-1.5 text-xs sm:text-sm text-on-surface-variant">
-          Chọn cấu hình nhanh để bắt đầu phiên luyện tập bám sát hồ sơ ứng tuyển của bạn.
+          Configure your practice session tailored to your application profile.
         </p>
       </header>
 
@@ -262,16 +262,16 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
               <Icon name="check_circle" className="w-5 h-5 text-emerald-600 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm font-semibold text-emerald-950">
-                  Đã đồng bộ nội dung từ bản check CV mới nhất
+                  Synchronized with your latest CV check
                 </p>
                 <p
                   className="text-[11px] sm:text-xs text-emerald-800 truncate mt-0.5"
-                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${displayFileName}`}
+                  title={`${company || "Company not specified"} · ${role || "Position not specified"} · ${displayFileName}`}
                 >
                   <strong className="font-medium text-emerald-950">
-                    {company || "Công ty chưa đặt"}
+                    {company || "Company not specified"}
                   </strong>{" "}
-                  · {role || "Vị trí chưa đặt"} ·{" "}
+                  · {role || "Position not specified"} ·{" "}
                   <span className="opacity-80">{displayFileName}</span>
                 </p>
               </div>
@@ -283,14 +283,14 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                 onClick={() => setIsEditingTarget(!isEditingTarget)}
                 className="font-semibold text-emerald-900 hover:text-emerald-950 underline underline-offset-2 cursor-pointer"
               >
-                {isEditingTarget ? "Thu gọn" : "Chỉnh sửa"}
+                {isEditingTarget ? "Collapse" : "Edit"}
               </button>
               <span className="text-emerald-300">|</span>
               <Link
                 href="/cv-checker"
                 className="font-semibold text-emerald-900 hover:text-emerald-950 underline underline-offset-2"
               >
-                Check CV khác
+                Check another CV
               </Link>
             </div>
           </div>
@@ -300,7 +300,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             <div className="mt-3 pt-3 border-t border-emerald-200/80 grid gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="inline-role" className="text-[11px] font-semibold text-emerald-950 block mb-1">
-                  Vị trí ứng tuyển <span className="text-red-500">*</span>
+                  Target Position <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="inline-role"
@@ -308,12 +308,12 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   onChange={(e) => setRole(e.target.value)}
                   maxLength={160}
                   className="w-full text-xs rounded-lg border border-emerald-300 bg-white px-3 py-2 text-primary outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Ví dụ: Backend Developer"
+                  placeholder="e.g. Backend Developer"
                 />
               </div>
               <div>
                 <label htmlFor="inline-company" className="text-[11px] font-semibold text-emerald-950 block mb-1">
-                  Tên công ty
+                  Company Name
                 </label>
                 <input
                   id="inline-company"
@@ -321,7 +321,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   onChange={(e) => setCompany(e.target.value)}
                   maxLength={160}
                   className="w-full text-xs rounded-lg border border-emerald-300 bg-white px-3 py-2 text-primary outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Ví dụ: Hokkaido Electronics"
+                  placeholder="e.g. Hokkaido Electronics"
                 />
               </div>
             </div>
@@ -335,16 +335,16 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
               <Icon name="verified" className="w-5 h-5 text-sky-600 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm font-semibold text-sky-950">
-                  Sử dụng CV đã xác nhận trong tài khoản
+                  Using confirmed CV from your account
                 </p>
                 <p
                   className="text-[11px] sm:text-xs text-sky-800 truncate mt-0.5"
-                  title={`${company || "Công ty chưa đặt"} · ${role || "Vị trí chưa đặt"} · ${savedCv.fileName}`}
+                  title={`${company || "Company not specified"} · ${role || "Position not specified"} · ${savedCv.fileName}`}
                 >
                   <strong className="font-medium text-sky-950">
-                    {company || "Công ty chưa đặt"}
+                    {company || "Company not specified"}
                   </strong>{" "}
-                  · {role || "Vị trí chưa đặt"} · <span className="opacity-80">{savedCv.fileName}</span>
+                  · {role || "Position not specified"} · <span className="opacity-80">{savedCv.fileName}</span>
                 </p>
               </div>
             </div>
@@ -355,14 +355,14 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                 onClick={() => setIsEditingTarget(!isEditingTarget)}
                 className="font-semibold text-sky-900 hover:text-sky-950 underline underline-offset-2 cursor-pointer"
               >
-                {isEditingTarget ? "Thu gọn" : "Chỉnh sửa"}
+                {isEditingTarget ? "Collapse" : "Edit"}
               </button>
               <span className="text-sky-300">|</span>
               <Link
                 href="/cv-checker"
                 className="font-semibold text-sky-900 hover:text-sky-950 underline underline-offset-2"
               >
-                Check CV mới
+                Check new CV
               </Link>
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             <div className="mt-3 pt-3 border-t border-sky-200/80 grid gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="inline-role-db" className="text-[11px] font-semibold text-sky-950 block mb-1">
-                  Vị trí ứng tuyển <span className="text-red-500">*</span>
+                  Target Position <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="inline-role-db"
@@ -379,12 +379,12 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   onChange={(e) => setRole(e.target.value)}
                   maxLength={160}
                   className="w-full text-xs rounded-lg border border-sky-300 bg-white px-3 py-2 text-primary outline-none focus:ring-2 focus:ring-sky-500"
-                  placeholder="Ví dụ: Backend Developer"
+                  placeholder="e.g. Backend Developer"
                 />
               </div>
               <div>
                 <label htmlFor="inline-company-db" className="text-[11px] font-semibold text-sky-950 block mb-1">
-                  Tên công ty
+                  Company Name
                 </label>
                 <input
                   id="inline-company-db"
@@ -392,7 +392,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   onChange={(e) => setCompany(e.target.value)}
                   maxLength={160}
                   className="w-full text-xs rounded-lg border border-sky-300 bg-white px-3 py-2 text-primary outline-none focus:ring-2 focus:ring-sky-500"
-                  placeholder="Ví dụ: Rakuten"
+                  placeholder="e.g. Rakuten"
                 />
               </div>
             </div>
@@ -406,10 +406,10 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
               <Icon name="info" className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
               <div>
                 <h3 className="font-semibold text-amber-950 text-sm sm:text-base">
-                  Bạn chưa có CV đã kiểm tra
+                  No checked CV found
                 </h3>
                 <p className="mt-1 text-xs sm:text-sm text-amber-900 leading-relaxed">
-                  Hãy check CV trước để câu hỏi sát với hồ sơ của bạn.
+                  Check your CV first so questions match your profile closely.
                 </p>
               </div>
             </div>
@@ -418,14 +418,14 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                 href="/cv-checker"
                 className="px-4 py-2 text-xs font-semibold bg-primary text-white hover:bg-secondary rounded-xl shadow-xs transition-colors inline-flex items-center gap-1.5"
               >
-                Đi tới Check CV <Icon name="arrow_forward" className="w-3.5 h-3.5" />
+                Go to CV Checker <Icon name="arrow_forward" className="w-3.5 h-3.5" />
               </Link>
               <button
                 type="button"
                 onClick={() => setIsManualMode(true)}
                 className="px-4 py-2 text-xs font-semibold border border-amber-300 bg-white hover:bg-amber-100 text-amber-950 rounded-xl transition-colors cursor-pointer"
               >
-                Bỏ qua, nhập thủ công
+                Skip, enter manually
               </button>
             </div>
           </section>
@@ -433,15 +433,15 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
           /* Manual Mode Minimal Form Fields */
           <section className="rounded-2xl border border-surface-container bg-white p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-surface-container pb-2">
-              <span className="text-xs font-semibold text-slate-700">Chế độ nhập thủ công</span>
+              <span className="text-xs font-semibold text-slate-700">Manual Input Mode</span>
               <Link href="/cv-checker" className="text-xs text-secondary hover:underline">
-                Đi tới Check CV
+                Go to CV Checker
               </Link>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="manual-role" className="text-xs font-semibold text-primary block mb-1">
-                  Vị trí ứng tuyển <span className="text-red-500">*</span>
+                  Target Position <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="manual-role"
@@ -449,20 +449,20 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   onChange={(e) => setRole(e.target.value)}
                   maxLength={160}
                   required
-                  placeholder="Ví dụ: Backend Developer"
+                  placeholder="e.g. Backend Developer"
                   className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs sm:text-sm text-primary outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                 />
               </div>
               <div>
                 <label htmlFor="manual-company" className="text-xs font-semibold text-primary block mb-1">
-                  Công ty <span className="text-slate-400 font-normal">(không bắt buộc)</span>
+                  Company <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
                   id="manual-company"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   maxLength={160}
-                  placeholder="Ví dụ: Hokkaido Electronics"
+                  placeholder="e.g. Hokkaido Electronics"
                   className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs sm:text-sm text-primary outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                 />
               </div>
@@ -474,13 +474,13 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
       {/* Main Quick Config Form */}
       <form onSubmit={submit} className="space-y-6">
         <div className="rounded-2xl border border-surface-container bg-white p-5 sm:p-7 shadow-sm space-y-6">
-          {/* Quick Config 1: Loại phỏng vấn (Segmented Pills) */}
+          {/* Quick Config 1: Interview Type (Segmented Pills) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label id="interview-type-label" className="text-xs sm:text-sm font-semibold text-primary">
-                Loại phỏng vấn
+                Interview Type
               </label>
-              <span className="text-[11px] text-slate-400">Chọn 1 hình thức</span>
+              <span className="text-[11px] text-slate-400">Select 1 type</span>
             </div>
             <div
               role="radiogroup"
@@ -528,13 +528,13 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             </div>
           </div>
 
-          {/* Quick Config 2: Ngôn ngữ (Segmented Pills) */}
+          {/* Quick Config 2: Language (Segmented Pills) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label id="language-label" className="text-xs sm:text-sm font-semibold text-primary">
-                Ngôn ngữ phỏng vấn
+                Interview Language
               </label>
-              <span className="text-[11px] text-slate-400">Giọng nói AI</span>
+              <span className="text-[11px] text-slate-400">AI Voice</span>
             </div>
             <div
               role="radiogroup"
@@ -573,14 +573,14 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             </div>
           </div>
 
-          {/* Quick Config 3: Số lượng câu hỏi (Segmented Pills) */}
+          {/* Quick Config 3: Number of Questions (Segmented Pills) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label id="question-count-label" className="text-xs sm:text-sm font-semibold text-primary">
-                Số lượng câu hỏi
+                Number of Questions
               </label>
               <span className="text-xs font-medium text-secondary">
-                Thời lượng ước tính: {estimateInterviewDuration(questionCount)}
+                Estimated duration: {estimateInterviewDuration(questionCount)}
               </span>
             </div>
             <div
@@ -612,14 +612,14 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                         : "bg-white text-slate-700 border-outline-variant/60 hover:bg-slate-50 hover:border-slate-400"
                     }`}
                   >
-                    <span className="text-xs sm:text-sm font-bold">{count} câu</span>
+                    <span className="text-xs sm:text-sm font-bold">{count} questions</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Collapsible: Tùy chọn nâng cao (Collapsed by default) */}
+          {/* Collapsible: Advanced Options (Collapsed by default) */}
           <div className="pt-2 border-t border-surface-container">
             <button
               type="button"
@@ -628,7 +628,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             >
               <span className="flex items-center gap-1.5">
                 <Icon name="tune" className="w-4 h-4 text-slate-400" />
-                Tùy chọn nâng cao (Trình độ JLPT, JD chi tiết)
+                Advanced Options (JLPT Level, Detailed JD)
               </span>
               <Icon
                 name="expand_more"
@@ -642,7 +642,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
               <div className="mt-3 pt-3 space-y-4 border-t border-surface-container/60">
                 <div>
                   <label htmlFor="jlpt-level" className="text-xs font-semibold text-primary block mb-1">
-                    Trình độ JLPT mục tiêu
+                    Target JLPT Level
                   </label>
                   <select
                     id="jlpt-level"
@@ -652,7 +652,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                   >
                     {["N5", "N4", "N3", "N2", "N1"].map((item) => (
                       <option key={item} value={item}>
-                        {item} {item === "N3" ? "(Chuẩn phổ biến)" : ""}
+                        {item} {item === "N3" ? "(Common standard)" : ""}
                       </option>
                     ))}
                   </select>
@@ -660,7 +660,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
 
                 <div>
                   <label htmlFor="adv-jd" className="text-xs font-semibold text-primary block mb-1">
-                    Mô tả công việc (JD) <span className="font-normal text-slate-400">(không bắt buộc)</span>
+                    Job Description (JD) <span className="font-normal text-slate-400">(optional)</span>
                   </label>
                   <textarea
                     id="adv-jd"
@@ -668,11 +668,11 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
                     onChange={(e) => setJobDescription(e.target.value)}
                     maxLength={12000}
                     rows={4}
-                    placeholder="Dán yêu cầu tuyển dụng để AI định hình câu hỏi sát hơn..."
+                    placeholder="Paste job description to help AI tailor interview questions..."
                     className="w-full rounded-lg border border-outline-variant bg-white px-3 py-2 text-xs sm:text-sm text-primary outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
                   />
                   <p className="mt-1 text-right text-[11px] text-slate-400">
-                    {jobDescription.length.toLocaleString("vi-VN")} / 12.000
+                    {jobDescription.length.toLocaleString("en-US")} / 12,000
                   </p>
                 </div>
               </div>
@@ -695,7 +695,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
               disabled={working}
               className="text-xs font-bold text-red-900 underline hover:text-red-950 shrink-0 cursor-pointer"
             >
-              Thử lại
+              Retry
             </button>
           </div>
         )}
@@ -706,7 +706,7 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             href="/cv-checker"
             className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-primary transition-colors"
           >
-            <Icon name="arrow_back" className="w-3.5 h-3.5" /> Quay lại Check CV
+            <Icon name="arrow_back" className="w-3.5 h-3.5" /> Back to CV Checker
           </Link>
 
           <button
@@ -717,11 +717,11 @@ export default function InterviewSetupForm({ cv: savedCv, draftId }: { cv: Setup
             {working ? (
               <>
                 <Icon name="autorenew" className="w-4 h-4 animate-spin" />
-                Đang tạo bộ câu hỏi...
+                Generating questions...
               </>
             ) : (
               <>
-                Tạo bộ câu hỏi
+                Generate Questions
                 <Icon name="arrow_forward" className="w-4 h-4" />
               </>
             )}

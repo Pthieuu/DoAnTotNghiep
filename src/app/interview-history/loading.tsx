@@ -7,7 +7,7 @@ export default function InterviewHistoryLoading() {
         className="flex w-full flex-col space-y-space-lg"
         role="status"
         aria-busy="true"
-        aria-label="Đang tải lịch sử phỏng vấn"
+        aria-label="Loading interview history"
       >
         {/* Header Skeleton */}
         <header className="rounded-xl border border-surface-container bg-surface-container-lowest p-6 shadow-sm">
@@ -15,7 +15,7 @@ export default function InterviewHistoryLoading() {
             <div className="h-3 w-32 rounded bg-slate-200 animate-pulse" />
             <h1 className="text-2xl font-bold tracking-tight text-primary">Interview History</h1>
             <p className="text-sm text-on-surface-variant">
-              Lịch sử phỏng vấn và các báo cáo đánh giá AI chi tiết của bạn.
+              Your detailed mock interview history, rubric evaluations, and AI reports.
             </p>
           </div>
         </header>
@@ -29,8 +29,8 @@ export default function InterviewHistoryLoading() {
             </svg>
           </span>
           <div className="space-y-1">
-            <p className="text-sm font-bold text-primary">Đang nạp lịch sử phỏng vấn...</p>
-            <p className="text-xs text-slate-600">Đang tổng hợp các phiên phỏng vấn và kết quả chấm điểm từ cơ sở dữ liệu.</p>
+            <p className="text-sm font-bold text-primary">Loading interview history...</p>
+            <p className="text-xs text-slate-600">Aggregating interview sessions and grading results from the database.</p>
           </div>
         </div>
 
@@ -62,4 +62,3 @@ export default function InterviewHistoryLoading() {
     </DashboardShell>
   );
 }
-

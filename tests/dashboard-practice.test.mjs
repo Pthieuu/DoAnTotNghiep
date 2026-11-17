@@ -122,7 +122,7 @@ test('shows actual recommendation counts, expands all cards and opens practice w
   all.props.onClick();
   instance.harness.render();
   assert.equal(nodes(instance.harness.tree, node => node.type === 'article').length, 5);
-  const launch = nodes(instance.harness.tree, node => node.type === 'button' && content(node).startsWith('Luyện:'))[4];
+  const launch = nodes(instance.harness.tree, node => node.type === 'button' && content(node).startsWith('Practice:'))[4];
   launch.props.onClick();
   instance.harness.render();
   const setup = nodes(instance.harness.tree, node => node.type === instance.Panel)[0];
@@ -133,10 +133,10 @@ test('shows actual recommendation counts, expands all cards and opens practice w
 
 test('empty, unavailable and error states provide real actions without mock practice cards', async () => {
   const empty = dashboard({ session: null, targets: [], practiceAvailable: false, error: null });
-  assert.match(content(empty.harness.tree), /Hoàn thành một buổi phỏng vấn/);
+  assert.match(content(empty.harness.tree), /Complete an interview/);
   assert.equal(nodes(empty.harness.tree, node => node.type === 'article').length, 0);
   const unavailable = dashboard(await dataFixture({ missingColumns: true }).get());
-  assert.match(content(unavailable.harness.tree), /chưa được kích hoạt/);
+  assert.match(content(unavailable.harness.tree), /not yet enabled/);
   assert.ok(nodes(unavailable.harness.tree, node => node.type === 'button').every(node => node.props.disabled));
   const failed = dashboard({ session: null, targets: [], practiceAvailable: false, error: 'Load failed' });
   nodes(failed.harness.tree, node => node.type === 'button')[0].props.onClick();

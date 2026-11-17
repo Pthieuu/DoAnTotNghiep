@@ -86,7 +86,7 @@ test('practice loading component renders accessible loading shell and status', (
   const tree = PracticeLoading();
   assert.equal(tree.props.activePage, 'Practice Weaknesses');
   const rendered = content(tree);
-  assert.ok(rendered.includes('Đang nạp gợi ý luyện tập...'));
+  assert.ok(rendered.includes('Loading practice recommendations...'));
   assert.ok(rendered.includes('Practice Weaknesses'));
 
   const statusNodes = nodes(tree, node => node.props?.role === 'status');

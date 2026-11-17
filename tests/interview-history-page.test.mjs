@@ -15,7 +15,7 @@ test('interview history page redirects unauthenticated visitor to /login', async
     '@/lib/supabase/server': { createClient: async () => ({}) },
     '@/lib/interview-history': {
       loadInterviewHistory: async () => ({ sessions: [], counts: { all: 0, completed: 0, in_progress: 0, cancelled: 0 }, totalCount: 0, filteredCount: 0, page: 1, pageSize: 10, pageCount: 1, filter: 'all', error: null }),
-      historyScore: () => 'Chưa đánh giá',
+      historyScore: () => 'Not assessed',
     },
     '@/components/dashboard-shell': { __esModule: true, default: () => null },
     '@/components/icon': { __esModule: true, default: () => null },
@@ -106,9 +106,9 @@ test('interview history page renders table, provisional scores and pagination fo
   assert.ok(rendered.includes('Interview History & AI Reports'));
   assert.ok(rendered.includes('Backend Engineer'));
   assert.ok(rendered.includes('Rakuten'));
-  assert.ok(rendered.includes('65/100 (tạm tính)'));
+  assert.ok(rendered.includes('65/100 (provisional)'));
   assert.ok(rendered.includes('LINE Yahoo'));
-  assert.ok(rendered.includes('Trang 2 / 5'));
+  assert.ok(rendered.includes('Page 2 of 5'));
 
   const trNodes = nodes(tree, node => node.type === 'tr');
   assert.equal(trNodes.length, 4); // 1 thead + 3 tbody
@@ -140,15 +140,15 @@ test('interview history loading component renders accessible skeleton and role=s
   assert.equal(statusNodes[0].props['aria-busy'], 'true');
 
   const rendered = content(tree);
-  assert.ok(rendered.includes('Đang nạp lịch sử phỏng vấn...'));
+  assert.ok(rendered.includes('Loading interview history...'));
   assert.ok(rendered.includes('Interview History'));
 });
 
 test('historyScore accurately formats scores, provisional calculations, and missing data', () => {
   assert.equal(historyScore({ score: 85, summary_json: null }), '85/100');
   assert.equal(historyScore({ score: 0, summary_json: null }), '0/100');
-  assert.equal(historyScore({ score: null, summary_json: null }), 'Chưa đánh giá');
-  assert.equal(historyScore({ score: null, summary_json: { provisional: true, totalScore: 72 } }), '72/100 (tạm tính)');
-  assert.equal(historyScore({ score: 85, summary_json: { provisional: true, totalScore: 72 } }), '72/100 (tạm tính)');
-  assert.equal(historyScore({ score: null, summary_json: { provisional: true, totalScore: null } }), 'Chưa đánh giá');
+  assert.equal(historyScore({ score: null, summary_json: null }), 'Not assessed');
+  assert.equal(historyScore({ score: null, summary_json: { provisional: true, totalScore: 72 } }), '72/100 (provisional)');
+  assert.equal(historyScore({ score: 85, summary_json: { provisional: true, totalScore: 72 } }), '72/100 (provisional)');
+  assert.equal(historyScore({ score: null, summary_json: { provisional: true, totalScore: null } }), 'Not assessed');
 });

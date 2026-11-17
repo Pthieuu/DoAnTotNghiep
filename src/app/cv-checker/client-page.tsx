@@ -25,7 +25,7 @@ export default function CvCheckerClient() {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
       if (selected.size > 10 * 1024 * 1024) {
-        setErrorMessage("File tải lên vượt quá giới hạn 10MB. Vui lòng chọn file nhẹ hơn.");
+        setErrorMessage("Uploaded file exceeds 10MB limit. Please select a smaller file.");
         return;
       }
       setFile(selected);
@@ -42,7 +42,7 @@ export default function CvCheckerClient() {
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const dropped = e.dataTransfer.files[0];
       if (dropped.size > 10 * 1024 * 1024) {
-        setErrorMessage("File tải lên vượt quá giới hạn 10MB. Vui lòng chọn file nhẹ hơn.");
+        setErrorMessage("Uploaded file exceeds 10MB limit. Please select a smaller file.");
         return;
       }
       setFile(dropped);
@@ -52,13 +52,13 @@ export default function CvCheckerClient() {
 
   const handleStartAnalysis = async () => {
     if (!file) {
-      setErrorMessage("Vui lòng tải lên file CV (PDF hoặc DOCX) để tiếp tục.");
+      setErrorMessage("Please upload a CV file (PDF or DOCX) to continue.");
       return;
     }
 
     setIsAnalyzing(true);
     setErrorMessage(null);
-    setProgressStage("Đang trích xuất nội dung và cấu trúc CV...");
+    setProgressStage("Extracting CV content and structure...");
 
     try {
       const formData = new FormData();
@@ -70,11 +70,11 @@ export default function CvCheckerClient() {
       if (targetJlpt) formData.append("targetJlpt", targetJlpt);
 
       const stageTimer1 = setTimeout(() => {
-        setProgressStage("Đang rà soát cách trình bày và thông tin cần thiết...");
+        setProgressStage("Reviewing formatting and essential information...");
       }, 2000);
 
       const stageTimer2 = setTimeout(() => {
-        setProgressStage("Đang phân tích chi tiết nội dung 自己PR và 志望動機...");
+        setProgressStage("Analyzing 自己PR and 志望動機 in detail...");
       }, 5000);
 
       const response = await fetch("/api/cv-checker", {
@@ -88,12 +88,12 @@ export default function CvCheckerClient() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || "Không thể phân tích CV. Vui lòng thử lại sau.");
+        throw new Error(data.error || "Unable to analyze CV. Please try again later.");
       }
 
       setReport(data.report);
     } catch (err: any) {
-      setErrorMessage(err.message || "Đã xảy ra lỗi kết nối.");
+      setErrorMessage(err.message || "A network error occurred.");
     } finally {
       setIsAnalyzing(false);
       setProgressStage("");
@@ -129,9 +129,9 @@ export default function CvCheckerClient() {
                 <Icon name="business_center" className="w-5 h-5" />
               </span>
               <div>
-                <h2 className="text-base font-bold text-primary">Doanh nghiệp ứng tuyển</h2>
+                <h2 className="text-base font-bold text-primary">Target Company</h2>
                 <p className="text-xs text-on-surface-variant">
-                  Giúp AI phân tích độ khớp với công ty và vị trí ứng tuyển.
+                  Helps AI evaluate alignment with the target company and position.
                 </p>
               </div>
             </div>
@@ -139,11 +139,11 @@ export default function CvCheckerClient() {
             <div className="space-y-3.5">
               <div>
                 <label className="text-xs font-semibold text-primary block mb-1">
-                  Tên công ty Nhật ứng tuyển
+                  Target Japanese Company
                 </label>
                 <input
                   type="text"
-                  placeholder="VD: Rakuten, LINE, GMO-Z.com, FPT Japan..."
+                  placeholder="e.g. Rakuten, LINE, GMO-Z.com, FPT Japan..."
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full text-xs rounded-xl border border-outline-variant/60 px-3.5 py-2.5 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all"
@@ -153,7 +153,7 @@ export default function CvCheckerClient() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-primary block mb-1">
-                    Vị trí ứng tuyển
+                    Target Position
                   </label>
                   <input
                     type="text"
@@ -164,7 +164,7 @@ export default function CvCheckerClient() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-primary block mb-1">
-                    Trình độ JLPT mục tiêu
+                    Target JLPT Level
                   </label>
                   <select
                     value={targetJlpt}
@@ -182,7 +182,7 @@ export default function CvCheckerClient() {
 
               <div>
                 <label className="text-xs font-semibold text-primary block mb-1">
-                  Trang web công ty (URL) <span className="text-slate-400 font-normal">(không bắt buộc)</span>
+                  Company Website (URL) <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
                   type="url"
@@ -195,11 +195,11 @@ export default function CvCheckerClient() {
 
               <div>
                 <label className="text-xs font-semibold text-primary block mb-1">
-                  Mô tả công việc / Job Description (JD) <span className="text-slate-400 font-normal">(không bắt buộc)</span>
+                  Job Description (JD) <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="Dán yêu cầu kỹ thuật, trách nhiệm công việc bằng tiếng Nhật hoặc tiếng Việt..."
+                  placeholder="Paste technical requirements and responsibilities in Japanese or English..."
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
                   className="w-full text-xs rounded-xl border border-outline-variant/60 p-3 bg-surface-container-lowest focus:outline-none focus:border-secondary transition-all leading-relaxed"
@@ -215,9 +215,9 @@ export default function CvCheckerClient() {
                 <Icon name="description" className="w-5 h-5" />
               </span>
               <div>
-                <h2 className="text-base font-bold text-primary">Tải lên CV (履歴書) cần thẩm định</h2>
+                <h2 className="text-base font-bold text-primary">Upload CV (履歴書) for Evaluation</h2>
                 <p className="text-xs text-on-surface-variant">
-                  Hỗ trợ tệp PDF hoặc DOCX (Tối đa 10MB). Dữ liệu được bảo mật theo phiên.
+                  Supports PDF or DOCX files (Up to 10MB). Data is kept private to your session.
                 </p>
               </div>
             </div>
@@ -249,16 +249,16 @@ export default function CvCheckerClient() {
                 <div className="space-y-1">
                   <p className="text-sm font-bold text-primary">{file.name}</p>
                   <p className="text-xs text-on-surface-variant">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB • Nhấp để đổi tệp khác
+                    {(file.size / 1024 / 1024).toFixed(2)} MB • Click to replace file
                   </p>
                 </div>
               ) : (
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-primary">
-                    Kéo & thả file CV vào đây, hoặc <span className="text-secondary underline">chọn từ máy tính</span>
+                    Drag &amp; drop CV file here, or <span className="text-secondary underline">browse from computer</span>
                   </p>
                   <p className="text-xs text-on-surface-variant">
-                    Định dạng hỗ trợ: PDF, DOCX (Dung lượng ≤ 10MB)
+                    Supported formats: PDF, DOCX (Size ≤ 10MB)
                   </p>
                 </div>
               )}
@@ -266,7 +266,7 @@ export default function CvCheckerClient() {
 
             {/* Privacy notice */}
             <p className="text-[11px] text-slate-500 text-center">
-              CV của bạn sẽ được phân tích và bảo mật theo phiên làm việc.
+              Your CV will be analyzed and secured per session.
             </p>
 
             {/* Error Banner */}
@@ -289,12 +289,12 @@ export default function CvCheckerClient() {
               {isAnalyzing ? (
                 <>
                   <Icon name="autorenew" className="w-4 h-4 animate-spin" />
-                  <span>Đang phân tích CV...</span>
+                  <span>Analyzing CV...</span>
                 </>
               ) : (
                 <>
                   <Icon name="fact_check" className="w-4 h-4" />
-                  <span>Bắt đầu thẩm định CV chuẩn Nhật</span>
+                  <span>Start Japanese CV Evaluation</span>
                 </>
               )}
             </button>
