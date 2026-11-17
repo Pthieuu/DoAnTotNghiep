@@ -4,6 +4,8 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { BookOpen, Mic, ShieldCheck } from "lucide-react";
 import InterviewPreferencesForm from "./interview-preferences-form";
 
+import LiveAudioSettings from "./live-audio-settings";
+
 const tabs = [
   { id: "practice", label: "Luyện tập & Phỏng vấn", icon: BookOpen },
   { id: "live", label: "Phòng Live & Âm thanh", icon: Mic },
@@ -31,7 +33,7 @@ export default function SettingsTabs() {
       </div>
       {tabs.map(({ id, label, icon: Icon }, index) => (
         <div key={id} id={`settings-panel-${id}`} role="tabpanel" aria-labelledby={`settings-tab-${id}`} hidden={active !== index} tabIndex={0}>
-          {index === 0 ? <InterviewPreferencesForm /> : (
+          {index === 0 ? <InterviewPreferencesForm /> : index === 1 ? <LiveAudioSettings active={active === 1} /> : (
             <section className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
               <Icon size={28} className="mx-auto mb-4 text-slate-400" aria-hidden="true" />
               <h2 className="text-lg font-semibold text-primary">{label}</h2>

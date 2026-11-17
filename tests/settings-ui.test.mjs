@@ -70,6 +70,7 @@ test('tabs support arrow keys and keep practice panel mounted', () => {
   const { default: Tabs } = load('src/components/settings/settings-tabs.tsx', {
     react: h.hooks, 'react/jsx-runtime': jsx, 'lucide-react': icons,
     './interview-preferences-form': { default: () => null },
+    './live-audio-settings': { default: () => null },
   });
   h.mount(Tabs);
   const tabs = () => nodes(h.tree, n => n.props.role === 'tab');
