@@ -11,28 +11,32 @@ const { loadDashboardPractice } = load('src/lib/dashboard-practice.ts', {
 function dataFixture(options = {}) {
   const calls = [];
   const session = options.session === undefined ? sourceSession() : options.session;
-  const client = { from: table => {
-    const call = { table, filters: {}, orders: [] };
-    calls.push(call);
-    const builder = {
-      select: columns => { call.columns = columns; return builder; },
-      eq: (key, value) => { call.filters[key] = value; return builder; },
-      order: (key, order) => { call.orders.push({ key, ...order }); return builder; },
-      limit: count => { call.limit = count; return builder; },
-      maybeSingle: async () => {
-        if (options.missingColumns && call.columns.includes('source_session_id')) {
-          return { data: null, error: { code: '42703', message: 'column source_session_id does not exist' } };
-        }
-        return { data: session && session.user_id === call.filters.user_id && session.status === call.filters.status ? session : null,
-          error: options.sessionError ?? null };
-      },
-      then: (resolve, reject) => Promise.resolve({
-        data: (options.answers ?? answers()).map(answer => ({ question_index: answer.questionIndex, answer: answer.answer, rubric_json: answer.rubric })),
-        error: options.answersError ?? null,
-      }).then(resolve, reject),
-    };
-    return builder;
-  } };
+  const client = {
+    from: table => {
+      const call = { table, filters: {}, orders: [] };
+      calls.push(call);
+      const builder = {
+        select: columns => { call.columns = columns; return builder; },
+        eq: (key, value) => { call.filters[key] = value; return builder; },
+        order: (key, order) => { call.orders.push({ key, ...order }); return builder; },
+        limit: count => { call.limit = count; return builder; },
+        maybeSingle: async () => {
+          if (options.missingColumns && call.columns.includes('source_session_id')) {
+            return { data: null, error: { code: '42703', message: 'column source_session_id does not exist' } };
+          }
+          return {
+            data: session && session.user_id === call.filters.user_id && session.status === call.filters.status ? session : null,
+            error: options.sessionError ?? null
+          };
+        },
+        then: (resolve, reject) => Promise.resolve({
+          data: (options.answers ?? answers()).map(answer => ({ question_index: answer.questionIndex, answer: answer.answer, rubric_json: answer.rubric })),
+          error: options.answersError ?? null,
+        }).then(resolve, reject),
+      };
+      return builder;
+    }
+  };
   return { calls, get: () => loadDashboardPractice(client, userId) };
 }
 
