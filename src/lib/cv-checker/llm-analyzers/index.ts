@@ -30,7 +30,7 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
   try {
     if (provider === "groq" && config.groqApiKey) {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
+        method: "POST", redirect: "error",
         signal: AbortSignal.timeout(35000),
         headers: {
           Authorization: `Bearer ${config.groqApiKey}`,
@@ -48,7 +48,7 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
       });
 
       if (!res.ok) {
-        console.error("Groq error in CV Checker:", await res.text());
+        console.error("Groq error in CV Checker:", res.status);
         return null;
       }
       const data = await res.json();
@@ -59,11 +59,11 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
     if (provider === "gemini" && config.geminiApiKey) {
       const model = config.geminiModel || "gemini-2.5-flash";
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
-          method: "POST",
+          method: "POST", redirect: "error",
           signal: AbortSignal.timeout(35000),
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": config.geminiApiKey },
           body: JSON.stringify({
             contents: [
               {
@@ -80,7 +80,7 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
       );
 
       if (!res.ok) {
-        console.error("Gemini error in CV Checker:", await res.text());
+        console.error("Gemini error in CV Checker:", res.status);
         return null;
       }
       const data = await res.json();
@@ -91,7 +91,7 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
     if (provider === "ollama") {
       const baseUrl = (config.ollamaBaseUrl || "http://127.0.0.1:11434").replace(/\/$/, "");
       const res = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST",
+        method: "POST", redirect: "error",
         signal: AbortSignal.timeout(45000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,8 +110,8 @@ async function callAiJson<T>(systemPrompt: string, userPrompt: string): Promise<
       const data = await res.json();
       return JSON.parse(data.message?.content || "{}") as T;
     }
-  } catch (err) {
-    console.error("AI call failed in CV Checker:", err);
+  } catch {
+    console.error("AI call failed in CV Checker.");
   }
 
   return null;

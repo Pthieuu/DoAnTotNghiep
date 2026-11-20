@@ -46,8 +46,8 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
       const ocrKey = process.env.GOOGLE_CLOUD_VISION_API_KEY;
       if (!ocrKey) throw new Error("PDF này có vẻ là bản scan và chưa có lớp văn bản. Cấu hình GOOGLE_CLOUD_VISION_API_KEY để bật OCR, hoặc nhập thông tin thủ công.");
       const content = bytes.toString("base64");
-      const response = await fetch(`https://vision.googleapis.com/v1/files:annotate?key=${encodeURIComponent(ocrKey)}`, {
-        method: "POST", signal: AbortSignal.timeout(45000), headers: { "Content-Type": "application/json" },
+      const response = await fetch("https://vision.googleapis.com/v1/files:annotate", {
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(45000), headers: { "Content-Type": "application/json", "x-goog-api-key": ocrKey },
         body: JSON.stringify({ requests: [{ inputConfig: { content, mimeType: "application/pdf" }, features: [{ type: "DOCUMENT_TEXT_DETECTION" }], pages: Array.from({ length: 10 }, (_, i) => i + 1) }] }),
       });
       if (!response.ok) throw new Error("Dịch vụ OCR không đọc được PDF scan. Hãy thử lại hoặc nhập thủ công.");
@@ -79,7 +79,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     const model = aiConfig.ollamaModel || "qwen2.5:3b";
     let tagsResponse: Response;
     try {
-      tagsResponse = await fetch(`${baseUrl}/api/tags`, { signal: AbortSignal.timeout(5000), cache: "no-store" });
+      tagsResponse = await fetch(`${baseUrl}/api/tags`, { redirect: "error", signal: AbortSignal.timeout(5000), cache: "no-store" });
     } catch {
       throw new Error(`Không truy cập được Ollama tại ${baseUrl}. Mở Ollama hoặc chạy ollama serve, rồi thử lại.`);
     }
@@ -91,7 +91,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     let response: Response;
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST", signal: AbortSignal.timeout(165000), headers: { "Content-Type": "application/json" },
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(165000), headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, stream: false, think: false, keep_alive: "30s", format: schema, options: { temperature: 0, num_ctx: 8192, num_predict: 1536 }, messages }),
       });
     } catch (error) {
@@ -103,8 +103,10 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     outputText = payload.message?.content || "";
   } else if (provider === "openai") {
     if (!apiKey) throw new Error("Chưa cấu hình OPENAI_API_KEY trên backend để trích xuất CV.");
+    // Intentional provider authentication: only this key goes in the header.
+    // The body contains the selected model, extraction schema and uploaded CV, never the environment.
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST", signal: AbortSignal.timeout(60000),
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(60000),
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: process.env.OPENAI_CV_MODEL || "gpt-4o-mini", temperature: 0, response_format: { type: "json_schema", json_schema: { name: "candidate_cv", strict: true, schema } }, messages }),
     });
@@ -130,7 +132,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     let response: Response | undefined;
     for (let attempt = 0; attempt < 3; attempt++) {
       response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
-        method: "POST", signal: AbortSignal.timeout(45000), headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(45000), headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: requestBody,
       });
       if (![502, 503, 504].includes(response.status) || attempt === 2) break;
@@ -139,9 +141,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     }
     if (!response) throw new Error("Không nhận được phản hồi từ Gemini.");
     if (!response.ok) {
-      const failure = await response.json().catch(() => null) as { error?: { message?: string; status?: string } } | null;
-      const detail = (failure?.error?.message || "Không có mô tả lỗi.").replaceAll(apiKey, "[hidden]").slice(0, 300);
-      throw new Error(`Gemini ${geminiModel} trả lỗi HTTP ${response.status}: ${detail}${response.status === 503 ? " Đã thử 3 lần. Hãy thử model Gemini khác qua GEMINI_MODEL hoặc thử lại sau." : ""}`);
+      throw new Error(`Gemini ${geminiModel} trả lỗi HTTP ${response.status}.${response.status === 503 ? " Đã thử 3 lần. Hãy thử model Gemini khác qua GEMINI_MODEL hoặc thử lại sau." : ""}`);
     }
     const payload = await response.json();
     const output = readGeminiCvJson(payload);
@@ -152,7 +152,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để trích xuất CV.");
     const groqModel = aiConfig.groqModel;
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST", signal: AbortSignal.timeout(45000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      method: "POST", redirect: "error", signal: AbortSignal.timeout(45000), headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: groqModel, temperature: 0,
         response_format: { type: "json_object" },
@@ -160,8 +160,7 @@ export async function processCv(file: File): Promise<{ data: CvData; notes: { ty
       })
     });
     if (!response.ok) {
-      const failure = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-      throw new Error(`Groq trả lỗi HTTP ${response.status}: ${failure?.error?.message || "Không thể trích xuất CV."}`);
+      throw new Error(`Groq trả lỗi HTTP ${response.status}: Không thể trích xuất CV.`);
     }
     const payload = await response.json();
     outputText = payload.choices?.[0]?.message?.content || "";
