@@ -113,7 +113,7 @@ export async function generateInterviewQuestions(input: {
     const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST", signal: AbortSignal.timeout(input.attempt ? 60000 : 80000), cache: "no-store",
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(input.attempt ? 60000 : 80000), cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, stream: false, think: false, keep_alive: "30s", format: questionSchema, options: { temperature: 0.3, num_ctx: 8192, num_predict: 2048 }, messages }),
       });
@@ -128,9 +128,9 @@ export async function generateInterviewQuestions(input: {
     let responseResult: Response | undefined;
     for (let retryCount = 0; retryCount < 4; retryCount++) {
       try {
-        responseResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-          method: "POST", signal: AbortSignal.timeout(input.attempt ? 60000 : 80000), cache: "no-store",
-          headers: { "Content-Type": "application/json" },
+        responseResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: "POST", redirect: "error", signal: AbortSignal.timeout(input.attempt ? 60000 : 80000), cache: "no-store",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: messages.map(m => `[${m.role}]\n${m.content}`).join("\n\n") + `\n\nFormat required: JSON matching this schema:\n${JSON.stringify(questionSchema)}` }] }],
             generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
@@ -162,7 +162,7 @@ export async function generateInterviewQuestions(input: {
     if (!apiKey) throw new Error("Chưa cấu hình OPENAI_API_KEY trên backend để tạo câu hỏi.");
     try {
       response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", signal: AbortSignal.timeout(input.attempt ? 45000 : 60000), cache: "no-store",
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(input.attempt ? 45000 : 60000), cache: "no-store",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, temperature: 0.3, response_format: { type: "json_schema", json_schema: { name: "interview_questions", strict: true, schema: questionSchema } }, messages }),
       });
@@ -180,7 +180,7 @@ export async function generateInterviewQuestions(input: {
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY trên backend để tạo câu hỏi.");
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST", signal: AbortSignal.timeout(input.attempt ? 45000 : 60000), cache: "no-store",
+        method: "POST", redirect: "error", signal: AbortSignal.timeout(input.attempt ? 45000 : 60000), cache: "no-store",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model, temperature: 0.3,
@@ -194,8 +194,7 @@ export async function generateInterviewQuestions(input: {
     }
     if (!response.ok) {
       if (response.status === 429) throw new Error("AI đang giới hạn yêu cầu.");
-      const errText = await response.text().catch(() => "");
-      throw new Error(`Dịch vụ Groq trả lỗi HTTP ${response.status} khi tạo câu hỏi. Chi tiết: ${errText}`);
+      throw new Error(`Dịch vụ Groq trả lỗi HTTP ${response.status} khi tạo câu hỏi.`);
     }
   } else {
     throw new Error("CV_AI_PROVIDER chỉ nhận giá trị `ollama`, `openai`, `gemini`, hoặc `groq`.");

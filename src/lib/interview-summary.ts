@@ -68,7 +68,7 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
     const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
     try {
       response = await fetch(`${baseUrl}/api/chat`, {
-        method: "POST",
+        method: "POST", redirect: "error",
         signal: AbortSignal.timeout(80000),
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
@@ -94,12 +94,12 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
     const geminiModel = model;
     try {
       response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`,
         {
-          method: "POST",
+          method: "POST", redirect: "error",
           signal: AbortSignal.timeout(80000),
           cache: "no-store",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [
               { role: "user", parts: [{ text: messages.map(m => `[${m.role}]\n${m.content}`).join("\n\n") + `\n\nFormat required: JSON matching this schema:\n${JSON.stringify(summarySchema)}` }] },
@@ -125,7 +125,7 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
     if (!apiKey) throw new Error("Chưa cấu hình OPENAI_API_KEY.");
     try {
       response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
+        method: "POST", redirect: "error",
         signal: AbortSignal.timeout(60000),
         cache: "no-store",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -153,7 +153,7 @@ Mỗi chuỗi là một nhận xét ngắn bằng TIẾNG VIỆT. Điểm mạnh
     if (!apiKey) throw new Error("Chưa cấu hình GROQ_API_KEY.");
     try {
       response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
+        method: "POST", redirect: "error",
         signal: AbortSignal.timeout(60000),
         cache: "no-store",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
