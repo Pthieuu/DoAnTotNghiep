@@ -25,7 +25,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
   const { data: session, error, practiceAvailable } = await querySessionWithPractice(
     columns => supabase.from("interview_sessions").select(columns)
       .eq("id", sessionId).eq("user_id", user.id).maybeSingle(),
-    "id,title,status,summary_json",
+    "id,title,status,summary_json,self_introduction",
   );
 
   if (error || !session) redirect("/dashboard");
@@ -39,6 +39,7 @@ export default async function SummaryPage({ searchParams }: { searchParams: Prom
         sessionId={session.id}
         title={session.title}
         initialSummary={session.summary_json}
+        introduction={session.self_introduction}
         status={session.status}
         practice={practice}
         practiceAvailable={practiceAvailable}

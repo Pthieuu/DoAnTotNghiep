@@ -5,6 +5,8 @@ import { GeminiUnavailableError } from "@/lib/gemini-retry";
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
 import { querySessionWithPractice } from "@/lib/interview-session-query";
 
+import { needsIntroduction } from "@/lib/interview-opening";
+
 type Question = { text: string; translation: string; focus?: string };
 type AnswerRow = { question_index: number; answer: string; score?: number };
 
@@ -31,7 +33,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { data: session, error: sessionError } = await querySessionWithPractice(
       columns => supabase.from("interview_sessions").select(columns)
         .eq("id", id).eq("user_id", user.id).maybeSingle(),
-      "id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language",
+      "id,status,questions,cv_snapshot,interview_type,question_count,target_role,job_description,interview_language,self_introduction",
     );
     if (sessionError) return json({ error: "Could not load interview session." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Interview session not found." }, 404);
@@ -49,6 +51,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return json({ error: "Could not load saved answers." }, 500);
     }
     const answers = (previousAnswers || []) as AnswerRow[];
+    if (needsIntroduction(session.status, answers.length, session.self_introduction)) return json({ error: "Please submit your self-introduction before answering the first question." }, 409);
     const existing = answers.find((item) => item.question_index === index);
     if (index < answers.length) {
       if (!existing || existing.answer !== answer) return json({ error: "This answer has already been submitted. Please continue with the current question." }, 409);

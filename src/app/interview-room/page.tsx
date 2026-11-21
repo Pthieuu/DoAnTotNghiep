@@ -15,12 +15,15 @@ export const metadata: Metadata = {
   description: "AI Japanese Interview Practice.",
 };
 
+import { interviewOpening, needsIntroduction } from "@/lib/interview-opening";
+
 type StoredQuestion = { text: string; translation: string; focus?: string };
 type StoredTurn = { question: StoredQuestion; answer: string; score?: number | null; feedback?: string; rubric?: RubricResult | null };
 type RoomSession = {
   id: string; title: string; company: string | null; level: string | null;
   interviewType: string; interviewLanguage: string;
   total: number; currentQuestion: StoredQuestion | null; turns: StoredTurn[];
+  introduction?: string | null; opening?: boolean;
   completed: boolean; loadError?: "session" | "answers";
   practice?: WeaknessPracticeSession | null;
 };
@@ -36,7 +39,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
     const { data, error: sessionError } = await querySessionWithPractice(
       columns => supabase.from("interview_sessions").select(columns)
         .eq("id", sessionId).eq("user_id", user.id).maybeSingle(),
-      "id,title,company,level,status,questions,interview_type,interview_language",
+      "id,title,company,level,status,questions,interview_type,interview_language,self_introduction",
     );
     if (sessionError) {
       session = { id: sessionId, title: "Interview Room", company: null, level: null, interviewType: "mixed", interviewLanguage: "vi", total: 0, currentQuestion: null, turns: [], completed: false, loadError: "session" };
@@ -55,7 +58,9 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
         const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer, score: item.score, feedback: item.feedback, rubric: item.rubric_json }] : []);
         const completed = data.status === "completed";
         const currentIndex = answers.length;
+        const opening = needsIntroduction(data.status, answers.length, data.self_introduction);
         session = {
+          opening, introduction: data.self_introduction,
           id: data.id,
           title: data.title,
           company: data.company,
@@ -63,7 +68,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
           interviewType: data.interview_type || "mixed",
           interviewLanguage: data.interview_language || "vi",
           total: questions.length,
-          currentQuestion: completed || !questions[currentIndex] ? null : publicQuestion(questions[currentIndex]),
+          currentQuestion: completed || !questions[currentIndex] ? null : opening ? interviewOpening(data.interview_language) : publicQuestion(questions[currentIndex]),
           turns,
           completed,
           practice,
@@ -74,7 +79,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
 
   return (
     <DashboardShell user={user} activePage="Interview Room">
-      <InterviewRoomClient key={session ? `${session.id}:${session.turns.length}:${session.completed}` : "no-session"} session={session} />
+      <InterviewRoomClient key={session?.id ?? "no-session"} session={session} />
     </DashboardShell>
   );
 }

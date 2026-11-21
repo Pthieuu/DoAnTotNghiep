@@ -13,6 +13,7 @@ export default function SummaryClient({
   sessionId,
   title,
   initialSummary,
+  introduction,
   status,
   practice = null,
   practiceAvailable = true,
@@ -20,6 +21,7 @@ export default function SummaryClient({
   sessionId: string;
   title: string;
   initialSummary: SummaryResult | null;
+  introduction?: string | null;
   status: string;
   practice?: WeaknessPracticeSession | null;
   practiceAvailable?: boolean;
@@ -114,6 +116,7 @@ export default function SummaryClient({
         {practice && !progress && <Link href={`/summary?sessionId=${practice.sourceSessionId}`} className="mt-2 inline-block text-sm font-semibold text-primary underline underline-offset-4">View source session</Link>}
       </div>
 
+      {introduction && <details className="rounded-xl border border-surface-container bg-white p-4 text-sm"><summary>Self-introduction · Not graded</summary><p className="mt-2 whitespace-pre-wrap">{introduction}</p></details>}
       {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Updating practice progress...</p>}
       {error && <div role="alert" className="rounded-xl bg-error-container p-4 text-sm text-on-error-container space-y-2">
         <p>{error}</p>

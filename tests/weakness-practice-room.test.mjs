@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import { load, plain, practice, rubric, sourceId, userId, sourceSession, answers, questions, sessionQuery } from './helpers/weakness-practice-fixtures.mjs';
 
+const opening = load("src/lib/interview-opening.ts");
 const practiceMetadata = { sourceSessionId: sourceId, selectedCriteria: ['C01', 'C02'] };
 
 test('practice goals render selected criterion names and a link to the source summary', () => {
@@ -39,10 +40,13 @@ test('room client renders goals only for practice sessions and retains the inter
   for (const targeted of [true, false]) {
     const html = renderToStaticMarkup(jsxRuntime.jsx(Room, { session: {
       id: 'practice-id', title: 'Engineer', company: null, level: 'N3', interviewType: 'mixed', interviewLanguage: 'ja',
-      total: 4, currentQuestion: questions()[0], turns: [], completed: false,
+      total: 4, currentQuestion: questions()[0], turns: [], completed: false, introduction: 'Saved introduction',
       practice: targeted ? practiceMetadata : null,
     } }));
     assert.equal(html.includes('Weakness Practice Goals'), targeted);
+    assert.ok(html.includes('自己紹介ありがとうございます'));
+    assert.ok(html.includes('Saved introduction'));
+    assert.ok(html.includes('Not graded'));
     for (const control of ['Pause', 'Exit', 'Ask Clarification', 'Submit Answer']) assert.ok(html.includes(control));
   }
 });
@@ -61,6 +65,7 @@ test('room page passes practice metadata, turns and current question to the clie
       '@/components/dashboard-shell': { default: () => null }, './client-page': { default: () => null },
       '@/lib/weakness-practice': practice,
       '@/lib/interview-session-query': sessionQuery,
+      '@/lib/interview-opening': opening,
       '@/lib/supabase/server': { createClient: async () => ({ from: table => {
         const builder = {
           select: () => builder, eq: (key, value) => { filters.push([table, key, value]); return builder; },
@@ -82,7 +87,7 @@ test('room page passes practice metadata, turns and current question to the clie
 
 function answerFixture(isPractice, options = {}) {
   const state = { rows: [], evaluated: [], failures: options.failures ?? 0 };
-  const session = sourceSession({ id: 'practice-id', status: 'in_progress', question_count: 4, questions: questions(),
+  const session = sourceSession({ id: 'practice-id', status: 'in_progress', self_introduction: 'Saved intro', question_count: 4, questions: questions(),
     source_session_id: isPractice ? sourceId : null, selected_criteria: isPractice ? ['C01', 'C02'] : [], ...options.session,
   });
   const evaluatedRubric = { ...answers()[0].rubric, assessedCount: 5, provisional: false, totalScore: 75 };
@@ -111,6 +116,7 @@ function answerFixture(isPractice, options = {}) {
     '@/lib/auth-http': { checkRequest: () => null, json: (body, status = 200) => Response.json(body, { status }) },
     '@/lib/weakness-practice': practice,
     '@/lib/interview-session-query': sessionQuery,
+      '@/lib/interview-opening': opening,
     '@/lib/gemini-retry': { GeminiUnavailableError: class extends Error {} },
     '@/lib/interview-evaluation': { evaluateAnswer: async input => {
       state.evaluated.push(plain(input));
@@ -166,4 +172,11 @@ test('invalid practice metadata blocks grading while an ordinary session needs n
   assert.equal(invalid.state.evaluated.length, 0);
   const normal = answerFixture(false);
   assert.equal((await normal.submit(0)).status, 200);
+});
+
+test('first scored answer is blocked until introduction is saved, with no evaluator call', async () => {
+  const instance = answerFixture(false, { session: { self_introduction: null } });
+  assert.equal((await instance.submit(0)).status, 409);
+  assert.equal(instance.state.evaluated.length, 0);
+  assert.equal(instance.state.rows.length, 0);
 });

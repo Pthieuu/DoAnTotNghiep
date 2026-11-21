@@ -45,7 +45,7 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
           if ([...sessions.values()].some(session => session.user_id === insert.user_id
             && session.practice_idempotency_key === insert.practice_idempotency_key)) return { data: null, error: { code: '23505' } };
           assert.equal(sessions.get(insert.source_session_id).user_id, insert.user_id);
-          const session = { id: randomUUID(), summary_json: null, ...plain(insert) };
+          const session = { id: randomUUID(), summary_json: null, self_introduction: null, ...plain(insert) };
           sessions.set(session.id, session);
           return { data: [session], error: null };
         }
@@ -59,6 +59,8 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
     }
     const builder = {
       select: () => builder,
+      is: (key, value) => { filters[key] = value; return builder; },
+      limit: async () => execute(),
       eq: (key, value) => { filters[key] = value; return builder; },
       insert: value => { insert = value; return builder; },
       update: value => { update = value; return builder; },
@@ -103,11 +105,12 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
     },
     '@/lib/weakness-practice': practice, '@/lib/interview-rubric': rubric,
     '@/lib/interview-session-query': sessionQuery,
+    '@/lib/interview-opening': load('src/lib/interview-opening.ts'),
     '@/lib/cv-schema': cvSchema, '@/lib/weakness-practice-generation': generation,
     '@/lib/interview-evaluation': evaluation, '@/lib/gemini-retry': retry,
     '@/lib/interview-summary': summary, '@/lib/weakness-practice-progress': progress,
   };
-  const routes = Object.fromEntries(['weaknesses', 'practice', 'answers', 'summary'].map(name => [
+  const routes = Object.fromEntries(['weaknesses', 'practice', 'introduction', 'answers', 'summary'].map(name => [
     name, load(`src/app/api/interviews/[id]/${name}/route.ts`, common, { console: { error() {} } }),
   ]));
   async function browserFetch(url, init = {}) {
@@ -141,6 +144,7 @@ function journeyFixture({ dropCreatedResponse = false } = {}) {
       '@/lib/auth': { getUser: async () => ({ id: userId }) }, '@/lib/supabase/server': common['@/lib/supabase/server'],
       '@/lib/weakness-practice': practice,
       '@/lib/interview-session-query': sessionQuery,
+    '@/lib/interview-opening': load('src/lib/interview-opening.ts'),
       '@/components/dashboard-shell': { default: () => null }, './client-page': { default: () => null },
     });
     const page = await Page({ searchParams: Promise.resolve({ sessionId }) });
@@ -192,6 +196,11 @@ for (const dropCreatedResponse of [false, true]) {
       assert.equal(created.practice_context.previousAnswers[0].answer, answerText);
       assert.equal(fixture.state.ai.generation, 1);
 
+      const intro = await fixture.browserFetch(`/api/interviews/${practiceId}/introduction`, {
+        method: 'POST', body: JSON.stringify({ answer: 'Saved self introduction' }),
+      });
+      assert.equal(intro.status, 200);
+      assert.equal(fixture.state.ai.evaluation, 0);
       for (let index = 0; index < 4; index++) {
         const response = await fixture.browserFetch(`/api/interviews/${practiceId}/answers`, {
           method: 'POST', body: JSON.stringify({ questionIndex: index, answer: answerText }),
@@ -205,6 +214,8 @@ for (const dropCreatedResponse of [false, true]) {
 
       const newSummary = await fixture.openSummary(practiceId);
       assert.ok(newSummary.html.includes('Weakness Practice Results'));
+      assert.ok(newSummary.html.includes('Saved self introduction'));
+      assert.match(newSummary.html, /Not graded/);
       assert.ok(newSummary.html.includes('+1 Improvement'));
       assert.ok(newSummary.html.includes('+2 Improvement'));
       assert.ok(newSummary.html.includes(`/summary?sessionId=${sourceId}`));
