@@ -98,7 +98,7 @@ test('database errors cannot produce a successful finish and concurrent completi
 function room(fetch) {
   const harness = componentHarness();
   const navigation = [];
-  const { default: Room } = load('src/app/interview-room/client-page.tsx', {
+  const { InterviewRoomTurn: Room } = load('src/app/interview-room/client-page.tsx', {
     react: { ...harness.hooks, useCallback: callback => callback }, 'react/jsx-runtime': jsxRuntime,
     'next/navigation': { useRouter: () => ({ push: url => navigation.push(url) }) },
     'next/link': { __esModule: true, default: () => null },

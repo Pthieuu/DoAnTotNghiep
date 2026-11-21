@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 
+import { interviewOpening, introductionThanks, needsIntroduction } from "@/lib/interview-opening";
+
 type Question = { text: string; focus?: string };
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -17,7 +19,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
 
     const { id } = await context.params;
     const { data: session, error } = await supabase.from("interview_sessions")
-      .select("id,title,company,level,interview_type,interview_language,questions,status")
+      .select("id,title,company,level,interview_type,interview_language,questions,status,self_introduction")
       .eq("id", id).eq("user_id", user.id).maybeSingle();
     if (error) return json({ error: "Could not load interview session." }, 500);
     if (!session || !Array.isArray(session.questions)) return json({ error: "Interview session not found." }, 404);
@@ -28,7 +30,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     if (answerError) return json({ error: "Could not load interview progress." }, 500);
     const questions = session.questions as Question[];
     const index = answerRows?.length ?? 0;
-    const question = questions[index];
+    const opening = needsIntroduction(session.status, index, session.self_introduction);
+    const question = questions[index] && (opening ? interviewOpening(session.interview_language) : questions[index]);
     if (!question) return json({ error: "No remaining questions in this interview session." }, 409);
 
     const requested = await _request.json().catch(() => null) as { questionIndex?: unknown; questionText?: unknown } | null;
@@ -39,6 +42,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       return json({ error: "Interview progress has changed. Please reload the page to get the current question." }, 409);
     }
 
+    const spokenText = !opening && index === 0 && session.self_introduction
+      ? `${introductionThanks(session.interview_language)} ${question.text}` : question.text;
     const language = session.interview_language === "ja" ? "Japanese" : "Vietnamese";
     const priorContext = (answerRows || []).map((row, i) => {
       const previousQuestion = questions[row.question_index];
@@ -50,7 +55,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       `Interview: ${session.title}. Role: ${session.title}. Company: ${session.company || "unspecified"}. Level: ${session.level || "unspecified"}. Type: ${session.interview_type || "general"}.`,
       priorContext ? `Earlier interview context:\n${priorContext}` : "This is the beginning of the interview.",
       `The only current question (number ${index + 1}) is this exact text: ${JSON.stringify(question.text)}`,
-      "Your opening response must read the current question verbatim, exactly once. Do not add a greeting, introduction, translation, paraphrase, or another question. Then wait for the candidate to answer.",
+      `Read this exact script once, then wait: ${JSON.stringify(spokenText)}. Do not add other questions, greetings or translations.`,
+      opening ? "This is the unscored opening. Invite the candidate to introduce themselves. Do not ask any planned CV question. Silence does not finish the introduction; only the app advances after saving it." : "The opening is over. Stay on the current planned question.",
       "Keep a multi-turn conversation on the current question. The candidate may ask what a word means, how a grammar construction works, whether their understanding is correct, or ask you to repeat, slow down, or rephrase. These are clarification requests, not final interview answers. Explain the requested word or grammar in the context of the question, briefly confirm or correct their understanding, or repeat/rephrase as requested. If the requested word is unclear, ask which word they mean. Allow several clarification turns, then invite them to answer the SAME interview question and wait. Never invent their answer, provide a model interview answer, reveal scores, or move to the next question during clarification.",
       "Examples of clarification requests: 『貢献とはどういう意味ですか』『〜にあたっての文法を説明していただけますか』『つまり、前の仕事について話せばいいですか』, 'Từ này nghĩa là gì?', 'Giải thích ngữ pháp này giúp tôi', 'Nói chậm hơn được không?'. Respond helpfully to these requests instead of merely acknowledging them as answers. Briefly acknowledge actual interview answers without introducing unrelated topics.",
       "When the candidate says they are done, thank them and close this question. Do not move to a different planned question; the app handles the next question.",
@@ -88,6 +94,8 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
       token: tokenBody.name,
       questionIndex: index,
       questionText: question.text,
+      spokenText,
+      opening,
       model: "models/gemini-3.8-live",
     });
   } catch (error) {
