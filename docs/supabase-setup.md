@@ -97,3 +97,11 @@ Dashboard tính số buổi hoàn tất và điểm trung bình từ các hàng 
 Tài liệu chính thức:
 - https://supabase.com/docs/guides/auth/server-side/creating-a-client
 - https://supabase.com/docs/guides/getting-started/tutorials/with-nextjs
+
+### Interview opening (2026-11-20)
+
+Apply `supabase/migrations/202611200001_interview_opening.sql` before deploying the interview-opening feature. It adds nullable `interview_sessions.self_introduction`, protected by the session's existing ownership RLS. No backfill is required: sessions already containing scored answers resume at their current question.
+
+New unanswered sessions first show Hiro's fixed greeting and invite a self-introduction. Voice finish phrases or the submit button save this separately through `/api/interviews/[id]/introduction`; pauses do not advance. Text entry is available without microphone permission. The saved introduction appears in the room and results, is not graded, and does not change question count or rubric scores. Missing migration produces a session load error rather than silently skipping this step.
+
+Verify with `node --test tests/interview-opening*.test.mjs tests/weakness-practice-room.test.mjs tests/weakness-practice-journey.test.mjs`. Also smoke-test a new session with real Gemini Live: hear the greeting, pause mid-introduction, explicitly submit, and confirm the first planned question follows. Check reload after saving, text-only input, and resume a session that already has answers.

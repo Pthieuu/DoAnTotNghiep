@@ -20,6 +20,7 @@ type RoomSession = {
   id: string; title: string; company: string | null; level: string | null;
   interviewType: string; interviewLanguage: string;
   total: number; currentQuestion: StoredQuestion | null; turns: StoredTurn[];
+  introduction?: string | null; opening?: boolean;
   completed: boolean; loadError?: "session" | "answers";
   practice?: WeaknessPracticeSession | null;
 };
@@ -53,8 +54,20 @@ function checkAndCleanFinishPhrase(text: string): { finished: boolean; cleanText
 }
 
 export default function InterviewRoomClient({ session }: { session: RoomSession | null }) {
+  // Keep the input preference while each turn remounts to reset drafts and audio.
+  const [textMode, setTextMode] = useState(false);
+  return <InterviewRoomTurn key={session ? `${session.id}:${session.turns.length}:${session.opening}:${session.completed}` : "no-session"} session={session} initialTextMode={textMode} onTextModeChange={setTextMode} />;
+}
+
+export function InterviewRoomTurn({ session, initialTextMode = false, onTextModeChange }: { session: RoomSession | null; initialTextMode?: boolean; onTextModeChange?: (value: boolean) => void }) {
   const router = useRouter();
   const [showTranslation, setShowTranslation] = useState(false);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [textMode, setLocalTextMode] = useState(initialTextMode);
+  const setTextMode = useCallback((value: boolean) => {
+    setLocalTextMode(value);
+    onTextModeChange?.(value);
+  }, [onTextModeChange]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoFinishMessage, setAutoFinishMessage] = useState<string | null>(null);
@@ -65,9 +78,13 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
   const [isFinishing, setIsFinishing] = useState(false);
   const [finishError, setFinishError] = useState("");
   const finishingRef = useRef(false);
+  const hasAutoStartedRef = useRef<number | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
+  const isSubmittingRef = useRef(false);
+
 
   const live = useGeminiLiveInterview(session?.id, session?.turns.length ?? 0, session?.currentQuestion?.text);
-  const transcript = live.candidateTranscript;
+  const transcript = textMode ? textAnswer : live.candidateTranscript;
   const isListening = live.state === "listening" || live.state === "speaking" || live.state === "connecting";
 
   // Keep track of current state
@@ -81,11 +98,12 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   const handleResume = useCallback(() => {
     setIsPaused(false);
+    if (textMode) return;
     hasAutoStartedRef.current = currentQuestionIndex;
     void live.start().catch((err) => {
       console.warn("Resume speech was blocked or failed:", err);
     });
-  }, [live, currentQuestionIndex]);
+  }, [live, currentQuestionIndex, textMode]);
 
   const handleExitClick = useCallback(() => {
     live.stop();
@@ -103,20 +121,9 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         ? "listening"
         : "idle";
 
-  const hasAutoStartedRef = useRef<number | null>(null);
-  const autoSubmitTriggeredRef = useRef(false);
-  const isSubmittingRef = useRef(false);
-
-  // Reset auto-finish flags when question changes
-  useEffect(() => {
-    autoSubmitTriggeredRef.current = false;
-    isSubmittingRef.current = false;
-    setAutoFinishMessage(null);
-  }, [currentQuestionIndex]);
-
   // 1. Auto-read question on start or when advancing to next question
   useEffect(() => {
-    if (!session || session.completed || !session.currentQuestion || isPaused || showExitModal || isFinishing) return;
+    if (textMode || !session || session.completed || !session.currentQuestion || isPaused || showExitModal || isFinishing) return;
     if (hasAutoStartedRef.current === currentQuestionIndex) return;
 
     const timer = setTimeout(() => {
@@ -129,9 +136,10 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live, isPaused, showExitModal, isFinishing]);
+  }, [textMode, session?.id, currentQuestionIndex, live.state, isSubmitting, session?.completed, session, live, isPaused, showExitModal, isFinishing]);
 
   const toggleMic = () => {
+    setTextMode(false);
     if (isListening) {
       live.stop();
     } else {
@@ -150,7 +158,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
     live.stop();
 
     try {
-      const res = await fetch(`/api/interviews/${session.id}/answers`, {
+      const res = await fetch(`/api/interviews/${session.id}/${session.opening ? "introduction" : "answers"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -164,6 +172,7 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         throw new Error(data.error || "An error occurred while submitting your answer.");
       }
 
+      if (session.opening && data.saved !== true) throw new Error("Could not confirm that your introduction was saved.");
       if (data.completed) {
         setFailedAnswer(null);
         router.refresh();
@@ -184,17 +193,20 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
   // 2. Automatically detect finish phrase to complete and submit answer
   useEffect(() => {
-    if (isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current || isPaused || showExitModal || isFinishing) return;
+    if (textMode || isSubmitting || isSubmittingRef.current || autoSubmitTriggeredRef.current || isPaused || showExitModal || isFinishing) return;
     if (live.clarifying || live.state !== "listening" || !transcript.trim()) return;
 
     const { finished, cleanText, matchedPhrase } = checkAndCleanFinishPhrase(transcript);
     if (finished) {
-      autoSubmitTriggeredRef.current = true;
-      live.stop();
-      setAutoFinishMessage(`Detected "${matchedPhrase}" - Submitting answer...`);
-      void submitAnswer(cleanText);
+      const timer = setTimeout(() => {
+        autoSubmitTriggeredRef.current = true;
+        live.stop();
+        setAutoFinishMessage(`Detected "${matchedPhrase}" - Submitting answer...`);
+        void submitAnswer(cleanText);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [transcript, live.state, isSubmitting, submitAnswer, live, isPaused, showExitModal, isFinishing]);
+  }, [textMode, transcript, live.state, isSubmitting, submitAnswer, live, isPaused, showExitModal, isFinishing]);
 
   async function finishSession() {
     if (!session || finishingRef.current || isSubmittingRef.current || isSubmitting) return;
@@ -253,6 +265,9 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
         onExit={handleExitClick}
       />
 
+      {session.opening && <div className="rounded-xl bg-primary-fixed p-4 text-sm text-primary"><strong>Opening · Self-introduction</strong><p>This introduction is saved but not graded and does not count toward your {session.total} questions. Submit when you have finished; a pause will not advance the interview.</p></div>}
+      {session.introduction && session.turns.length === 0 && !session.completed && <p role="status" className="rounded-xl bg-primary-fixed p-4 text-primary">{session.interviewLanguage === "ja" ? "自己紹介ありがとうございます。それでは、最初の質問です。" : "Cảm ơn bạn đã giới thiệu. Chúng ta bắt đầu câu hỏi đầu tiên nhé."}</p>}
+      {session.introduction && <details className="rounded-xl border border-surface-container bg-white p-4 text-sm"><summary>Saved self-introduction · Not graded</summary><p className="mt-2 whitespace-pre-wrap">{session.introduction}</p></details>}
       {session.practice && <WeaknessPracticeGoals practice={session.practice} />}
 
       {(error || session.loadError) && <div className="p-3 bg-error-container text-on-error-container rounded-lg text-sm font-medium">{error || "Unable to load interview data. Please try again."}</div>}
@@ -298,6 +313,10 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             </p>
 
           </div>}
+          {!isCompleted && session.currentQuestion && <div className="border-t border-surface-container p-4 space-y-2">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={textMode} disabled={isSubmitting} onChange={(event) => { live.stop(); setTextMode(event.target.checked); }} />Type instead of speaking</label>
+            {textMode && <><label htmlFor="typed-answer" className="block text-sm font-medium">{session.opening ? "Your self-introduction" : "Your answer"}</label><textarea id="typed-answer" value={textAnswer} onChange={(event) => setTextAnswer(event.target.value)} maxLength={10000} disabled={isSubmitting} rows={5} className="w-full rounded-lg border border-surface-container p-3" /></>}
+          </div>}
           <InterviewControls
             isCompleted={!!isCompleted}
             isPaused={isPaused}
@@ -307,7 +326,8 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
             isSubmitting={isSubmitting}
             clarifying={live.clarifying}
             onSubmit={() => void submitAnswer()}
-            onSkip={() => void submitAnswer("Candidate skipped this question.")}
+            onSkip={session.opening ? undefined : () => void submitAnswer("Candidate skipped this question.")}
+            opening={session.opening}
             sessionId={session.id}
             autoFinishMessage={autoFinishMessage}
           />
@@ -446,7 +466,7 @@ function InterviewHeader({
             {session.interviewLanguage === 'ja' ? 'Japanese' : 'Vietnamese'}
           </span>
           <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-semibold">
-            Question {Math.min(currentQuestionIndex + 1, session.total)} / {session.total}
+            {session.opening ? "Opening · Self-introduction" : `Question ${Math.min(currentQuestionIndex + 1, session.total)} / ${session.total}`}
           </span>
         </div>
       </div>
@@ -607,20 +627,8 @@ function AIStatus({ aiState }: { aiState: AIState }) {
   );
 }
 
-function CandidateCamera() {
-  return (
-    <div className="absolute bottom-[104px] right-6 w-32 h-24 lg:w-48 lg:h-32 bg-surface-container-highest rounded-xl border-2 border-white/20 shadow-xl overflow-hidden flex flex-col z-10">
-      <div className="flex-1 flex items-center justify-center text-on-surface-variant bg-surface">
-        <Icon name="person" />
-      </div>
-      <div className="absolute bottom-1.5 left-2 bg-primary/70 text-white text-[10px] px-1.5 py-0.5 rounded font-medium backdrop-blur-sm">
-        You
-      </div>
-    </div>
-  );
-}
-
 function InterviewControls({
+  opening,
   clarifying,
   isCompleted,
   isPaused,
@@ -633,6 +641,7 @@ function InterviewControls({
   autoFinishMessage,
   onSkip,
 }: {
+  opening?: boolean;
   clarifying: boolean;
   isCompleted: boolean;
   isPaused?: boolean;
@@ -723,7 +732,7 @@ function InterviewControls({
           disabled={isSubmitting || isPaused || clarifying || !transcript.trim()}
           className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-surface-container disabled:text-on-surface-variant rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
         >
-          {isSubmitting ? <><Icon name="autorenew" className="animate-spin" /> Submitting...</> : <><Icon name="send" /> Submit Answer</>}
+          {isSubmitting ? <><Icon name="autorenew" className="animate-spin" /> Submitting...</> : <><Icon name="send" /> {opening ? "Save Introduction & Start Questions" : "Submit Answer"}</>}
         </button>
       </div>
     </div>

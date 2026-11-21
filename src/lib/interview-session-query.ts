@@ -4,6 +4,7 @@ type SessionQueryError = { code?: string; message?: string };
 type SessionQueryResult<T> = { data: T | null; error: SessionQueryError | null };
 
 type InterviewSessionRow = {
+  self_introduction?: string | null;
   id: string;
   title: string;
   status: string;

@@ -129,10 +129,8 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
       setState("error");
     };
     setError("");
-    setCandidateTranscript("");
     setInterviewerTranscript("");
     setCurrentInterviewerText("");
-    transcriptRef.current = "";
     setState("connecting");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
@@ -215,7 +213,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           beginMicInput();
           socket.send(JSON.stringify({
             clientContent: {
-              turns: [{ role: "user", parts: [{ text: `Read this current interview question verbatim, without adding any other question or introduction, then wait for my answer: ${JSON.stringify(tokenData.questionText)}` }] }],
+              turns: [{ role: "user", parts: [{ text: `Read this interviewer script verbatim exactly once, then wait for my answer. Do not add any other question or introduction: ${JSON.stringify(tokenData.spokenText || tokenData.questionText)}` }] }],
               turnComplete: true,
             },
           }));
