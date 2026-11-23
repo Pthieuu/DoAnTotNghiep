@@ -60,9 +60,20 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
   const [error, setError] = useState("");
   const [clarifying, setClarifying] = useState(false);
   const clarifyingRef = useRef(false);
+  const clarifyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setClarificationMode = useCallback((enabled: boolean) => {
     clarifyingRef.current = enabled;
     setClarifying(enabled);
+    if (clarifyWatchdogRef.current) {
+      clearTimeout(clarifyWatchdogRef.current);
+      clarifyWatchdogRef.current = null;
+    }
+    if (enabled) {
+      clarifyWatchdogRef.current = setTimeout(() => {
+        clarifyingRef.current = false;
+        setClarifying(false);
+      }, 30000);
+    }
   }, []);
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -174,6 +185,9 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
         // Leave a short tail so room/speaker echo is not captured as a new answer.
         micReadyAt = audioContext.currentTime + 0.25;
         setState("listening");
+        if (clarifyingRef.current) {
+          setClarificationMode(false);
+        }
       };
       const beginMicInput = () => {
         const input = audioContext.createMediaStreamSource(stream);
@@ -184,8 +198,8 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           audioEvent.outputBuffer.getChannelData(0).fill(0);
           if (!isCurrent() || socket.readyState !== WebSocket.OPEN) return;
           const samples = downsampleTo16k(audioEvent.inputBuffer.getChannelData(0), audioContext.sampleRate);
-          // Keep the input clock/VAD running with silence while the interviewer speaks.
-          if (modelTurnActive || playbackRef.current.size || audioContext.currentTime < micReadyAt) samples.fill(0);
+          // Keep the input clock/VAD running with silence while the interviewer speaks or clarifies.
+          if (modelTurnActive || playbackRef.current.size || audioContext.currentTime < micReadyAt || clarifyingRef.current) samples.fill(0);
           socket.send(JSON.stringify({ realtimeInput: { audio: { data: pcm16Base64(samples), mimeType: "audio/pcm;rate=16000" } } }));
         };
         input.connect(processor);
@@ -286,6 +300,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
 
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       clearPlayback();
+      setClarificationMode(true);
       setState("speaking");
       socketRef.current.send(JSON.stringify({
         clientContent: {
@@ -299,28 +314,10 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
         }
       }));
     } else {
+      setClarificationMode(true);
       void start();
     }
-
-    if (typeof window !== "undefined" && window.speechSynthesis && (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN)) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(textToRead);
-        const voices = window.speechSynthesis.getVoices();
-        const isJa = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(textToRead);
-        const lang = isJa ? "ja-JP" : "vi-VN";
-        const voice = voices.find(v => v.lang.includes(lang)) || voices[0];
-        if (voice) utterance.voice = voice;
-        utterance.lang = lang;
-        utterance.onstart = () => setState("speaking");
-        utterance.onend = () => setState("listening");
-        utterance.onerror = () => setState("listening");
-        window.speechSynthesis.speak(utterance);
-      } catch (err) {
-        console.warn("TTS fallback error", err);
-      }
-    }
-  }, [questionText, clearPlayback, start]);
+  }, [questionText, clearPlayback, start, setClarificationMode]);
 
   useEffect(() => stop, [sessionId, questionIndex, questionText, stop]);
 

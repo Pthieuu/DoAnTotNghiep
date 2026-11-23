@@ -157,52 +157,18 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
     setShowExitModal(true);
   }, [live]);
 
-  const clarifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Auto-disable clarification mode when AI finishes speaking (with safety watchdog)
-  useEffect(() => {
-    if (live.clarifying) {
-      if (live.state !== "speaking") {
-        if (clarifyTimerRef.current) clearTimeout(clarifyTimerRef.current);
-        clarifyTimerRef.current = setTimeout(() => {
-          live.setClarificationMode?.(false);
-        }, 800);
-      }
-      const watchdog = setTimeout(() => {
-        live.setClarificationMode?.(false);
-      }, 25000);
-      return () => {
-        clearTimeout(watchdog);
-        if (clarifyTimerRef.current) clearTimeout(clarifyTimerRef.current);
-      };
-    }
-  }, [live.clarifying, live.state, live]);
-
   const handleRepeatQuestion = useCallback(() => {
     if (isSubmitting || isPaused) return;
     const qText = session?.currentQuestion?.text;
     if (!qText) return;
-
-    if (clarifyTimerRef.current) {
-      clearTimeout(clarifyTimerRef.current);
-      clarifyTimerRef.current = null;
-    }
-
-    live.setClarificationMode?.(true);
 
     if (live.state === "idle") {
       hasAutoStartedRef.current = currentQuestionIndex;
       void live.start();
     } else if (live.repeatQuestion) {
       live.repeatQuestion(qText);
-    } else if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(qText);
-      const isJa = session?.interviewLanguage === "ja" || /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(qText);
-      utterance.lang = isJa ? "ja-JP" : "vi-VN";
-      utterance.onend = () => live.setClarificationMode?.(false);
-      utterance.onerror = () => live.setClarificationMode?.(false);
-      window.speechSynthesis.speak(utterance);
+    } else {
+      live.setClarificationMode?.(true);
     }
   }, [isSubmitting, isPaused, session, live, currentQuestionIndex]);
 
