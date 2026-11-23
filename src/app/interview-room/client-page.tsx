@@ -66,6 +66,59 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
   const [showChat, setShowChat] = useState(true);
   const [isPip, setIsPip] = useState(false);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  const toggleCamera = useCallback(async () => {
+    if (cameraActive) {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      setCameraActive(false);
+      setCameraError("");
+    } else {
+      setCameraError("");
+      try {
+        if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Trình duyệt không hỗ trợ camera.");
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+          audio: false,
+        });
+        mediaStreamRef.current = stream;
+        setCameraActive(true);
+      } catch (err) {
+        console.warn("Could not access camera:", err);
+        const msg = err instanceof Error && err.name === "NotAllowedError"
+          ? "Vui lòng cấp quyền camera trong trình duyệt để bật webcam."
+          : "Không thể mở camera. Vui lòng kiểm tra thiết bị webcam của bạn.";
+        setCameraError(msg);
+        setCameraActive(false);
+      }
+    }
+  }, [cameraActive]);
+
+  useEffect(() => {
+    if (cameraActive && mediaStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = mediaStreamRef.current;
+      videoRef.current.play().catch((err) => console.warn("Video play error:", err));
+    }
+  }, [cameraActive]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   const setTextMode = useCallback((value: boolean) => {
     setLocalTextMode(value);
@@ -125,6 +178,27 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
     setFinishError("");
     setShowExitModal(true);
   }, [live]);
+
+  const handleRepeatQuestion = useCallback(() => {
+    if (isSubmitting || isPaused) return;
+    const qText = session?.currentQuestion?.text;
+    if (!qText) return;
+
+    if (live.repeatQuestion) {
+      live.repeatQuestion(qText);
+    } else if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(qText);
+      const isJa = session?.interviewLanguage === "ja" || /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(qText);
+      utterance.lang = isJa ? "ja-JP" : "vi-VN";
+      window.speechSynthesis.speak(utterance);
+    }
+
+    live.setClarificationMode?.(true);
+    setTimeout(() => {
+      live.setClarificationMode?.(false);
+    }, 4000);
+  }, [isSubmitting, isPaused, session, live]);
 
   const aiState: AIState = isPaused
     ? "idle"
@@ -343,7 +417,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
             isCompleted={!!isCompleted}
             onStartSpeech={() => {
               hasAutoStartedRef.current = currentQuestionIndex;
-              void live.start();
+              handleRepeatQuestion();
             }}
           >
             {/* If in PiP mode, CandidateTile floats inside AIInterviewer */}
@@ -355,6 +429,10 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 userDisplayName="Bạn"
                 isPip={true}
                 onTogglePip={() => setIsPip(false)}
+                cameraActive={cameraActive}
+                cameraError={cameraError}
+                videoRef={videoRef}
+                onToggleCamera={toggleCamera}
               />
             )}
           </AIInterviewer>
@@ -369,6 +447,10 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 userDisplayName="Bạn"
                 isPip={false}
                 onTogglePip={() => setIsPip(true)}
+                cameraActive={cameraActive}
+                cameraError={cameraError}
+                videoRef={videoRef}
+                onToggleCamera={toggleCamera}
               />
 
               {/* Answer Tips / STAR Method right below the candidate card */}
@@ -554,12 +636,13 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                     <button
                       type="button"
                       disabled={isSubmitting}
-                      onClick={() => live.setClarificationMode(!live.clarifying)}
+                      onClick={handleRepeatQuestion}
                       className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-colors border ${
-                        live.clarifying ? "bg-amber-100 text-amber-900 border-amber-300" : "border-surface-container text-on-surface-variant hover:bg-surface-container hover:text-primary"
+                        live.state === "speaking" ? "bg-amber-100 text-amber-900 border-amber-300" : "border-surface-container text-on-surface-variant hover:bg-surface-container hover:text-primary"
                       }`}
+                      title="Ask Clarification - Hỏi lại câu hỏi"
                     >
-                      {live.clarifying ? "Clarifying..." : "Ask Clarification"}
+                      {live.state === "speaking" ? "Đang đọc lại..." : "Ask Clarification"}
                     </button>
                   </div>
 
@@ -588,14 +671,16 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
       {/* 3. Meeting Control Toolbar (Contains onSubmit/onSkip queried by tests) */}
       <InterviewControls
         opening={session.opening}
-        clarifying={live.clarifying}
+        clarifying={live.clarifying || live.state === "speaking"}
         isCompleted={!!isCompleted}
         isPaused={isPaused}
         micActive={isListening}
+        cameraActive={cameraActive}
         showChat={showChat}
         onToggleMic={toggleMic}
+        onToggleCamera={toggleCamera}
         onToggleChat={() => setShowChat(!showChat)}
-        onToggleClarify={() => live.setClarificationMode(!live.clarifying)}
+        onToggleClarify={handleRepeatQuestion}
         transcript={transcript}
         isSubmitting={isSubmitting}
         onSubmit={() => void submitAnswer()}
@@ -890,6 +975,10 @@ function CandidateTile({
   userDisplayName = "Bạn",
   isPip = false,
   onTogglePip,
+  cameraActive = false,
+  cameraError = "",
+  videoRef,
+  onToggleCamera,
 }: {
   micActive: boolean;
   isPaused: boolean;
@@ -897,83 +986,136 @@ function CandidateTile({
   userDisplayName?: string;
   isPip?: boolean;
   onTogglePip?: () => void;
+  cameraActive?: boolean;
+  cameraError?: string;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  onToggleCamera?: () => void;
 }) {
   return (
     <div
-      className={`relative rounded-2xl bg-white border border-surface-container shadow-sm overflow-hidden flex flex-col justify-between p-3.5 transition-all ${
+      className={`relative rounded-2xl bg-white border border-surface-container shadow-sm overflow-hidden flex flex-col justify-between transition-all ${
         isPip
           ? "absolute bottom-4 right-4 z-20 w-56 sm:w-64 h-36 sm:h-40 bg-white/95 backdrop-blur-md shadow-lg"
           : "w-full h-44 sm:h-48 shrink-0"
-      }`}
+      } ${cameraActive ? "p-2 bg-slate-900 border-slate-700" : "p-3.5"}`}
     >
-      {/* Background glow when speaking */}
-      <div
-        className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${
-          micActive && !isPaused
-            ? "bg-radial from-emerald-500/10 via-transparent to-transparent opacity-100"
-            : "opacity-0"
-        }`}
-      />
-
-      {/* Top Status: Camera Off Notice (Chế độ âm thanh) + PiP toggle */}
-      <div className="relative z-10 flex items-center justify-between">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant text-[11px] font-medium border border-surface-container-high shadow-2xs">
-          <span className="relative inline-flex items-center justify-center">
-            <Icon name="videocam" className="text-xs text-on-surface-variant opacity-70" />
-            <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-[10px] select-none">/</span>
-          </span>
-          <span>Camera tắt (Audio only)</span>
+      {/* If camera is active: render video stream */}
+      {cameraActive ? (
+        <div className="absolute inset-0 z-0 bg-black flex items-center justify-center overflow-hidden rounded-2xl">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover scale-x-[-1]"
+          />
         </div>
+      ) : (
+        <>
+          {/* Background glow when speaking */}
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 pointer-events-none ${
+              micActive && !isPaused
+                ? "bg-radial from-emerald-500/10 via-transparent to-transparent opacity-100"
+                : "opacity-0"
+            }`}
+          />
+
+          {/* Center: Candidate Avatar with Audio Ripple */}
+          <div className="relative z-10 flex flex-col items-center justify-center my-auto">
+            <div className="relative flex items-center justify-center">
+              {micActive && !isPaused && (
+                <>
+                  <span className="absolute size-24 sm:size-28 rounded-full bg-emerald-500/10 animate-ping opacity-50"></span>
+                  <span className="absolute size-20 sm:size-24 rounded-full border border-emerald-500/30 animate-pulse"></span>
+                </>
+              )}
+              <div
+                className={`size-16 sm:size-20 rounded-full bg-surface-container-low border-2 transition-all flex items-center justify-center shadow-xs ${
+                  micActive && !isPaused
+                    ? "border-emerald-500 ring-2 ring-emerald-500/20"
+                    : "border-surface-container-high"
+                }`}
+              >
+                <Icon
+                  name="person"
+                  className={`text-3xl sm:text-4xl transition-colors ${
+                    micActive && !isPaused ? "text-emerald-600" : "text-primary"
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Camera error message if any */}
+            {cameraError && (
+              <p className="mt-1 text-[10px] text-rose-500 text-center font-medium max-w-[200px] leading-tight">
+                {cameraError}
+              </p>
+            )}
+
+            {/* Real-time Subtitle Preview if user is speaking */}
+            {transcript && (
+              <div className="mt-1.5 max-w-full px-2.5 py-0.5 rounded-xl bg-surface-container-lowest border border-surface-container text-center shadow-2xs animate-in fade-in">
+                <p className="text-[11px] text-on-surface italic line-clamp-1 truncate">&ldquo;{transcript}&rdquo;</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Top Status & Controls: Camera Status Badge + Actions */}
+      <div className="relative z-10 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onToggleCamera}
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border shadow-2xs transition-all ${
+            cameraActive
+              ? "bg-slate-900/80 text-emerald-400 border-emerald-500/30 backdrop-blur-md hover:bg-slate-800"
+              : "bg-surface-container text-on-surface-variant border-surface-container-high hover:bg-surface-container-high"
+          }`}
+          title={cameraActive ? "Bấm để tắt camera" : "Bấm để bật camera"}
+        >
+          {cameraActive ? (
+            <>
+              <Icon name="videocam" className="text-xs text-emerald-400" />
+              <span>Camera đang bật</span>
+            </>
+          ) : (
+            <>
+              <span className="relative inline-flex items-center justify-center">
+                <Icon name="videocam" className="text-xs text-on-surface-variant opacity-70" />
+                <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-[10px] select-none">/</span>
+              </span>
+              <span>Camera tắt (Bật)</span>
+            </>
+          )}
+        </button>
 
         {onTogglePip && (
           <button
             type="button"
             onClick={onTogglePip}
             title={isPip ? "Mở rộng sang khung bên" : "Thu nhỏ vào góc (PiP)"}
-            className="size-6 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container flex items-center justify-center transition-colors"
+            className={`size-6 rounded-lg flex items-center justify-center transition-colors ${
+              cameraActive
+                ? "bg-slate-900/70 text-white/80 hover:text-white hover:bg-slate-800 backdrop-blur-md"
+                : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
+            }`}
           >
             <Icon name={isPip ? "open_in_new" : "tune"} className="text-xs" />
           </button>
         )}
       </div>
 
-      {/* Center: Candidate Avatar with Audio Ripple */}
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto">
-        <div className="relative flex items-center justify-center">
-          {/* Animated glow rings when speaking */}
-          {micActive && !isPaused && (
-            <>
-              <span className="absolute size-24 sm:size-28 rounded-full bg-emerald-500/10 animate-ping opacity-50"></span>
-              <span className="absolute size-20 sm:size-24 rounded-full border border-emerald-500/30 animate-pulse"></span>
-            </>
-          )}
-          <div
-            className={`size-16 sm:size-20 rounded-full bg-surface-container-low border-2 transition-all flex items-center justify-center shadow-xs ${
-              micActive && !isPaused
-                ? "border-emerald-500 ring-2 ring-emerald-500/20"
-                : "border-surface-container-high"
-            }`}
-          >
-            <Icon
-              name="person"
-              className={`text-3xl sm:text-4xl transition-colors ${
-                micActive && !isPaused ? "text-emerald-600" : "text-primary"
-              }`}
-            />
-          </div>
-        </div>
-
-        {/* Real-time Subtitle Preview if user is speaking */}
-        {transcript && (
-          <div className="mt-1.5 max-w-full px-2.5 py-0.5 rounded-xl bg-surface-container-lowest border border-surface-container text-center shadow-2xs animate-in fade-in">
-            <p className="text-[11px] text-on-surface italic line-clamp-1 truncate">&ldquo;{transcript}&rdquo;</p>
-          </div>
-        )}
-      </div>
-
       {/* Bottom Left: Name Tag with Mic Status */}
       <div className="relative z-10 flex items-center justify-between pt-1">
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-md border border-surface-container text-primary text-xs font-bold shadow-2xs">
+        <div
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-bold shadow-2xs ${
+            cameraActive
+              ? "bg-slate-900/80 backdrop-blur-md border-slate-700 text-white"
+              : "bg-white/95 backdrop-blur-md border-surface-container text-primary"
+          }`}
+        >
           <span
             className={`size-2 rounded-full ${
               micActive && !isPaused ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
@@ -982,7 +1124,7 @@ function CandidateTile({
           <Icon
             name="mic"
             className={`text-xs ${
-              micActive && !isPaused ? "text-emerald-600" : "text-rose-500 opacity-70"
+              micActive && !isPaused ? "text-emerald-400" : "text-rose-500 opacity-70"
             }`}
           />
           <span>{userDisplayName}</span>
@@ -998,8 +1140,10 @@ function InterviewControls({
   isCompleted,
   isPaused,
   micActive,
+  cameraActive = false,
   showChat,
   onToggleMic,
+  onToggleCamera,
   onToggleChat,
   onToggleClarify,
   transcript,
@@ -1015,8 +1159,10 @@ function InterviewControls({
   isCompleted: boolean;
   isPaused?: boolean;
   micActive: boolean;
+  cameraActive?: boolean;
   showChat: boolean;
   onToggleMic: () => void;
+  onToggleCamera?: () => void;
   onToggleChat: () => void;
   onToggleClarify: () => void;
   transcript: string;
@@ -1065,35 +1211,51 @@ function InterviewControls({
           <span>{micActive ? "Đang bật mic" : "Bật mic"}</span>
         </button>
 
-        {/* 2. Camera button (Disabled/Off, matching user requirement: không có bật cam) */}
+        {/* 2. Camera toggle button */}
         <button
           type="button"
-          disabled
-          aria-label="Camera đang tắt"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold bg-surface-container-low text-on-surface-variant border border-surface-container cursor-default opacity-85"
-          title="Camera is disabled (Chế độ âm thanh)"
+          onClick={onToggleCamera}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-all ${
+            cameraActive
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
+              : "bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container"
+          }`}
+          title={cameraActive ? "Tắt Camera" : "Bật Camera"}
+          aria-label={cameraActive ? "Tắt Camera" : "Bật Camera"}
         >
-          <span className="relative inline-flex items-center justify-center">
-            <Icon name="videocam" className="text-sm text-on-surface-variant opacity-70" />
-            <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-xs select-none">/</span>
-          </span>
-          <span className="hidden sm:inline">Camera tắt</span>
+          {cameraActive ? (
+            <>
+              <Icon name="videocam" className="text-sm text-emerald-600" />
+              <span className="hidden sm:inline">Camera đang bật</span>
+            </>
+          ) : (
+            <>
+              <span className="relative inline-flex items-center justify-center">
+                <Icon name="videocam" className="text-sm text-on-surface-variant opacity-70" />
+                <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-xs select-none">/</span>
+              </span>
+              <span className="hidden sm:inline">Bật camera</span>
+            </>
+          )}
         </button>
 
-        {/* 3. Audio Clarification toggle */}
+        {/* 3. Audio Clarification / Repeat Question toggle */}
         <button
           type="button"
           onClick={onToggleClarify}
           disabled={isSubmitting || isPaused}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-all ${
             clarifying
-              ? "bg-amber-100 text-amber-900 border border-amber-300"
+              ? "bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"
               : "bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container"
           } disabled:opacity-50`}
-          title="Ask AI to clarify terms or question"
+          title="Ask Clarification - Hỏi lại / Nhờ AI đọc lại câu hỏi"
+          aria-label="Ask Clarification"
         >
           <Icon name="help" className="text-sm" />
-          <span className="hidden sm:inline">{clarifying ? "Đang hỏi lại" : "Hỏi lại (Clarify)"}</span>
+          <span className="hidden sm:inline">
+            {clarifying ? "Đang đọc lại..." : "Hỏi lại (Ask Clarification)"}
+          </span>
         </button>
 
         {/* 4. Chat Toggle button */}
@@ -1160,7 +1322,7 @@ function InterviewControls({
 
       {/* Sub-hint below toolbar */}
       <p className="text-[11px] text-on-surface-variant text-center px-4">
-        Giữ phím <kbd className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface border border-surface-container-high font-mono text-[10px]">Space</kbd> khi nói hoặc nói &ldquo;以上です&rdquo; / &ldquo;That&apos;s all&rdquo; để hoàn thành câu trả lời.
+        Nói &ldquo;以上です&rdquo; / &ldquo;That&apos;s all&rdquo; hoặc bấm &ldquo;Submit Answer&rdquo; khi hoàn thành câu trả lời.
       </p>
     </div>
   );

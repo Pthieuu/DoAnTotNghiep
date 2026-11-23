@@ -280,7 +280,49 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
     }
   }, [sessionId, questionIndex, questionText, stop, clearPlayback]);
 
+  const repeatQuestion = useCallback((customText?: string) => {
+    const textToRead = customText || questionText;
+    if (!textToRead) return;
+
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      clearPlayback();
+      setState("speaking");
+      socketRef.current.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: "user",
+            parts: [{
+              text: `The candidate requested: "もう一度質問をお願いします" (Please repeat the question). Repeat the exact interviewer question clearly verbatim now, with no other intro: ${JSON.stringify(textToRead)}`
+            }]
+          }],
+          turnComplete: true,
+        }
+      }));
+    } else {
+      void start();
+    }
+
+    if (typeof window !== "undefined" && window.speechSynthesis && (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN)) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(textToRead);
+        const voices = window.speechSynthesis.getVoices();
+        const isJa = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(textToRead);
+        const lang = isJa ? "ja-JP" : "vi-VN";
+        const voice = voices.find(v => v.lang.includes(lang)) || voices[0];
+        if (voice) utterance.voice = voice;
+        utterance.lang = lang;
+        utterance.onstart = () => setState("speaking");
+        utterance.onend = () => setState("listening");
+        utterance.onerror = () => setState("listening");
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.warn("TTS fallback error", err);
+      }
+    }
+  }, [questionText, clearPlayback, start]);
+
   useEffect(() => stop, [sessionId, questionIndex, questionText, stop]);
 
-  return { state, candidateTranscript, interviewerTranscript, currentInterviewerText, error, start, stop, clarifying, setClarificationMode };
+  return { state, candidateTranscript, interviewerTranscript, currentInterviewerText, error, start, stop, clarifying, setClarificationMode, repeatQuestion };
 }
