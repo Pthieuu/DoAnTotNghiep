@@ -60,6 +60,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
   const [error, setError] = useState("");
   const [clarifying, setClarifying] = useState(false);
   const clarifyingRef = useRef(false);
+  const repeatReadyRef = useRef(false);
   const setClarificationMode = useCallback((enabled: boolean) => {
     clarifyingRef.current = enabled;
     setClarifying(enabled);
@@ -88,6 +89,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
 
   const stop = useCallback(() => {
     activeRef.current = false;
+    repeatReadyRef.current = false;
     generationRef.current += 1;
     tokenAbortRef.current?.abort();
     tokenAbortRef.current = null;
@@ -118,6 +120,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
     if (!sessionId || !questionText || activeRef.current) return;
     // Reserve the connection before the first await, including permission/token waits.
     activeRef.current = true;
+    repeatReadyRef.current = false;
     const generation = ++generationRef.current;
     const isCurrent = () => activeRef.current && generationRef.current === generation;
     const abort = new AbortController();
@@ -173,7 +176,11 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
         if (!isCurrent() || modelTurnActive || playbackRef.current.size) return;
         // Leave a short tail so room/speaker echo is not captured as a new answer.
         micReadyAt = audioContext.currentTime + 0.25;
+        repeatReadyRef.current = true;
         setState("listening");
+        if (clarifyingRef.current) {
+          setClarificationMode(false);
+        }
       };
       const beginMicInput = () => {
         const input = audioContext.createMediaStreamSource(stream);
@@ -184,8 +191,8 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           audioEvent.outputBuffer.getChannelData(0).fill(0);
           if (!isCurrent() || socket.readyState !== WebSocket.OPEN) return;
           const samples = downsampleTo16k(audioEvent.inputBuffer.getChannelData(0), audioContext.sampleRate);
-          // Keep the input clock/VAD running with silence while the interviewer speaks.
-          if (modelTurnActive || playbackRef.current.size || audioContext.currentTime < micReadyAt) samples.fill(0);
+          // Keep the input clock/VAD running with silence while the interviewer speaks or clarifies.
+          if (modelTurnActive || playbackRef.current.size || audioContext.currentTime < micReadyAt || clarifyingRef.current) samples.fill(0);
           socket.send(JSON.stringify({ realtimeInput: { audio: { data: pcm16Base64(samples), mimeType: "audio/pcm;rate=16000" } } }));
         };
         input.connect(processor);
@@ -227,6 +234,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           finishPlayback();
         }
         if (serverContent?.modelTurn && !serverContent.interrupted) {
+          repeatReadyRef.current = false;
           modelTurnActive = true;
           micReadyAt = Infinity;
         }
@@ -278,9 +286,37 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
       const message = cause instanceof Error ? cause.message : "Unable to start voice conversation.";
       fail(message);
     }
-  }, [sessionId, questionIndex, questionText, stop, clearPlayback]);
+  }, [sessionId, questionIndex, questionText, stop, clearPlayback, setClarificationMode]);
+
+  const repeatQuestion = useCallback((customText?: string) => {
+    const textToRead = customText || questionText;
+    if (!textToRead || clarifyingRef.current) return;
+    // Reserve synchronously: multiple clicks can arrive before React re-renders.
+    if (activeRef.current && !repeatReadyRef.current) return;
+    repeatReadyRef.current = false;
+
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      clearPlayback();
+      setClarificationMode(true);
+      setState("speaking");
+      socketRef.current.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: "user",
+            parts: [{
+              text: `The candidate requested: "もう一度質問をお願いします" (Please repeat the question). Repeat the exact interviewer question clearly verbatim now, with no other intro: ${JSON.stringify(textToRead)}`
+            }]
+          }],
+          turnComplete: true,
+        }
+      }));
+    } else {
+      setClarificationMode(true);
+      void start();
+    }
+  }, [questionText, clearPlayback, start, setClarificationMode]);
 
   useEffect(() => stop, [sessionId, questionIndex, questionText, stop]);
 
-  return { state, candidateTranscript, interviewerTranscript, currentInterviewerText, error, start, stop, clarifying, setClarificationMode };
+  return { state, candidateTranscript, interviewerTranscript, currentInterviewerText, error, start, stop, clarifying, setClarificationMode, repeatQuestion };
 }
