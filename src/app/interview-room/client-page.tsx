@@ -158,7 +158,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
   }, [live]);
 
   const handleRepeatQuestion = useCallback(() => {
-    if (isSubmitting || isPaused) return;
+    if (isSubmitting || isPaused || live.clarifying || live.state === "connecting" || live.state === "speaking") return;
     const qText = session?.currentQuestion?.text;
     if (!qText) return;
 
@@ -606,7 +606,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
 
                     <button
                       type="button"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isPaused || live.clarifying || live.state === "connecting" || live.state === "speaking"}
                       onClick={handleRepeatQuestion}
                       className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-colors border ${
                         live.state === "speaking" ? "bg-amber-100 text-amber-900 border-amber-300" : "border-surface-container text-on-surface-variant hover:bg-surface-container hover:text-primary"
@@ -651,6 +651,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
         onToggleMic={toggleMic}
         onToggleCamera={toggleCamera}
         onToggleChat={() => setShowChat(!showChat)}
+        clarifyDisabled={live.clarifying || live.state === "connecting" || live.state === "speaking"}
         onToggleClarify={handleRepeatQuestion}
         transcript={transcript}
         isSubmitting={isSubmitting}
@@ -1135,6 +1136,7 @@ function InterviewControls({
   onToggleCamera,
   onToggleChat,
   onToggleClarify,
+  clarifyDisabled,
   transcript,
   isSubmitting,
   onSubmit,
@@ -1154,6 +1156,7 @@ function InterviewControls({
   onToggleCamera?: () => void;
   onToggleChat: () => void;
   onToggleClarify: () => void;
+  clarifyDisabled: boolean;
   transcript: string;
   isSubmitting: boolean;
   onSubmit: () => void;
@@ -1232,7 +1235,7 @@ function InterviewControls({
         <button
           type="button"
           onClick={onToggleClarify}
-          disabled={isSubmitting || isPaused}
+          disabled={isSubmitting || isPaused || clarifyDisabled}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-all ${
             clarifying
               ? "bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"

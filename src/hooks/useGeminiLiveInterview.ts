@@ -60,20 +60,10 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
   const [error, setError] = useState("");
   const [clarifying, setClarifying] = useState(false);
   const clarifyingRef = useRef(false);
-  const clarifyWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const repeatReadyRef = useRef(false);
   const setClarificationMode = useCallback((enabled: boolean) => {
     clarifyingRef.current = enabled;
     setClarifying(enabled);
-    if (clarifyWatchdogRef.current) {
-      clearTimeout(clarifyWatchdogRef.current);
-      clarifyWatchdogRef.current = null;
-    }
-    if (enabled) {
-      clarifyWatchdogRef.current = setTimeout(() => {
-        clarifyingRef.current = false;
-        setClarifying(false);
-      }, 30000);
-    }
   }, []);
   const socketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -99,6 +89,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
 
   const stop = useCallback(() => {
     activeRef.current = false;
+    repeatReadyRef.current = false;
     generationRef.current += 1;
     tokenAbortRef.current?.abort();
     tokenAbortRef.current = null;
@@ -129,6 +120,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
     if (!sessionId || !questionText || activeRef.current) return;
     // Reserve the connection before the first await, including permission/token waits.
     activeRef.current = true;
+    repeatReadyRef.current = false;
     const generation = ++generationRef.current;
     const isCurrent = () => activeRef.current && generationRef.current === generation;
     const abort = new AbortController();
@@ -184,6 +176,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
         if (!isCurrent() || modelTurnActive || playbackRef.current.size) return;
         // Leave a short tail so room/speaker echo is not captured as a new answer.
         micReadyAt = audioContext.currentTime + 0.25;
+        repeatReadyRef.current = true;
         setState("listening");
         if (clarifyingRef.current) {
           setClarificationMode(false);
@@ -241,6 +234,7 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
           finishPlayback();
         }
         if (serverContent?.modelTurn && !serverContent.interrupted) {
+          repeatReadyRef.current = false;
           modelTurnActive = true;
           micReadyAt = Infinity;
         }
@@ -292,11 +286,14 @@ export function useGeminiLiveInterview(sessionId: string | undefined, questionIn
       const message = cause instanceof Error ? cause.message : "Unable to start voice conversation.";
       fail(message);
     }
-  }, [sessionId, questionIndex, questionText, stop, clearPlayback]);
+  }, [sessionId, questionIndex, questionText, stop, clearPlayback, setClarificationMode]);
 
   const repeatQuestion = useCallback((customText?: string) => {
     const textToRead = customText || questionText;
-    if (!textToRead) return;
+    if (!textToRead || clarifyingRef.current) return;
+    // Reserve synchronously: multiple clicks can arrive before React re-renders.
+    if (activeRef.current && !repeatReadyRef.current) return;
+    repeatReadyRef.current = false;
 
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       clearPlayback();
