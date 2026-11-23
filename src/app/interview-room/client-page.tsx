@@ -61,7 +61,6 @@ export default function InterviewRoomClient({ session }: { session: RoomSession 
 
 export function InterviewRoomTurn({ session, initialTextMode = false, onTextModeChange }: { session: RoomSession | null; initialTextMode?: boolean; onTextModeChange?: (value: boolean) => void }) {
   const router = useRouter();
-  const [showTranslation, setShowTranslation] = useState(false);
   const [textAnswer, setTextAnswer] = useState("");
   const [textMode, setLocalTextMode] = useState(initialTextMode);
   const setTextMode = useCallback((value: boolean) => {
@@ -286,10 +285,6 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
           <AIInterviewer
             aiState={aiState}
             question={session.currentQuestion}
-            liveText={live.currentInterviewerText}
-            clarifying={live.clarifying}
-            showTranslation={showTranslation}
-            onToggleTranslation={() => setShowTranslation(!showTranslation)}
             isCompleted={!!isCompleted}
             onStartSpeech={() => {
               hasAutoStartedRef.current = currentQuestionIndex;
@@ -508,84 +503,33 @@ function InterviewHeader({
 }
 
 function AIInterviewer({
-  liveText,
-  clarifying,
   aiState,
   question,
-  showTranslation,
-  onToggleTranslation,
   isCompleted,
   onStartSpeech,
 }: {
-  liveText: string;
-  clarifying: boolean;
   aiState: AIState;
   question: StoredQuestion | null;
-  showTranslation: boolean;
-  onToggleTranslation: () => void;
   isCompleted: boolean;
   onStartSpeech?: () => void;
 }) {
   return (
-    <div className="relative flex-1 flex flex-col bg-surface-container-lowest overflow-hidden min-h-[300px]">
-      {/* AI Status */}
+    <div className="relative flex-1 min-h-[300px] bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/interview-bg.jpg')" }}>
       <div className="absolute top-4 left-4 z-10">
         <AIStatus aiState={aiState} />
       </div>
-
-      {/* Avatar Area */}
-      <div
-        className="flex-1 relative flex items-center justify-center bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/interview-bg.jpg')" }}
-      >
-        <VrmAvatar
-          state={aiState === "idle" ? "idle" : aiState}
-          className="absolute inset-0 h-full min-h-0 rounded-none"
-        />
-        {/* Subtitle Overlay */}
-        {question && !isCompleted && (
-          <div className="absolute bottom-4 left-4 z-10 flex max-w-2xl flex-col items-start animate-in slide-in-from-bottom-4 fade-in duration-500">
-            <div className="bg-primary/85 backdrop-blur-md rounded-2xl p-3 lg:p-4 text-left shadow-lg border border-white/10">
-              <p className="mb-1 text-xs text-white/70">{liveText ? "Current AI Speech" : "Interview Question"}</p>
-              <p className="max-h-48 overflow-y-auto whitespace-pre-wrap text-white text-base lg:text-lg font-medium leading-relaxed">
-                {liveText || question.text}
-              </p>
-              {showTranslation && !liveText && (
-                <p className="text-secondary-fixed mt-2 text-sm lg:text-base border-t border-white/20 pt-2">
-                  {question.translation}
-                </p>
-              )}
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                {!liveText && <button
-                  onClick={onToggleTranslation}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white text-xs font-medium transition-colors"
-                >
-                  {showTranslation ? "Hide Translation" : "Show Translation"}
-                </button>}
-                {liveText && <details className="text-xs text-white/90">
-                  <summary className="cursor-pointer">View original question &amp; translation</summary>
-                  <p className="mt-2">{question.text}</p>
-                  {question.translation && <p className="mt-1 text-secondary-fixed">{question.translation}</p>}
-                </details>}
-                {aiState === "idle" && onStartSpeech && (
-                  <button
-                    onClick={onStartSpeech}
-                    className="px-3 py-1.5 bg-secondary text-on-secondary hover:bg-secondary/90 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Icon name="volume_up" /> Listen to AI question
-                  </button>
-                )}
-                {aiState === "listening" && !clarifying && (
-                  <span className="text-[11px] text-white/90 bg-emerald-950/60 border border-emerald-400/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
-                    <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Say <b>&quot;以上です (That&apos;s all)&quot;</b> to finish your answer
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <VrmAvatar
+        state={aiState === "idle" ? "idle" : aiState}
+        className="absolute inset-0 h-full min-h-0 rounded-none"
+      />
+      {question && !isCompleted && aiState === "idle" && onStartSpeech && (
+        <button
+          onClick={onStartSpeech}
+          className="absolute bottom-4 left-4 z-10 px-3 py-1.5 bg-secondary text-on-secondary hover:bg-secondary/90 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
+        >
+          <Icon name="volume_up" /> Listen to AI question
+        </button>
+      )}
     </div>
   );
 }
