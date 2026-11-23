@@ -150,10 +150,12 @@ export default function DashboardShell({
   children,
   user,
   activePage = "Dashboard",
+  hideSidebar = false,
 }: {
   children: ReactNode;
   user?: AuthUser | null;
   activePage?: string;
+  hideSidebar?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -276,7 +278,7 @@ export default function DashboardShell({
       </a>
 
       {/* Mobile Backdrop */}
-      {menuOpen && (
+      {!hideSidebar && menuOpen && (
         <button
           type="button"
           aria-label="Close menu"
@@ -286,11 +288,12 @@ export default function DashboardShell({
       )}
 
       {/* Sidebar Navigation */}
-      <aside
-        id="dashboard-navigation"
-        aria-label="Workspace navigation"
-        className={`${styles.sidebar} fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-200 ease-in-out motion-reduce:transition-none ${
-          menuOpen ? "visible translate-x-0" : "invisible -translate-x-full"
+      {!hideSidebar && (
+        <aside
+          id="dashboard-navigation"
+          aria-label="Workspace navigation"
+          className={`${styles.sidebar} fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-200 ease-in-out motion-reduce:transition-none ${
+            menuOpen ? "visible translate-x-0" : "invisible -translate-x-full"
         } lg:visible lg:translate-x-0`}
       >
         {/* Brand Header */}
@@ -486,9 +489,10 @@ export default function DashboardShell({
           </div>
         </div>
       </aside>
+      )}
 
       {/* Main Content Area */}
-      <div className="lg:pl-64">
+      <div className={hideSidebar ? "w-full" : "lg:pl-64"}>
         {pendingAnchor && (
           <div
             role="progressbar"
@@ -498,53 +502,57 @@ export default function DashboardShell({
             <div className="h-full bg-gradient-to-r from-primary via-secondary to-primary animate-pulse w-full" />
           </div>
         )}
-        <header className="sticky top-0 z-30 flex h-16 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              ref={menuToggle}
-              type="button"
-              aria-label="Open menu"
-              aria-expanded={menuOpen}
-              aria-controls="dashboard-navigation"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex size-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
-            >
-              <Icon name="menu" className="text-[20px]" />
-            </button>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="hover:text-slate-800 transition-colors">Console</span>
-              <Icon name="chevron_right" className="text-[14px] text-slate-400" />
-              <span className="font-semibold text-primary">{activePage}</span>
+        {!hideSidebar && (
+          <header className="sticky top-0 z-30 flex h-16 flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 bg-white/95 px-4 backdrop-blur-xl sm:px-6">
+            <div className="flex items-center gap-3">
+              <button
+                ref={menuToggle}
+                type="button"
+                aria-label="Open menu"
+                aria-expanded={menuOpen}
+                aria-controls="dashboard-navigation"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex size-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden"
+              >
+                <Icon name="menu" className="text-[20px]" />
+              </button>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="hover:text-slate-800 transition-colors">Console</span>
+                <Icon name="chevron_right" className="text-[14px] text-slate-400" />
+                <span className="font-semibold text-primary">{activePage}</span>
+              </div>
+              <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 2xl:inline">
+                Target: Web Developer · Rakuten / LINE Yahoo! / Mercari
+              </span>
             </div>
-            <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 2xl:inline">
-              Target: Web Developer · Rakuten / LINE Yahoo! / Mercari
-            </span>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/interview-setup"
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-container transition-all"
-            >
-              <Icon name="play_arrow" className="text-[16px]" />
-              <span className="hidden sm:inline">Start New Interview</span>
-              <span className="sm:hidden">Start</span>
-            </Link>
-            <button
-              type="button"
-              data-mock="notifications"
-              aria-label="Notifications"
-              className="relative flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-            >
-              <Icon name="notifications" className="text-[20px]" />
-              <span className="absolute top-2 right-2 size-2 rounded-full bg-error ring-2 ring-white" />
-            </button>
-          </div>
-        </header>
-        <main id="dashboard-content" className="mx-auto max-w-[1800px] px-4 py-6 sm:px-6">
-          <div className="mb-4 flex items-center gap-2 text-[11px] text-on-surface-variant">
-            <span className="size-1.5 rounded-full bg-secondary" />
-            Signed in · Interview data is illustrative
-          </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                href="/interview-setup"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-container transition-all"
+              >
+                <Icon name="play_arrow" className="text-[16px]" />
+                <span className="hidden sm:inline">Start New Interview</span>
+                <span className="sm:hidden">Start</span>
+              </Link>
+              <button
+                type="button"
+                data-mock="notifications"
+                aria-label="Notifications"
+                className="relative flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+              >
+                <Icon name="notifications" className="text-[20px]" />
+                <span className="absolute top-2 right-2 size-2 rounded-full bg-error ring-2 ring-white" />
+              </button>
+            </div>
+          </header>
+        )}
+        <main id="dashboard-content" className={hideSidebar ? "w-full p-2 sm:p-4" : "mx-auto max-w-[1800px] px-4 py-6 sm:px-6"}>
+          {!hideSidebar && (
+            <div className="mb-4 flex items-center gap-2 text-[11px] text-on-surface-variant">
+              <span className="size-1.5 rounded-full bg-secondary" />
+              Signed in · Interview data is illustrative
+            </div>
+          )}
           {children}
         </main>
       </div>
