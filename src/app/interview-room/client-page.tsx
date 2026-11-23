@@ -65,10 +65,9 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
   const [textMode, setLocalTextMode] = useState(initialTextMode);
   const [showChat, setShowChat] = useState(true);
   const [isPip, setIsPip] = useState(false);
-  const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState("");
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const toggleCamera = useCallback(async () => {
@@ -77,38 +76,30 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      setMediaStream(null);
       setCameraActive(false);
       setCameraError("");
     } else {
       setCameraError("");
       try {
         if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-          throw new Error("Trình duyệt không hỗ trợ camera.");
+          throw new Error("Camera is not supported in this browser.");
         }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
           audio: false,
         });
         mediaStreamRef.current = stream;
+        setMediaStream(stream);
         setCameraActive(true);
       } catch (err) {
         console.warn("Could not access camera:", err);
         const msg = err instanceof Error && err.name === "NotAllowedError"
-          ? "Vui lòng cấp quyền camera trong trình duyệt để bật webcam."
-          : "Không thể mở camera. Vui lòng kiểm tra thiết bị webcam của bạn.";
+          ? "Please allow camera access in browser permissions."
+          : "Unable to access camera device.";
         setCameraError(msg);
         setCameraActive(false);
       }
-    }
-  }, [cameraActive]);
-
-  useEffect(() => {
-    if (cameraActive && mediaStreamRef.current && videoRef.current) {
-      videoRef.current.srcObject = mediaStreamRef.current;
-      videoRef.current.play().catch((err) => console.warn("Video play error:", err));
     }
   }, [cameraActive]);
 
@@ -146,19 +137,6 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
   const currentQuestionIndex = session ? session.turns.length : 0;
   const isCompleted = session?.completed;
 
-  // Real-time interview timer using recursive setTimeout (works in vm test harnesses)
-  useEffect(() => {
-    if (isPaused || isCompleted || !session) return;
-    if (typeof setTimeout === "undefined") return;
-    let timerId: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      setSecondsElapsed((prev) => prev + 1);
-      timerId = setTimeout(tick, 1000);
-    };
-    timerId = setTimeout(tick, 1000);
-    return () => clearTimeout(timerId);
-  }, [isPaused, isCompleted, session]);
-
   const handlePause = useCallback(() => {
     live.stop();
     setIsPaused(true);
@@ -179,26 +157,54 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
     setShowExitModal(true);
   }, [live]);
 
+  const clarifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-disable clarification mode when AI finishes speaking (with safety watchdog)
+  useEffect(() => {
+    if (live.clarifying) {
+      if (live.state !== "speaking") {
+        if (clarifyTimerRef.current) clearTimeout(clarifyTimerRef.current);
+        clarifyTimerRef.current = setTimeout(() => {
+          live.setClarificationMode?.(false);
+        }, 800);
+      }
+      const watchdog = setTimeout(() => {
+        live.setClarificationMode?.(false);
+      }, 25000);
+      return () => {
+        clearTimeout(watchdog);
+        if (clarifyTimerRef.current) clearTimeout(clarifyTimerRef.current);
+      };
+    }
+  }, [live.clarifying, live.state, live]);
+
   const handleRepeatQuestion = useCallback(() => {
     if (isSubmitting || isPaused) return;
     const qText = session?.currentQuestion?.text;
     if (!qText) return;
 
-    if (live.repeatQuestion) {
+    if (clarifyTimerRef.current) {
+      clearTimeout(clarifyTimerRef.current);
+      clarifyTimerRef.current = null;
+    }
+
+    live.setClarificationMode?.(true);
+
+    if (live.state === "idle") {
+      hasAutoStartedRef.current = currentQuestionIndex;
+      void live.start();
+    } else if (live.repeatQuestion) {
       live.repeatQuestion(qText);
     } else if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(qText);
       const isJa = session?.interviewLanguage === "ja" || /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(qText);
       utterance.lang = isJa ? "ja-JP" : "vi-VN";
+      utterance.onend = () => live.setClarificationMode?.(false);
+      utterance.onerror = () => live.setClarificationMode?.(false);
       window.speechSynthesis.speak(utterance);
     }
-
-    live.setClarificationMode?.(true);
-    setTimeout(() => {
-      live.setClarificationMode?.(false);
-    }, 4000);
-  }, [isSubmitting, isPaused, session, live]);
+  }, [isSubmitting, isPaused, session, live, currentQuestionIndex]);
 
   const aiState: AIState = isPaused
     ? "idle"
@@ -354,7 +360,6 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
         session={session}
         currentQuestionIndex={currentQuestionIndex}
         isPaused={isPaused}
-        secondsElapsed={secondsElapsed}
         onPause={handlePause}
         onResume={handleResume}
         onExit={handleExitClick}
@@ -373,7 +378,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
       {session.introduction && session.turns.length === 0 && !session.completed && (
         <p role="status" className="rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs sm:text-sm text-emerald-800 flex items-center gap-2 shadow-xs">
           <Icon name="check_circle" className="text-emerald-600 text-base" />
-          <span>{session.interviewLanguage === "ja" ? "自己紹介ありがとうございます。それでは、最初の質問です。" : "Cảm ơn bạn đã giới thiệu. Chúng ta bắt đầu câu hỏi đầu tiên nhé."}</span>
+          <span>{session.interviewLanguage === "ja" ? "自己紹介ありがとうございます。それでは、最初の質問です。" : "Thank you for the introduction. Let us begin with the first question."}</span>
         </p>
       )}
       {session.introduction && (
@@ -417,7 +422,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
             isCompleted={!!isCompleted}
             onStartSpeech={() => {
               hasAutoStartedRef.current = currentQuestionIndex;
-              handleRepeatQuestion();
+              void live.start();
             }}
           >
             {/* If in PiP mode, CandidateTile floats inside AIInterviewer */}
@@ -426,12 +431,12 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 micActive={isListening}
                 isPaused={isPaused}
                 transcript={transcript}
-                userDisplayName="Bạn"
+                userDisplayName="You"
                 isPip={true}
                 onTogglePip={() => setIsPip(false)}
                 cameraActive={cameraActive}
                 cameraError={cameraError}
-                videoRef={videoRef}
+                mediaStream={mediaStream}
                 onToggleCamera={toggleCamera}
               />
             )}
@@ -444,12 +449,12 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 micActive={isListening}
                 isPaused={isPaused}
                 transcript={transcript}
-                userDisplayName="Bạn"
+                userDisplayName="You"
                 isPip={false}
                 onTogglePip={() => setIsPip(true)}
                 cameraActive={cameraActive}
                 cameraError={cameraError}
-                videoRef={videoRef}
+                mediaStream={mediaStream}
                 onToggleCamera={toggleCamera}
               />
 
@@ -460,7 +465,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                     <div className="flex items-center justify-between font-semibold pb-2 border-b border-surface-container">
                       <span className="flex items-center gap-1.5 text-primary">
                         <Icon name="lightbulb" className="text-secondary text-sm" />
-                        <span>Gợi ý trả lời (STAR)</span>
+                        <span>Answer Tips (STAR)</span>
                       </span>
                       <span className="bg-primary-fixed text-primary px-2 py-0.5 rounded text-[10px] font-bold">
                         {currentQ.focus === "technical" ? "Technical" : currentQ.focus === "behavioral" ? "Behavioral" : "General"}
@@ -469,27 +474,27 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                     <div className="mt-2.5 space-y-1.5 text-[11px] text-on-surface-variant leading-relaxed">
                       <div className="flex items-start gap-1.5">
                         <span className="font-bold text-secondary shrink-0">S:</span>
-                        <span>Situation - Bối cảnh &amp; dự án</span>
+                        <span>Situation – Context &amp; challenge</span>
                       </div>
                       <div className="flex items-start gap-1.5">
                         <span className="font-bold text-secondary shrink-0">T:</span>
-                        <span>Task - Nhiệm vụ được giao</span>
+                        <span>Task – Your role &amp; objective</span>
                       </div>
                       <div className="flex items-start gap-1.5">
                         <span className="font-bold text-secondary shrink-0">A:</span>
-                        <span>Action - Cách giải quyết &amp; hành động</span>
+                        <span>Action – Specific actions taken</span>
                       </div>
                       <div className="flex items-start gap-1.5">
                         <span className="font-bold text-secondary shrink-0">R:</span>
-                        <span>Result - Kết quả định lượng</span>
+                        <span>Result – Quantifiable outcome</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-surface-container text-[10px] text-on-surface-variant flex items-center justify-between">
-                    <span>Chuẩn STAR / PREP</span>
+                    <span>STAR / PREP Method</span>
                     <span className="inline-flex items-center gap-1 text-secondary font-medium">
-                      <Icon name="check_circle" className="text-xs" /> Đạt chuẩn Nhật
+                      <Icon name="check_circle" className="text-xs" /> Standardized Rubric
                     </span>
                   </div>
                 </div>
@@ -498,7 +503,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
           )}
         </div>
 
-        {/* Right side: Cuộc trò chuyện (Live Chat / Transcript Panel) */}
+        {/* Right side: Conversation panel */}
         {showChat && (
           <div className="w-full lg:w-[380px] xl:w-[420px] flex flex-col shrink-0 min-h-[380px] lg:min-h-0 animate-in fade-in duration-200">
             <div className="flex-1 flex flex-col bg-white border border-surface-container rounded-3xl shadow-sm overflow-hidden h-full max-h-[78vh]">
@@ -507,7 +512,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 <div className="flex items-center gap-2">
                   <Icon name="forum" className="text-secondary text-base" />
                   <h2 className="text-sm font-bold text-primary tracking-wide">
-                    Cuộc trò chuyện (Conversation)
+                    Conversation
                   </h2>
                 </div>
                 <button
@@ -584,7 +589,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                 {transcript && (
                   <div className="space-y-1 ml-auto max-w-[90%]">
                     <div className="flex items-center justify-end gap-1.5 text-[11px] font-semibold text-primary">
-                      <span>Bạn</span>
+                      <span>You</span>
                       <Icon name="person" className="text-xs" />
                     </div>
                     <div className="bg-primary text-white p-3 rounded-2xl rounded-tr-sm text-xs sm:text-sm shadow-xs leading-relaxed whitespace-pre-wrap">
@@ -593,8 +598,8 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                   </div>
                 )}
 
-                {/* Answer Tips / STAR Method */}
-                {currentQ && (
+                {/* Answer Tips / STAR Method inside chat: only show when in PiP mode so not duplicated on screen */}
+                {isPip && currentQ && (
                   <div className="bg-primary-fixed border border-primary-fixed-dim rounded-xl p-3 text-xs space-y-2 text-primary shadow-xs">
                     <div className="flex items-center justify-between font-semibold">
                       <span className="flex items-center gap-1.5">
@@ -606,10 +611,10 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                       </span>
                     </div>
                     <ul className="text-[11px] text-on-surface-variant space-y-1 list-disc pl-4">
-                      <li><strong>S</strong>ituation: Bối cảnh vấn đề</li>
-                      <li><strong>T</strong>ask: Mục tiêu và vai trò của bạn</li>
-                      <li><strong>A</strong>ction: Hành động cụ thể đã làm</li>
-                      <li><strong>R</strong>esult: Kết quả định lượng đạt được</li>
+                      <li><strong>S</strong>ituation: Context &amp; challenge</li>
+                      <li><strong>T</strong>ask: Your role &amp; objective</li>
+                      <li><strong>A</strong>ction: Specific actions taken</li>
+                      <li><strong>R</strong>esult: Quantifiable outcome</li>
                     </ul>
                   </div>
                 )}
@@ -640,9 +645,9 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                       className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-colors border ${
                         live.state === "speaking" ? "bg-amber-100 text-amber-900 border-amber-300" : "border-surface-container text-on-surface-variant hover:bg-surface-container hover:text-primary"
                       }`}
-                      title="Ask Clarification - Hỏi lại câu hỏi"
+                      title="Ask Clarification - Repeat interview question"
                     >
-                      {live.state === "speaking" ? "Đang đọc lại..." : "Ask Clarification"}
+                      {live.state === "speaking" ? "Repeating..." : "Ask Clarification"}
                     </button>
                   </div>
 
@@ -653,7 +658,7 @@ export function InterviewRoomTurn({ session, initialTextMode = false, onTextMode
                         id="typed-answer"
                         value={textAnswer}
                         onChange={(e) => setTextAnswer(e.target.value)}
-                        placeholder="Nhập câu trả lời... (Type answer here)"
+                        placeholder="Type answer here..."
                         maxLength={10000}
                         disabled={isSubmitting || isPaused}
                         rows={3}
@@ -793,7 +798,6 @@ function InterviewHeader({
   session,
   currentQuestionIndex,
   isPaused,
-  secondsElapsed,
   onPause,
   onResume,
   onExit,
@@ -801,13 +805,27 @@ function InterviewHeader({
   session: RoomSession;
   currentQuestionIndex: number;
   isPaused: boolean;
-  secondsElapsed: number;
   onPause: () => void;
   onResume: () => void;
   onExit: () => void;
 }) {
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+
+  // Real-time interview timer isolated inside InterviewHeader
+  useEffect(() => {
+    if (isPaused || session?.completed) return;
+    if (typeof setTimeout === "undefined") return;
+    let timerId: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setSecondsElapsed((prev) => prev + 1);
+      timerId = setTimeout(tick, 1000);
+    };
+    timerId = setTimeout(tick, 1000);
+    return () => clearTimeout(timerId);
+  }, [isPaused, session?.completed]);
+
   const cleanTitle = session.title.replace(/^Interview\s*(Room|Session)?\s*[-:]?\s*/i, "");
-  const roleDisplay = cleanTitle ? `Luyện tập phỏng vấn vị trí ${cleanTitle}` : session.title;
+  const roleDisplay = cleanTitle ? `Practice Interview: ${cleanTitle}` : session.title;
   const minutes = Math.floor(secondsElapsed / 60);
   const seconds = secondsElapsed % 60;
   const timeFormatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
@@ -821,12 +839,12 @@ function InterviewHeader({
         <div className="flex items-center gap-3 mt-1.5 flex-wrap text-xs text-on-surface-variant">
           <span className="flex items-center gap-1.5">
             <Icon name="history" className="text-sm text-secondary" />
-            <span>{session.total ? `${session.total * 3} phút` : "10 phút"}</span>
+            <span>{session.total ? `${session.total * 3} min` : "10 min"}</span>
           </span>
           <span className="text-surface-container-highest">·</span>
           <span className="flex items-center gap-1.5">
             <Icon name="translate" className="text-sm text-secondary" />
-            <span>{session.interviewLanguage === 'ja' ? 'Japanese' : 'English / Vietnamese'}</span>
+            <span>{session.interviewLanguage === 'ja' ? 'Japanese' : 'English'}</span>
           </span>
           <span className="text-surface-container-highest">·</span>
           <span className="flex items-center gap-1.5 text-secondary font-mono font-semibold">
@@ -859,7 +877,7 @@ function InterviewHeader({
         <button
           type="button"
           onClick={onExit}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-rose-200 text-rose-700 bg-error-container/40 hover:bg-error-container transition-all shadow-xs"
           title="Leave interview room"
         >
           <Icon name="logout" className="text-sm" />
@@ -951,7 +969,7 @@ function AIStatus({ aiState }: { aiState: AIState }) {
         {isSpeaking
           ? "AI Speaking"
           : isListening
-            ? "Đang lắng nghe bạn (AI Listening...)"
+            ? "AI Listening..."
             : isThinking
             ? "AI Thinking..."
             : "AI Ready"}
@@ -972,12 +990,12 @@ function CandidateTile({
   micActive,
   isPaused,
   transcript,
-  userDisplayName = "Bạn",
+  userDisplayName = "You",
   isPip = false,
   onTogglePip,
   cameraActive = false,
   cameraError = "",
-  videoRef,
+  mediaStream,
   onToggleCamera,
 }: {
   micActive: boolean;
@@ -988,7 +1006,7 @@ function CandidateTile({
   onTogglePip?: () => void;
   cameraActive?: boolean;
   cameraError?: string;
-  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  mediaStream?: MediaStream | null;
   onToggleCamera?: () => void;
 }) {
   return (
@@ -997,13 +1015,18 @@ function CandidateTile({
         isPip
           ? "absolute bottom-4 right-4 z-20 w-56 sm:w-64 h-36 sm:h-40 bg-white/95 backdrop-blur-md shadow-lg"
           : "w-full h-44 sm:h-48 shrink-0"
-      } ${cameraActive ? "p-2 bg-slate-900 border-slate-700" : "p-3.5"}`}
+      } ${cameraActive ? "p-2 bg-neutral-900 border-neutral-700" : "p-3.5"}`}
     >
       {/* If camera is active: render video stream */}
       {cameraActive ? (
-        <div className="absolute inset-0 z-0 bg-black flex items-center justify-center overflow-hidden rounded-2xl">
+        <div className="absolute inset-0 z-0 bg-neutral-900 flex items-center justify-center overflow-hidden rounded-2xl">
           <video
-            ref={videoRef}
+            ref={(node) => {
+              if (node && mediaStream && node.srcObject !== mediaStream) {
+                node.srcObject = mediaStream;
+                node.play().catch((err) => console.warn("Video play error:", err));
+              }
+            }}
             autoPlay
             playsInline
             muted
@@ -1070,15 +1093,15 @@ function CandidateTile({
           onClick={onToggleCamera}
           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border shadow-2xs transition-all ${
             cameraActive
-              ? "bg-slate-900/80 text-emerald-400 border-emerald-500/30 backdrop-blur-md hover:bg-slate-800"
+              ? "bg-neutral-900/80 text-emerald-400 border-emerald-500/30 backdrop-blur-md hover:bg-neutral-800"
               : "bg-surface-container text-on-surface-variant border-surface-container-high hover:bg-surface-container-high"
           }`}
-          title={cameraActive ? "Bấm để tắt camera" : "Bấm để bật camera"}
+          title={cameraActive ? "Turn Off Camera" : "Turn On Camera"}
         >
           {cameraActive ? (
             <>
               <Icon name="videocam" className="text-xs text-emerald-400" />
-              <span>Camera đang bật</span>
+              <span>Camera On</span>
             </>
           ) : (
             <>
@@ -1086,7 +1109,7 @@ function CandidateTile({
                 <Icon name="videocam" className="text-xs text-on-surface-variant opacity-70" />
                 <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-[10px] select-none">/</span>
               </span>
-              <span>Camera tắt (Bật)</span>
+              <span>Camera Off</span>
             </>
           )}
         </button>
@@ -1095,10 +1118,10 @@ function CandidateTile({
           <button
             type="button"
             onClick={onTogglePip}
-            title={isPip ? "Mở rộng sang khung bên" : "Thu nhỏ vào góc (PiP)"}
+            title={isPip ? "Expand to side view" : "Minimize to corner (PiP)"}
             className={`size-6 rounded-lg flex items-center justify-center transition-colors ${
               cameraActive
-                ? "bg-slate-900/70 text-white/80 hover:text-white hover:bg-slate-800 backdrop-blur-md"
+                ? "bg-neutral-900/70 text-white/80 hover:text-white hover:bg-neutral-800 backdrop-blur-md"
                 : "text-on-surface-variant hover:text-primary hover:bg-surface-container"
             }`}
           >
@@ -1112,7 +1135,7 @@ function CandidateTile({
         <div
           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-xs font-bold shadow-2xs ${
             cameraActive
-              ? "bg-slate-900/80 backdrop-blur-md border-slate-700 text-white"
+              ? "bg-neutral-900/80 backdrop-blur-md border-neutral-700 text-white"
               : "bg-white/95 backdrop-blur-md border-surface-container text-primary"
           }`}
         >
@@ -1208,7 +1231,7 @@ function InterviewControls({
           title={isPaused ? "Interview is paused" : "Toggle Microphone"}
         >
           <Icon name="mic" className={micActive ? "text-emerald-300 animate-pulse" : ""} />
-          <span>{micActive ? "Đang bật mic" : "Bật mic"}</span>
+          <span>{micActive ? "Mic On" : "Turn On Mic"}</span>
         </button>
 
         {/* 2. Camera toggle button */}
@@ -1220,13 +1243,13 @@ function InterviewControls({
               ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
               : "bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container"
           }`}
-          title={cameraActive ? "Tắt Camera" : "Bật Camera"}
-          aria-label={cameraActive ? "Tắt Camera" : "Bật Camera"}
+          title={cameraActive ? "Turn Off Camera" : "Turn On Camera"}
+          aria-label={cameraActive ? "Turn Off Camera" : "Turn On Camera"}
         >
           {cameraActive ? (
             <>
               <Icon name="videocam" className="text-sm text-emerald-600" />
-              <span className="hidden sm:inline">Camera đang bật</span>
+              <span className="hidden sm:inline">Camera On</span>
             </>
           ) : (
             <>
@@ -1234,7 +1257,7 @@ function InterviewControls({
                 <Icon name="videocam" className="text-sm text-on-surface-variant opacity-70" />
                 <span className="absolute inset-0 flex items-center justify-center text-rose-500 font-bold text-xs select-none">/</span>
               </span>
-              <span className="hidden sm:inline">Bật camera</span>
+              <span className="hidden sm:inline">Camera Off</span>
             </>
           )}
         </button>
@@ -1249,12 +1272,12 @@ function InterviewControls({
               ? "bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"
               : "bg-surface-container hover:bg-surface-container-high text-on-surface border border-surface-container"
           } disabled:opacity-50`}
-          title="Ask Clarification - Hỏi lại / Nhờ AI đọc lại câu hỏi"
+          title="Ask Clarification - Repeat interview question"
           aria-label="Ask Clarification"
         >
           <Icon name="help" className="text-sm" />
           <span className="hidden sm:inline">
-            {clarifying ? "Đang đọc lại..." : "Hỏi lại (Ask Clarification)"}
+            {clarifying ? "Repeating..." : "Ask Clarification"}
           </span>
         </button>
 
@@ -1270,7 +1293,7 @@ function InterviewControls({
           title="Toggle conversation panel"
         >
           <Icon name="forum" className="text-sm" />
-          <span>{showChat ? "Ẩn cuộc trò chuyện" : "Xem cuộc trò chuyện"}</span>
+          <span>{showChat ? "Hide Chat" : "Show Chat"}</span>
         </button>
 
         {/* 5. End / Exit button */}
@@ -1278,7 +1301,7 @@ function InterviewControls({
           type="button"
           onClick={onExit}
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs transition-all"
-          title="Kết thúc phỏng vấn"
+          title="Exit interview"
         >
           <Icon name="logout" className="text-sm" />
           <span>Exit</span>
@@ -1322,7 +1345,7 @@ function InterviewControls({
 
       {/* Sub-hint below toolbar */}
       <p className="text-[11px] text-on-surface-variant text-center px-4">
-        Nói &ldquo;以上です&rdquo; / &ldquo;That&apos;s all&rdquo; hoặc bấm &ldquo;Submit Answer&rdquo; khi hoàn thành câu trả lời.
+        Say &ldquo;以上です&rdquo; / &ldquo;That&apos;s all&rdquo; or click &ldquo;Submit Answer&rdquo; when finished.
       </p>
     </div>
   );
@@ -1333,7 +1356,7 @@ function InterviewProgress({ current, total }: { current: number, total: number 
   return (
     <div className="shrink-0 pt-1 pb-1">
       <div className="flex justify-between items-center mb-1 text-[11px] text-on-surface-variant font-medium px-1">
-        <span>Tiến độ phỏng vấn: {current} / {total} câu</span>
+        <span>Interview progress: {current} / {total}</span>
         <span>{percentage}%</span>
       </div>
       <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
