@@ -6,7 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import Icon from "@/components/icon";
 import Link from "next/link";
 import RubricDetails from "@/components/rubric-details";
-import type { RubricResult } from "@/lib/interview-rubric";
+import { isFailedGradingRubric, type RubricResult } from "@/lib/interview-rubric";
+import RegradeButton from "./regrade-button";
 
 export const dynamic = "force-dynamic";
 
@@ -61,8 +62,11 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
           {answers.map((ans, idx) => {
             const q = questions[ans.question_index];
             if (!q) return null;
+            const gradingFailed = ans.score === null && (!ans.rubric_json || isFailedGradingRubric(ans.rubric_json));
+            const canRetryGrading = ans.score === null;
 
-            const scoreColor = (ans.score ?? 0) >= 8 ? "text-emerald-600 bg-emerald-50 border-emerald-200" :
+            const scoreColor = gradingFailed ? "text-on-surface-variant bg-surface-container border-outline-variant" :
+                              (ans.score ?? 0) >= 8 ? "text-emerald-600 bg-emerald-50 border-emerald-200" :
                               (ans.score ?? 0) >= 6 ? "text-blue-600 bg-blue-50 border-blue-200" :
                               (ans.score ?? 0) >= 4 ? "text-amber-600 bg-amber-50 border-amber-200" :
                               "text-error bg-error-container border-error";
@@ -78,12 +82,13 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                     <p className="text-sm text-on-surface-variant mt-1">{q.translation}</p>
                   </div>
                   <div className={`shrink-0 flex items-center justify-center px-4 py-2 rounded-xl border font-bold text-xl ${scoreColor}`}>
-                    {ans.rubric_json?.provisional ? "Provisional: " : ""}{ans.score === null ? "Not graded" : `${Math.round(ans.score * 100) / 100} / 10`}
+                    {gradingFailed ? "Grading failed" : <>{ans.rubric_json?.provisional ? "Provisional: " : ""}{ans.score === null ? "Not graded" : `${Math.round(ans.score * 100) / 100} / 10`}</>}
                   </div>
                 </div>
 
                 <div className="p-5 space-y-4">
-                  {ans.rubric_json && <RubricDetails rubric={ans.rubric_json} />}
+                  {gradingFailed ? <p className="text-sm text-on-surface-variant">The answer was saved, but AI grading did not finish. This is not a judgment on your answer.</p> : ans.rubric_json && <RubricDetails rubric={ans.rubric_json} />}
+                  {canRetryGrading && <RegradeButton sessionId={id} questionIndex={ans.question_index} />}
                   <div>
                     <h4 className="text-sm font-semibold text-primary mb-2 flex items-center gap-1.5">
                       <Icon name="person" className="text-on-surface-variant" /> Your Answer
@@ -98,7 +103,7 @@ export default async function HistoryDetailPage({ params }: { params: Promise<{ 
                       <Icon name="psychology" className="text-indigo-600" /> AI Feedback
                     </h4>
                     <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl text-indigo-900 leading-relaxed text-sm whitespace-pre-line">
-                      {ans.feedback}
+                      {gradingFailed ? "AI grading did not finish. Retry grading to see feedback." : ans.feedback}
                     </div>
                   </div>
 

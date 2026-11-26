@@ -54,13 +54,12 @@ test('no data is null rather than zero', () => {
   assert.equal(result.totalScore, null); assert.equal(result.assessedCount, 0);
   assert.equal(result.structure.status, 'insufficient_data');
 });
-test('rejects malformed output, duplicate criteria and invented evidence', () => {
+test('rejects malformed output and duplicate criteria', () => {
   for (const bad of [null, [], {}, 'text']) assert.throws(() => rubric.parseRubric(bad, context));
   const changes = [
     d => { d.criteria[1].id = 'C01'; },
     d => { d.criteria[0].level = 4.5; },
     d => { d.criteria[0].level = '4'; },
-    d => { d.criteria[0].evidence = 'invented'; },
     d => { d.criteria[0].status = 'insufficient_data'; },
     d => { d.structure.steps.pop(); },
     d => { d.practice = ''; },
@@ -74,7 +73,10 @@ test('summary computes legacy and rubric scores; excludes incomparable scopes', 
   const partial = rubric.parseRubric(fixture(), { ...context, language: 'vi' });
   assert.equal(rubric.summarizeScores([{ score: 0, rubric: full }], 1).totalScore, 100);
   assert.equal(rubric.summarizeScores([{ score: 10, rubric: partial }], 1).grade, 'Chưa xếp loại');
-  assert.equal(rubric.summarizeScores([{ score: 10, rubric: full }, { score: 10, rubric: partial }], 2).totalScore, null);
+  const mixedScope = rubric.summarizeScores([{ score: 10, rubric: full }, { score: 10, rubric: partial }], 2);
+  assert.equal(mixedScope.totalScore, 100);
+  assert.equal(mixedScope.provisional, true);
+  assert.deepEqual([...mixedScope.scoreScope], ['C01', 'C02', 'C03', 'C04']);
   assert.equal(rubric.summarizeScores([{ score: 10, rubric: full }, { score: 10 }], 2).totalScore, null);
   assert.equal(rubric.summarizeScores([{ score: 8 }], 2).provisional, true);
 });
@@ -98,6 +100,18 @@ for (const provider of ['ollama', 'openai', 'gemini', 'groq']) {
     assert.equal(final.totalScore, 100); assert.equal(final.grade, 'A');
   });
 }
+test('Gemini grading model can use its own quota without changing other AI calls', async () => {
+  let gradingUrl = '';
+  const evaluation = load('src/lib/interview-evaluation.ts', {
+    './interview-rubric': rubric, './ai-config': { getAiConfig: () => ({ ...makeAiConfig('gemini').getAiConfig(), geminiEvaluationModel: 'gemini-3.8-flash' }) },
+    './gemini-retry': { fetchGeminiWithRetry: async url => {
+      gradingUrl = url;
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(fixture()) }] } }] }));
+    } },
+  }, { console: { warn() {} } });
+  await evaluation.evaluateAnswer({ cvText: '', language: 'ja', targetRole: 'Engineer', question: '?', userAnswer: context.answer, interviewType: 'mixed', questionType: 'behavioral', questionIndex: 0, totalQuestions: 1 });
+  assert.match(gradingUrl, /models\/gemini-3\.8-flash:generateContent/);
+});
 test('server verifies quoted step order and Japanese data availability', () => {
   const input = fixture();
   [input.structure.steps[0], input.structure.steps[1]] = [input.structure.steps[1], input.structure.steps[0]];
@@ -198,6 +212,38 @@ test('missing positive-score evidence excludes only that criterion from provisio
   assert.equal(result.provisional, true);
   assert.equal(result.totalScore, 100);
   assert.equal(rubric.summarizeScores([{ rubric: result }], 1).grade, 'Chưa xếp loại');
+});
+test('invented AI quote cannot block answer grading or earn points', () => {
+  const input = fixture();
+  input.criteria[0].evidence = 'invented';
+  const result = rubric.parseRubric(input, context);
+  assert.equal(result.criteria[0].status, 'insufficient_data');
+  assert.equal(result.criteria[0].level, null);
+  assert.equal(result.criteria[0].evidence, '');
+});
+test('invalid PREP step quote cannot invalidate otherwise supported criteria', () => {
+  const input = fixture();
+  input.structure.steps[2].evidence = 'invented example';
+  const result = rubric.parseRubric(input, context);
+  assert.equal(result.structure.steps[2].present, false);
+  assert.equal(result.criteria[0].status, 'scored');
+  assert.ok(result.criteria[2].level <= 2);
+});
+test('unreadable Gemini grading saves an unscored answer without a fake rubric', async () => {
+  const evaluation = load('src/lib/interview-evaluation.ts', {
+    './interview-rubric': rubric,
+    './ai-config': makeAiConfig('gemini'),
+    './gemini-retry': { fetchGeminiWithRetry: async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'not-json' }] } }] })) },
+  }, { process: { env: {} }, console: { warn() {} } });
+  const result = await evaluation.evaluateAnswer({ cvText: '', language: 'ja', targetRole: 'Engineer', question: '?', userAnswer: context.answer, interviewType: 'mixed', questionType: 'behavioral', questionIndex: 0, totalQuestions: 1 });
+  assert.equal(result.score, null);
+  assert.equal(result.rubric, null);
+  assert.match(result.feedback, /chưa thành công/);
+});
+test('recognizes only the legacy failed grading placeholder as retryable', () => {
+  assert.equal(rubric.isFailedGradingRubric(rubric.ungradedRubric()), true);
+  assert.equal(rubric.isFailedGradingRubric(rubric.parseRubric(fixture(), context)), false);
+  assert.equal(rubric.isFailedGradingRubric(null), false);
 });
 test('context exclusions and zero scores allow empty evidence', () => {
   const input = fixture();

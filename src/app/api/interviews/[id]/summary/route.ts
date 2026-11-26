@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRequest, json } from "@/lib/auth-http";
 import { generateSummary, type SummaryResult } from "@/lib/interview-summary";
 
-import type { RubricResult } from "@/lib/interview-rubric";
+import { summarizeScores, type RubricResult } from "@/lib/interview-rubric";
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
 import { calculateWeaknessPracticeProgress, type PracticeProgressAnswer } from "@/lib/weakness-practice-progress";
 import { querySessionWithPractice } from "@/lib/interview-session-query";
@@ -52,7 +52,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
     const practice = getWeaknessPracticeSession(session.source_session_id, session.selected_criteria);
     if (session.source_session_id && !practice) return json({ error: "Invalid practice session target." }, 409);
-    if (session.summary_json && !practice) return json({ summary: session.summary_json }, 200);
+    if (session.summary_json && session.summary_json.totalScore !== null && !practice) return json({ summary: session.summary_json }, 200);
 
     const { data: previousAnswers, error: answersError } = await supabase.from("interview_answers")
       .select("question_index,answer,score,feedback,rubric_json")
@@ -130,6 +130,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         console.error("Summary generation failed", err);
         return json({ error: err instanceof Error ? err.message : "AI summary error." }, 500);
       }
+    }
+    if (session.summary_json?.totalScore === null) {
+      summaryResult = { ...summaryResult, ...summarizeScores(answersInput, session.question_count || questions.length) };
     }
     if (practiceProgress) summaryResult = { ...summaryResult, practiceProgress };
     if (answers.length < questions.length) {

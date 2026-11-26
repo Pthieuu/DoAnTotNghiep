@@ -66,6 +66,7 @@ test('room page passes practice metadata, turns and current question to the clie
       '@/lib/weakness-practice': practice,
       '@/lib/interview-session-query': sessionQuery,
       '@/lib/interview-opening': opening,
+      '@/lib/interview-rubric': { isFailedGradingRubric: () => false },
       '@/lib/supabase/server': { createClient: async () => ({ from: table => {
         const builder = {
           select: () => builder, eq: (key, value) => { filters.push([table, key, value]); return builder; },

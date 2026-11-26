@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeCv } from "@/lib/cv-checker";
+import { createClient } from "@/lib/supabase/server";
+import { checkRequest } from "@/lib/auth-http";
 
 export const maxDuration = 60; // 60 seconds max execution time for AI analysis
 
 export async function POST(req: NextRequest) {
+  const failure = checkRequest(req);
+  if (failure) return failure;
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Please sign in to review a CV." }, { status: 401 });
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -15,11 +22,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Limit 10MB
-    const maxSizeBytes = 10 * 1024 * 1024;
+    // Limit 4MB
+    const maxSizeBytes = 4 * 1024 * 1024;
     if (file.size > maxSizeBytes) {
       return NextResponse.json(
-        { error: "File size exceeds the 10MB limit. Please compress or optimize your file." },
+        { error: "File size exceeds the 4MB limit. Please compress or optimize your file." },
         { status: 400 }
       );
     }

@@ -19,7 +19,7 @@ type EvaluationInput = {
 
 export type EvaluationResult = {
   score: number | null;
-  rubric: RubricResult;
+  rubric: RubricResult | null;
   feedback: string;
   suggestion: string | null;
 };
@@ -32,7 +32,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
   const model = provider === "ollama"
     ? aiConfig.ollamaModel
     : provider === "gemini"
-      ? aiConfig.geminiModel
+      ? aiConfig.geminiEvaluationModel || aiConfig.geminiModel
       : provider === "groq"
         ? aiConfig.groqModel
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
@@ -169,9 +169,18 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
   let text: string | undefined;
   if (provider === "gemini") {
     const payload = (await response.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+      promptFeedback?: { blockReason?: string };
     };
     text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text || (payload.candidates?.[0]?.finishReason && payload.candidates[0].finishReason !== "STOP")) {
+      console.warn("Gemini grading response metadata", {
+        model, questionIndex: input.questionIndex, answerLength: input.userAnswer.length,
+        finishReason: payload.candidates?.[0]?.finishReason ?? null,
+        blockReason: payload.promptFeedback?.blockReason ?? null,
+        outputLength: text?.length ?? 0,
+      });
+    }
   } else if (provider === "ollama") {
     const payload = (await response.json()) as {
       message?: { content?: string }; done_reason?: string;
@@ -199,10 +208,20 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
   try {
     result = JSON.parse(text || "");
   } catch {
-    throw new Error("AI trả về kết quả chấm điểm không đọc được. Hãy thử lại.");
+    if (provider !== "gemini") throw new Error("AI trả về kết quả chấm điểm không đọc được. Hãy thử lại.");
+    console.warn("Gemini grading JSON parse failed", { model, questionIndex: input.questionIndex, answerLength: input.userAnswer.length, outputLength: text?.length ?? 0 });
+    result = null;
   }
 
-  const rubric = parseRubric(result, { answer: input.userAnswer, language: input.language, targetRole: input.targetRole });
+  let rubric: RubricResult | null;
+  try {
+    rubric = result === null ? null : parseRubric(result, { answer: input.userAnswer, language: input.language, targetRole: input.targetRole });
+  } catch (error) {
+    if (provider !== "gemini") throw error;
+    console.warn("Gemini rubric validation failed", { model, questionIndex: input.questionIndex, error: error instanceof Error ? error.message : "unknown" });
+    rubric = null;
+  }
+  if (!rubric) return { score: null, rubric: null, feedback: "AI chấm điểm chưa thành công. Câu trả lời đã được lưu; bạn có thể chấm lại trong trang chi tiết buổi phỏng vấn.", suggestion: null };
   const structureLabel = rubric.structure.status === "passed" ? "Đạt chuẩn cấu trúc" : rubric.structure.status === "failed" ? "Chưa đạt chuẩn cấu trúc" : "Chưa đủ dữ liệu cấu trúc";
   return {
     score: rubric.totalScore === null ? null : rubric.totalScore / 10,

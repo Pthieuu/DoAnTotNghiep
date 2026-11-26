@@ -109,6 +109,7 @@ export async function generateInterviewQuestions(input: {
   if (input.correction) messages.push({ role: "user", content: `Your previous draft was rejected: ${input.correction} Regenerate all ${input.count} questions. Follow the JSON schema.` });
 
   let response: Response;
+  const geminiDeadline = Date.now() + 50000;
   if (provider === "ollama") {
     const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
     try {
@@ -127,9 +128,11 @@ export async function generateInterviewQuestions(input: {
     if (!apiKey) throw new Error("Chưa cấu hình GEMINI_API_KEY.");
     let responseResult: Response | undefined;
     for (let retryCount = 0; retryCount < 4; retryCount++) {
+      const remaining = geminiDeadline - Date.now();
+      if (remaining < 1000) throw new Error("Gemini mất quá lâu để tạo câu hỏi. Hãy thử lại.");
       try {
         responseResult = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-          method: "POST", redirect: "error", signal: AbortSignal.timeout(input.attempt ? 60000 : 80000), cache: "no-store",
+          method: "POST", redirect: "error", signal: AbortSignal.timeout(Math.min(remaining, 40000)), cache: "no-store",
           headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: messages.map(m => `[${m.role}]\n${m.content}`).join("\n\n") + `\n\nFormat required: JSON matching this schema:\n${JSON.stringify(questionSchema)}` }] }],
