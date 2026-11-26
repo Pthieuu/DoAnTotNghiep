@@ -40,7 +40,7 @@ export default function SummaryClient({
   questionBreakdown?: QuestionBreakdownItem[];
 }) {
   const [summary, setSummary] = useState<SummaryResult | null>(initialSummary);
-  const needsRefresh = status === "completed" && (!initialSummary || practice !== null);
+  const needsRefresh = status === "completed" && (!initialSummary || initialSummary.totalScore === null || practice !== null);
   const [loading, setLoading] = useState(needsRefresh);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -130,7 +130,7 @@ export default function SummaryClient({
       </div>
 
       {introduction && <details className="rounded-xl border border-surface-container bg-white p-4 text-sm"><summary>Self-introduction · Not graded</summary><p className="mt-2 whitespace-pre-wrap">{introduction}</p></details>}
-      {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Updating practice progress...</p>}
+      {loading && <p role="status" className="rounded-xl bg-indigo-50 p-4 text-sm text-indigo-900">Updating interview results...</p>}
       {error && <div role="alert" className="rounded-xl bg-error-container p-4 text-sm text-on-error-container space-y-2">
         <p>{error}</p>
         <button type="button" onClick={retrySummary} className="font-semibold underline underline-offset-4">Retry updating progress</button>
@@ -167,7 +167,7 @@ export default function SummaryClient({
                 <h3 className="font-bold text-primary text-lg">Grade: {summary.grade}</h3>
                 <p className="text-sm text-on-surface-variant">
                   {summary.totalScore === null ? 'Insufficient data in the same scope to calculate overall score. View individual question details.' :
-                   summary.provisional ? 'Not all criteria assessed; check evaluation scope per question.' :
+                   summary.provisional ? `Provisional score based on ${summary.scoreScope?.length ? summary.scoreScope.join(', ') : 'the assessed answers'}. Some criteria were not assessed in every answer.` :
                    summary.grade === 'A' ? 'Great performance within the assessed scope.' :
                    summary.grade === 'B' ? 'Good job. Solid foundation with a few areas for improvement.' :
                    summary.grade === 'C' ? 'Needs improvement. Review the feedback and suggestions below.' :

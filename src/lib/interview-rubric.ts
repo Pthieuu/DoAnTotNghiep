@@ -132,8 +132,14 @@ export function parseRubric(value: unknown, context: { answer: string; language:
     if (c.status === "scored" ? typeof c.level !== "number" || !Number.isInteger(c.level) || c.level < 0 || c.level > 4 : c.level !== null) throw new Error("Mức điểm tiêu chí không hợp lệ.");
     const rawEvidence = string(c.evidence);
     const matchedEvidence = rawEvidence ? findVerbatimEvidenceSpan(context.answer, rawEvidence) : "";
-    if (!string(c.reason) || (rawEvidence && matchedEvidence === null)) throw new Error("Bằng chứng hoặc lý do chấm không hợp lệ.");
     const result = { id, status: c.status as Status, level: c.level as number | null, evidence: matchedEvidence ?? "", reason: string(c.reason) };
+    if (!result.reason) throw new Error("Bằng chứng hoặc lý do chấm không hợp lệ.");
+    if (rawEvidence && matchedEvidence === null) {
+      result.evidence = "";
+      result.status = "insufficient_data";
+      result.level = null;
+      result.reason = "AI chưa cung cấp trích dẫn khớp câu trả lời; tiêu chí này chưa được tính điểm.";
+    }
     if (id === "C05" && context.language !== "ja") return { ...result, status: "not_applicable", level: null, reason: "Phiên luyện bằng tiếng Việt; không đánh giá tiếng Nhật." };
     if (id === "C05" && !/[\u3040-\u30ff\u3400-\u9fff]/u.test(context.answer)) return { ...result, status: "insufficient_data", level: null, reason: "Chưa có nội dung tiếng Nhật để đánh giá khả năng truyền đạt." };
     if (id === "C04" && !context.targetRole?.trim()) return { ...result, status: "insufficient_data", level: null, reason: "Chưa có vị trí ứng tuyển để đối chiếu." };
@@ -142,13 +148,10 @@ export function parseRubric(value: unknown, context: { answer: string; language:
   const raw = record(data.structure);
   if (!["PREP", "STAR"].includes(raw.method as string) || !Array.isArray(raw.steps) || raw.steps.length !== 4 || (raw.ordered !== null && typeof raw.ordered !== "boolean")) throw new Error("Checklist cấu trúc không hợp lệ.");
   const steps = raw.steps.map(item => {
-    const step = record(item); const rawStepEvidence = string(step.evidence);
+    const step = record(item); const rawEvidence = string(step.evidence);
     if (typeof step.present !== "boolean") throw new Error("Bằng chứng bước PREP/STAR không hợp lệ.");
-    if (step.present) {
-      const matched = rawStepEvidence ? findVerbatimEvidenceSpan(context.answer, rawStepEvidence) : null;
-      if (!matched) throw new Error("Bằng chứng bước PREP/STAR không hợp lệ.");
-      return { present: true, evidence: matched };
-    }
+    const evidence = rawEvidence ? findVerbatimEvidenceSpan(context.answer, rawEvidence) : null;
+    if (step.present && evidence) return { present: true, evidence };
     return { present: false, evidence: "" };
   });
   const c03 = criteria[2];
@@ -184,14 +187,41 @@ export function parseRubric(value: unknown, context: { answer: string; language:
   return { version: RUBRIC_VERSION, criteria, structure: { method: raw.method as "PREP" | "STAR", steps, ordered: raw.ordered as boolean | null, status: c03.status !== "scored" ? "insufficient_data" : count === 4 && raw.ordered ? "passed" : "failed" }, totalScore: weight ? Math.round(earned / weight * 1000) / 10 : null, assessedCount: assessed.length, provisional: assessed.length < 5, strengths: comments(data.strengths), weaknesses: comments(data.weaknesses), practice };
 }
 
+export function ungradedRubric(): RubricResult {
+  return {
+    version: RUBRIC_VERSION,
+    criteria: CRITERIA.map(({ id }) => ({ id, status: "insufficient_data" as const, level: null, evidence: "", reason: "AI chưa trả về kết quả chấm hợp lệ." })),
+    structure: { method: "PREP", steps: Array.from({ length: 4 }, () => ({ present: false, evidence: "" })), ordered: null, status: "insufficient_data" },
+    totalScore: null, assessedCount: 0, provisional: true, strengths: [], weaknesses: [],
+    practice: "Hãy xem lại câu trả lời và luyện trình bày ý chính cùng một ví dụ cụ thể.",
+  };
+}
+
+export function isFailedGradingRubric(value: unknown): boolean {
+  if (!value || typeof value !== "object" || !("criteria" in value) || !Array.isArray(value.criteria)) return false;
+  return value.criteria.length === 5 && value.criteria.every((criterion: unknown) =>
+    criterion && typeof criterion === "object" && "reason" in criterion
+    && criterion.reason === "AI chưa trả về kết quả chấm hợp lệ.");
+}
+
 export function summarizeScores(answers: { score: number | null; rubric?: RubricResult | null }[], totalQuestions: number) {
   const scores = answers.map(a => a.rubric ? a.rubric.totalScore : typeof a.score === "number" && Number.isFinite(a.score) && a.score >= 0 && a.score <= 10 ? a.score * 10 : null);
   const available = scores.filter((score): score is number => score !== null);
-  const scopes = new Set(answers.map(a => a.rubric ? a.rubric.criteria.filter(c => c.status === "scored").map(c => c.id).join(",") : "legacy"));
-  const provisional = answers.length !== totalQuestions || available.length !== answers.length || answers.some(a => a.rubric?.provisional) || scopes.size > 1;
-  // Different assessment scopes cannot be meaningfully averaged.
-  const totalScore = available.length && scopes.size === 1 ? Math.round(available.reduce((sum, score) => sum + score, 0) / available.length * 10) / 10 : null;
-  return { totalScore, provisional, scoredAnswers: available.length, grade: totalScore === null || provisional ? "Chưa xếp loại" : totalScore >= 80 ? "A" : totalScore >= 65 ? "B" : totalScore >= 50 ? "C" : "D" };
+  const assessedRubrics = answers.filter((a): a is typeof a & { rubric: RubricResult } => Boolean(a.rubric && a.rubric.totalScore !== null));
+  const legacyScores = answers.filter(a => !a.rubric && typeof a.score === "number" && Number.isFinite(a.score) && a.score >= 0 && a.score <= 10);
+  const scoreScope = assessedRubrics.length ? CRITERIA.filter(def => assessedRubrics.every(a =>
+    a.rubric.criteria.some(c => c.id === def.id && c.status === "scored" && c.level !== null))).map(def => def.id) : [];
+  const weight = scoreScope.reduce((sum, id) => sum + CRITERIA.find(def => def.id === id)!.weight, 0);
+  const commonScores = weight ? assessedRubrics.map(a => scoreScope.reduce((sum, id) => {
+    const criterion = a.rubric.criteria.find(c => c.id === id)!;
+    return sum + criterion.level! / 4 * CRITERIA.find(def => def.id === id)!.weight;
+  }, 0) / weight * 100) : [];
+  const comparableScores = assessedRubrics.length && !legacyScores.length ? commonScores
+    : legacyScores.length && !assessedRubrics.length ? available : [];
+  const totalScore = comparableScores.length ? Math.round(comparableScores.reduce((sum, score) => sum + score, 0) / comparableScores.length * 10) / 10 : null;
+  const provisional = answers.length !== totalQuestions || available.length !== answers.length
+    || answers.some(a => a.rubric?.provisional) || (assessedRubrics.length > 0 && scoreScope.length < CRITERIA.length);
+  return { totalScore, provisional, scoredAnswers: available.length, scoreScope, grade: totalScore === null || provisional ? "Chưa xếp loại" : totalScore >= 80 ? "A" : totalScore >= 65 ? "B" : totalScore >= 50 ? "C" : "D" };
 }
 
 export function computeProvisionalAverage(answers: Array<{ score?: number | null; rubric?: RubricResult | null }>): number | null {

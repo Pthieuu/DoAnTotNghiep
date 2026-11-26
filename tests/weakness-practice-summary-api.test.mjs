@@ -33,6 +33,7 @@ function fixture(options = {}) {
       if (options.aiError) throw new Error('AI failed');
       return plain(summary);
     } },
+    '@/lib/interview-rubric': rubric,
     '@/lib/supabase/server': { createClient: async () => ({
       auth: { getUser: async () => ({ data: { user: options.anonymous ? null : { id: userId } } }) },
       from: table => {
@@ -105,6 +106,14 @@ test('cached ordinary summaries keep the original response and avoid extra reads
   assert.equal(instance.state.calls.length, 1);
   assert.equal(instance.state.generated.length, 0);
   assert.equal(instance.state.updates.length, 0);
+});
+
+test('cached empty overall score is recomputed from saved answer rubrics without another AI call', async () => {
+  const instance = fixture({ normal: true, cached: { ...summary, totalScore: null, grade: 'Chưa xếp loại', provisional: true } });
+  const body = await (await instance.post()).json();
+  assert.equal(body.summary.totalScore, 75);
+  assert.equal(instance.state.generated.length, 0);
+  assert.equal(instance.state.updates.length, 1);
 });
 
 test('ordinary uncached sessions still generate their standard summary without practice progress', async () => {

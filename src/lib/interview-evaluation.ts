@@ -19,7 +19,7 @@ type EvaluationInput = {
 
 export type EvaluationResult = {
   score: number | null;
-  rubric: RubricResult;
+  rubric: RubricResult | null;
   feedback: string;
   suggestion: string | null;
 };
@@ -32,7 +32,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
   const model = provider === "ollama"
     ? aiConfig.ollamaModel
     : provider === "gemini"
-      ? aiConfig.geminiModel
+      ? aiConfig.geminiEvaluationModel || aiConfig.geminiModel
       : provider === "groq"
         ? aiConfig.groqModel
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
@@ -42,7 +42,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     ? LOCAL_RUBRIC_PROMPT
     : `${RUBRIC_PROMPT}\n\nỨng viên có thể hỏi lại nghĩa từ, ngữ pháp, yêu cầu nhắc lại hoặc xác nhận cách hiểu trong hội thoại. Phân biệt các yêu cầu làm rõ này với câu trả lời thực tế; không coi riêng việc hỏi lại là trả lời sai hoặc dùng nó để suy diễn năng lực. Chỉ chấm nội dung trả lời thực tế, không tự bổ sung câu trả lời còn thiếu.\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}`;
 
-  async function runAttempt(retryNote?: string): Promise<RubricResult> {
+  async function runAttempt(retryNote?: string): Promise<RubricResult | null> {
     const messages = [
       { role: "system", content: retryNote ? `${baseSystemContent}\n\n${retryNote}` : baseSystemContent },
       { role: "user", content: JSON.stringify({
@@ -174,9 +174,18 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
   let text: string | undefined;
   if (provider === "gemini") {
     const payload = (await response.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+      promptFeedback?: { blockReason?: string };
     };
     text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text || (payload.candidates?.[0]?.finishReason && payload.candidates[0].finishReason !== "STOP")) {
+      console.warn("Gemini grading response metadata", {
+        model, questionIndex: input.questionIndex, answerLength: input.userAnswer.length,
+        finishReason: payload.candidates?.[0]?.finishReason ?? null,
+        blockReason: payload.promptFeedback?.blockReason ?? null,
+        outputLength: text?.length ?? 0,
+      });
+    }
   } else if (provider === "ollama") {
     const payload = (await response.json()) as {
       message?: { content?: string }; done_reason?: string;
@@ -200,26 +209,37 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     text = payload.choices?.[0]?.message?.content;
   }
 
-    let result: unknown;
-    try {
-      result = JSON.parse(text || "");
-    } catch {
-      throw new Error("AI trả về kết quả chấm điểm không đọc được. Hãy thử lại.");
-    }
-
-    return parseRubric(result, { answer: input.userAnswer, language: input.language, targetRole: input.targetRole });
+  let result: unknown;
+  try {
+    result = JSON.parse(text || "");
+  } catch {
+    if (provider !== "gemini") throw new Error("AI trả về kết quả chấm điểm không đọc được. Hãy thử lại.");
+    console.warn("Gemini grading JSON parse failed", { model, questionIndex: input.questionIndex, answerLength: input.userAnswer.length, outputLength: text?.length ?? 0 });
+    result = null;
   }
 
-  let rubric: RubricResult;
+  let rubric: RubricResult | null;
+  try {
+    rubric = result === null ? null : parseRubric(result, { answer: input.userAnswer, language: input.language, targetRole: input.targetRole });
+  } catch (error) {
+    if (provider !== "gemini") throw error;
+    console.warn("Gemini rubric validation failed", { model, questionIndex: input.questionIndex, error: error instanceof Error ? error.message : "unknown" });
+    rubric = null;
+  }
+  return rubric;
+  }
+
+  let rubric: RubricResult | null;
   const retryInstruction = "LƯU Ý QUAN TRỌNG: Lần trước trường evidence không khớp nguyên văn với answer. Hãy copy chính xác 100% từng ký tự từ trường answer, không rút gọn bằng dấu ..., không đổi dấu ngoặc.";
   try {
     rubric = await runAttempt();
     const hasMissingEvidence = provider !== "ollama"
       && input.userAnswer.trim().length > 0
+      && rubric !== null
       && rubric.criteria.some((c) => c.status === "insufficient_data" && c.reason.includes("AI chưa cung cấp"));
     if (hasMissingEvidence) {
       try {
-        rubric = await runAttempt(retryInstruction);
+        rubric = (await runAttempt(retryInstruction)) ?? rubric;
       } catch {
         // Keep the first partial evaluation if retry fails.
       }
@@ -233,6 +253,7 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     }
   }
 
+  if (!rubric) return { score: null, rubric: null, feedback: "AI chấm điểm chưa thành công. Câu trả lời đã được lưu; bạn có thể chấm lại trong trang chi tiết buổi phỏng vấn.", suggestion: null };
   const structureLabel = rubric.structure.status === "passed" ? "Đạt chuẩn cấu trúc" : rubric.structure.status === "failed" ? "Chưa đạt chuẩn cấu trúc" : "Chưa đủ dữ liệu cấu trúc";
   return {
     score: rubric.totalScore === null ? null : rubric.totalScore / 10,

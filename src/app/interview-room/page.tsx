@@ -1,4 +1,4 @@
-import type { RubricResult } from "@/lib/interview-rubric";
+import { isFailedGradingRubric, type RubricResult } from "@/lib/interview-rubric";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import type { Metadata } from "next";
@@ -55,7 +55,7 @@ export default async function InterviewRoomPage({ searchParams }: PageProps<"/in
       } else {
         const answers = answerRows || [];
         const publicQuestion = (question: StoredQuestion): StoredQuestion => ({ text: question.text, translation: question.translation, focus: question.focus });
-        const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer, score: item.score, feedback: item.feedback, rubric: item.rubric_json }] : []);
+        const turns = answers.flatMap((item) => questions[item.question_index] ? [{ question: publicQuestion(questions[item.question_index]), answer: item.answer, score: item.score, feedback: isFailedGradingRubric(item.rubric_json) ? "AI grading did not finish. You can retry grading from Answer Details." : item.feedback, rubric: isFailedGradingRubric(item.rubric_json) ? null : item.rubric_json }] : []);
         const completed = data.status === "completed";
         const currentIndex = answers.length;
         const opening = needsIntroduction(data.status, answers.length, data.self_introduction);

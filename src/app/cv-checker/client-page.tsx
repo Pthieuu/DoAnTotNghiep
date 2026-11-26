@@ -24,8 +24,8 @@ export default function CvCheckerClient() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
-      if (selected.size > 10 * 1024 * 1024) {
-        setErrorMessage("Uploaded file exceeds 10MB limit. Please select a smaller file.");
+      if (selected.size > 4 * 1024 * 1024) {
+        setErrorMessage("Uploaded file exceeds 4MB limit. Please select a smaller file.");
         return;
       }
       setFile(selected);
@@ -41,8 +41,8 @@ export default function CvCheckerClient() {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const dropped = e.dataTransfer.files[0];
-      if (dropped.size > 10 * 1024 * 1024) {
-        setErrorMessage("Uploaded file exceeds 10MB limit. Please select a smaller file.");
+      if (dropped.size > 4 * 1024 * 1024) {
+        setErrorMessage("Uploaded file exceeds 4MB limit. Please select a smaller file.");
         return;
       }
       setFile(dropped);
@@ -217,7 +217,7 @@ export default function CvCheckerClient() {
               <div>
                 <h2 className="text-base font-bold text-primary">Upload CV (履歴書) for Evaluation</h2>
                 <p className="text-xs text-on-surface-variant">
-                  Supports PDF or DOCX files (Up to 10MB). Data is kept private to your session.
+                  Supports PDF or DOCX files (Up to 4MB). Data is kept private to your session.
                 </p>
               </div>
             </div>
@@ -258,7 +258,7 @@ export default function CvCheckerClient() {
                     Drag &amp; drop CV file here, or <span className="text-secondary underline">browse from computer</span>
                   </p>
                   <p className="text-xs text-on-surface-variant">
-                    Supported formats: PDF, DOCX (Size ≤ 10MB)
+                    Supported formats: PDF, DOCX (Size ≤ 4MB)
                   </p>
                 </div>
               )}

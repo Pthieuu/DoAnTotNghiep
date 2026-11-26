@@ -1,5 +1,5 @@
 import "server-only";
-import { summarizeScores, type RubricResult } from "./interview-rubric";
+import { summarizeScores, type CriterionId, type RubricResult } from "./interview-rubric";
 import { getAiConfig } from "./ai-config";
 import type { WeaknessPracticeProgress } from "./weakness-practice-progress";
 
@@ -22,6 +22,7 @@ export type SummaryResult = {
   totalScore: number | null;
   provisional?: boolean;
   scoredAnswers?: number;
+  scoreScope?: CriterionId[];
   grade: string;
   strengths: string[];
   weaknesses: string[];

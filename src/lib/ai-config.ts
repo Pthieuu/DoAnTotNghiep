@@ -31,6 +31,7 @@ export function getAiConfig() {
   const ollamaModel = env.OLLAMA_MODEL || process.env.OLLAMA_MODEL || "qwen3:4b";
   const geminiApiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
   const geminiModel = env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const geminiEvaluationModel = env.GEMINI_EVALUATION_MODEL || process.env.GEMINI_EVALUATION_MODEL || geminiModel;
 
   return {
     provider,
@@ -40,5 +41,6 @@ export function getAiConfig() {
     ollamaModel,
     geminiApiKey,
     geminiModel,
+    geminiEvaluationModel,
   };
 }
