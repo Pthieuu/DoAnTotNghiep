@@ -3,6 +3,22 @@ import { checkRequest, json } from "@/lib/auth-http";
 import { generateSummary, type SummaryResult } from "@/lib/interview-summary";
 
 import type { RubricResult } from "@/lib/interview-rubric";
+
+function provisionalAverage(answers: Array<{ score?: number | null; rubric?: RubricResult | null }>): number | null {
+  const scores = answers
+    .map((a) => {
+      if (a.rubric && typeof a.rubric.totalScore === "number" && Number.isFinite(a.rubric.totalScore)) {
+        return a.rubric.totalScore;
+      }
+      if (typeof a.score === "number" && Number.isFinite(a.score) && a.score >= 0 && a.score <= 10) {
+        return a.score * 10;
+      }
+      return null;
+    })
+    .filter((value): value is number => value !== null);
+  if (!scores.length) return null;
+  return Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+}
 import { getWeaknessPracticeSession } from "@/lib/weakness-practice";
 import { calculateWeaknessPracticeProgress, type PracticeProgressAnswer } from "@/lib/weakness-practice-progress";
 import { querySessionWithPractice } from "@/lib/interview-session-query";
@@ -132,6 +148,24 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
     }
     if (practiceProgress) summaryResult = { ...summaryResult, practiceProgress };
+    if (summaryResult.totalScore === null) {
+      const provisionalTotal = provisionalAverage(
+        answers.map((a) => ({ score: a.score, rubric: a.rubric_json }))
+      );
+      if (provisionalTotal !== null) {
+        summaryResult = {
+          ...summaryResult,
+          totalScore: provisionalTotal,
+          provisional: true,
+          grade: "Chưa xếp loại",
+          scoredAnswers: answers.filter(
+            (a) =>
+              (a.rubric_json && typeof a.rubric_json.totalScore === "number") ||
+              (typeof a.score === "number" && Number.isFinite(a.score))
+          ).length,
+        };
+      }
+    }
     if (answers.length < questions.length) {
       summaryResult = {
         ...summaryResult,

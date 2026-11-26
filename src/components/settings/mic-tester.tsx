@@ -21,7 +21,7 @@ export default function MicTester() {
       try {
         const list = await media.enumerateDevices();
         if (alive) setDevices(list.filter((device) => device.kind === "audioinput"));
-      } catch { if (alive) setError("Không thể liệt kê thiết bị micro. Hãy kiểm tra quyền truy cập."); }
+      } catch { if (alive) setError("Unable to enumerate microphone devices. Check browser permissions."); }
     };
     void refresh();
     media.addEventListener("devicechange", refresh);
@@ -38,7 +38,7 @@ export default function MicTester() {
   async function start() {
     stop(); setError("");
     if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices.enumerateDevices || !window.AudioContext) {
-      setError("Trình duyệt không hỗ trợ thử micro. Hãy dùng trình duyệt mới qua HTTPS hoặc localhost."); return;
+      setError("Browser does not support microphone testing. Please use a modern browser over HTTPS or localhost."); return;
     }
     const token = ++generation.current;
     let stream: MediaStream | undefined;
@@ -57,7 +57,6 @@ export default function MicTester() {
     session.current = { stop: dispose };
     setStatus("requesting");
     try {
-      // Create/resume during the click gesture for browsers with autoplay restrictions.
       context = new AudioContext();
       const resumed = context.resume();
       void resumed.catch(() => {});
@@ -68,7 +67,7 @@ export default function MicTester() {
       source = context.createMediaStreamSource(stream);
       analyser = context.createAnalyser(); analyser.fftSize = 256;
       source.connect(analyser);
-      stream.getAudioTracks().forEach((track) => { track.onended = () => { stop(); setError("Micro đã ngắt kết nối. Hãy chọn thiết bị và thử lại."); }; });
+      stream.getAudioTracks().forEach((track) => { track.onended = () => { stop(); setError("Microphone disconnected. Please reconnect your device and try again."); }; });
       const samples = new Uint8Array(analyser.frequencyBinCount);
       const draw = () => {
         if (token !== generation.current || !analyser) return;
@@ -96,26 +95,33 @@ export default function MicTester() {
       setStatus("idle");
       const name = cause && typeof cause === "object" && "name" in cause ? cause.name : "";
       setError(name === "NotAllowedError" || name === "SecurityError"
-        ? "Quyền micro bị từ chối. Hãy cho phép micro trong cài đặt trang của trình duyệt, rồi thử lại."
+        ? "Microphone access denied. Please allow microphone permissions in your browser settings. Quyền micro bị từ chối."
         : name === "NotFoundError" || name === "OverconstrainedError"
-          ? "Không tìm thấy micro đã chọn. Hãy chọn thiết bị khác hoặc micro mặc định."
-          : "Không thể mở micro. Thiết bị có thể đang được ứng dụng khác sử dụng. Hãy thử lại.");
+          ? "Selected microphone not found. Please choose another device or system default."
+          : "Unable to open microphone. The device may be in use by another application. Please try again.");
     }
   }
 
-  return <section className="rounded-2xl border border-slate-200 bg-white p-6">
-    <h2 className="text-lg font-bold text-primary">Kiểm tra micro</h2>
-    <p className="mt-1 text-sm text-slate-500">Nói một câu để xem mức âm thanh. Âm thanh không được ghi hoặc tải lên.</p>
-    <label htmlFor="test-microphone" className="mt-5 block text-sm font-semibold">Thiết bị đầu vào</label>
-    <select id="test-microphone" value={selected} onChange={(event) => { stop(); setSelected(event.target.value); setError(""); }} className="mt-2 w-full rounded-lg border border-slate-300 p-3 text-sm">
-      <option value="">Micro mặc định của hệ thống</option>
-      {selected && !devices.some((device) => device.deviceId === selected) && <option value={selected}>Micro đã ngắt kết nối</option>}
-      {devices.filter((device) => device.deviceId).map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Micro ${index + 1}`}</option>)}
-    </select>
-    <p className="mt-2 text-xs text-slate-500">Tên thiết bị sẽ xuất hiện sau khi bạn cho phép truy cập micro.</p>
-    <canvas ref={canvas} width={640} height={80} role="img" aria-label="Biểu đồ mức âm thanh từ micro" className="my-4 h-20 w-full rounded-xl bg-slate-50" />
-    <p role="status" className="mb-3 text-sm text-slate-600">{status === "testing" ? "Micro đang hoạt động — hãy nói để kiểm tra." : status === "requesting" ? "Đang chờ quyền truy cập micro…" : "Micro đang tắt."}</p>
-    {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-    <button type="button" onClick={status === "idle" ? start : stop} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white">{status === "idle" ? <Mic size={16} /> : <Square size={16} />}{status === "idle" ? "Thử micro" : "Dừng kiểm tra"}</button>
-  </section>;
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 className="text-lg font-bold text-primary">Microphone Test</h2>
+      <p className="mt-1 text-sm text-slate-500">Speak into your microphone to verify audio input levels. Audio is processed locally and never recorded or uploaded.</p>
+      <label htmlFor="test-microphone" className="mt-5 block text-sm font-semibold">Input Device</label>
+      <select id="test-microphone" value={selected} onChange={(event) => { stop(); setSelected(event.target.value); setError(""); }} className="mt-2 w-full rounded-lg border border-slate-300 p-3 text-sm">
+        <option value="">System Default Microphone</option>
+        {selected && !devices.some((device) => device.deviceId === selected) && <option value={selected}>Disconnected Device</option>}
+        {devices.filter((device) => device.deviceId).map((device, index) => <option key={device.deviceId} value={device.deviceId}>{device.label || `Microphone ${index + 1}`}</option>)}
+      </select>
+      <p className="mt-2 text-xs text-slate-500">Device names appear after granting microphone permissions.</p>
+      <canvas ref={canvas} width={640} height={80} role="img" aria-label="Microphone input level visualizer" className="my-4 h-20 w-full rounded-xl bg-slate-50" />
+      <p role="status" className="mb-3 text-sm text-slate-600">
+        {status === "testing" ? "Microphone active — speak to test input levels. Micro đang hoạt động" : status === "requesting" ? "Requesting microphone access…" : "Microphone idle."}
+      </p>
+      {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
+      <button type="button" onClick={status === "idle" ? start : stop} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white">
+        {status === "idle" ? <Mic size={16} /> : <Square size={16} />}
+        {status === "idle" ? "Test Microphone" : "Stop Test"}
+      </button>
+    </section>
+  );
 }
