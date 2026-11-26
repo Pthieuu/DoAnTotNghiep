@@ -8,6 +8,17 @@ import WeaknessPracticeProgressReport from "@/components/weakness-practice-progr
 import type { WeaknessPracticeSession } from "@/lib/weakness-practice";
 
 import type { SummaryResult } from "@/lib/interview-summary";
+import type { RubricResult } from "@/lib/interview-rubric";
+
+export type QuestionBreakdownItem = {
+  questionIndex: number;
+  questionText: string;
+  answer: string;
+  score: number | null;
+  feedback: string;
+  suggestion?: string | null;
+  rubric?: RubricResult | null;
+};
 
 export default function SummaryClient({
   sessionId,
@@ -17,6 +28,7 @@ export default function SummaryClient({
   status,
   practice = null,
   practiceAvailable = true,
+  questionBreakdown = [],
 }: {
   sessionId: string;
   title: string;
@@ -25,6 +37,7 @@ export default function SummaryClient({
   status: string;
   practice?: WeaknessPracticeSession | null;
   practiceAvailable?: boolean;
+  questionBreakdown?: QuestionBreakdownItem[];
 }) {
   const [summary, setSummary] = useState<SummaryResult | null>(initialSummary);
   const needsRefresh = status === "completed" && (!initialSummary || initialSummary.totalScore === null || practice !== null);
@@ -211,6 +224,60 @@ export default function SummaryClient({
           ))}
         </ul>
       </div>
+
+      {questionBreakdown.length > 0 && (
+        <section aria-label="Per-Question Score Breakdown" className="bg-white rounded-2xl p-6 border border-surface-container shadow-xs space-y-5">
+          <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+            <Icon name="list_alt" /> Question-by-Question Score &amp; Detailed Reasons
+          </h3>
+          <div className="space-y-4">
+            {questionBreakdown.map((item) => {
+              const qScore = item.rubric?.totalScore ?? (typeof item.score === "number" ? Math.round(item.score * 10) : null);
+              return (
+                <div key={item.questionIndex} className="rounded-xl border border-surface-container bg-surface-container-lowest p-4 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <span className="text-xs font-bold uppercase tracking-wider text-secondary">Question {item.questionIndex + 1}</span>
+                      <p className="text-sm font-semibold text-primary">{item.questionText}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 ${
+                      qScore === null ? "bg-surface-container text-on-surface-variant" :
+                      qScore >= 80 ? "bg-emerald-100 text-emerald-800" :
+                      qScore >= 50 ? "bg-amber-100 text-amber-800" :
+                      "bg-rose-100 text-rose-800"
+                    }`}>
+                      {qScore === null ? "Not scored" : `${qScore} / 100`}
+                    </span>
+                  </div>
+
+                  {item.answer && (
+                    <div className="rounded-lg bg-surface-container-low p-3 text-xs text-on-surface-variant">
+                      <span className="font-semibold text-primary">Your Answer: </span>
+                      <span>{item.answer}</span>
+                    </div>
+                  )}
+
+                  {item.rubric?.criteria && item.rubric.criteria.length > 0 ? (
+                    <ul className="space-y-1.5 text-xs">
+                      {item.rubric.criteria.map((c) => (
+                        <li key={c.id} className="flex items-start gap-2 text-on-surface-variant">
+                          <span className="font-mono font-bold text-primary shrink-0 w-10">{c.id}</span>
+                          <span className="shrink-0 font-semibold text-secondary w-16">
+                            {c.status === "scored" ? `${c.level}/4` : c.status === "not_applicable" ? "N/A" : "Missing"}
+                          </span>
+                          <span>{c.reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : item.feedback ? (
+                    <p className="text-xs text-on-surface-variant whitespace-pre-line">{item.feedback}</p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {practiceAvailable
         ? <WeaknessPracticePanel key={sessionId} sessionId={sessionId} continuePractice={practice !== null || !!progress} />

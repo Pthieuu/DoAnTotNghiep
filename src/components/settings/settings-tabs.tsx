@@ -9,9 +9,9 @@ import AccountSettings from "./account-settings";
 import LiveAudioSettings from "./live-audio-settings";
 
 const tabs = [
-  { id: "practice", label: "Luyện tập & Phỏng vấn", icon: BookOpen },
-  { id: "live", label: "Phòng Live & Âm thanh", icon: Mic },
-  { id: "account", label: "Tài khoản & Quyền riêng tư", icon: ShieldCheck },
+  { id: "practice", label: "Practice & Interview", icon: BookOpen },
+  { id: "live", label: "Live Room & Audio", icon: Mic },
+  { id: "account", label: "Account & Privacy", icon: ShieldCheck },
 ] as const;
 
 export default function SettingsTabs({ user }: { user: AuthUser }) {
@@ -26,7 +26,7 @@ export default function SettingsTabs({ user }: { user: AuthUser }) {
   }
   return (
     <div>
-      <div role="tablist" aria-label="Nhóm cài đặt" className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
+      <div role="tablist" aria-label="Settings categories" className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
         {tabs.map(({ id, label, icon: Icon }, index) => (
           <button key={id} ref={(node) => { buttons.current[index] = node; }} id={`settings-tab-${id}`} role="tab" type="button" aria-selected={active === index} aria-controls={`settings-panel-${id}`} tabIndex={active === index ? 0 : -1} onClick={() => setActive(index)} onKeyDown={(event) => navigate(event, index)} className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-primary ${active === index ? "border-primary text-primary" : "border-transparent text-slate-500 hover:text-primary"}`}>
             <Icon size={18} aria-hidden="true" />{label}

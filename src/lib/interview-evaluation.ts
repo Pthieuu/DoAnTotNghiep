@@ -38,18 +38,23 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
         : process.env.OPENAI_INTERVIEW_MODEL || process.env.OPENAI_CV_MODEL || "gpt-4o-mini";
 
   const localSchema = provider === "ollama" ? localRubricSchema(input.userAnswer) : evaluationSchema;
-  const messages = [
-    { role: "system", content: provider === "ollama" ? LOCAL_RUBRIC_PROMPT : `${RUBRIC_PROMPT}\n\nỨng viên có thể hỏi lại nghĩa từ, ngữ pháp, yêu cầu nhắc lại hoặc xác nhận cách hiểu trong hội thoại. Phân biệt các yêu cầu làm rõ này với câu trả lời thực tế; không coi riêng việc hỏi lại là trả lời sai hoặc dùng nó để suy diễn năng lực. Chỉ chấm nội dung trả lời thực tế, không tự bổ sung câu trả lời còn thiếu.\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}` },
-    { role: "user", content: JSON.stringify({
-      cv: input.cvText, targetRole: input.targetRole, jobDescription: input.jobDescription,
-      responseLanguage: "Vietnamese (vi): reason, strengths, weaknesses, practice. Only evidence is quoted in original Japanese.",
-      language: input.language, interviewType: input.interviewType,
-      question: input.question, questionType: input.questionType, answer: input.userAnswer,
-      questionIndex: input.questionIndex, totalQuestions: input.totalQuestions,
-    }) },
-  ];
+  const baseSystemContent = provider === "ollama"
+    ? LOCAL_RUBRIC_PROMPT
+    : `${RUBRIC_PROMPT}\n\nỨng viên có thể hỏi lại nghĩa từ, ngữ pháp, yêu cầu nhắc lại hoặc xác nhận cách hiểu trong hội thoại. Phân biệt các yêu cầu làm rõ này với câu trả lời thực tế; không coi riêng việc hỏi lại là trả lời sai hoặc dùng nó để suy diễn năng lực. Chỉ chấm nội dung trả lời thực tế, không tự bổ sung câu trả lời còn thiếu.\n\nJSON schema bắt buộc:\n${JSON.stringify(evaluationSchema)}`;
 
-  let response: Response;
+  async function runAttempt(retryNote?: string): Promise<RubricResult | null> {
+    const messages = [
+      { role: "system", content: retryNote ? `${baseSystemContent}\n\n${retryNote}` : baseSystemContent },
+      { role: "user", content: JSON.stringify({
+        cv: input.cvText, targetRole: input.targetRole, jobDescription: input.jobDescription,
+        responseLanguage: "Vietnamese (vi): reason, strengths, weaknesses, practice. Only evidence is quoted in original Japanese.",
+        language: input.language, interviewType: input.interviewType,
+        question: input.question, questionType: input.questionType, answer: input.userAnswer,
+        questionIndex: input.questionIndex, totalQuestions: input.totalQuestions,
+      }) },
+    ];
+
+    let response: Response;
   if (provider === "ollama") {
     const baseUrl = (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434").replace(/\/$/, "");
     try {
@@ -221,6 +226,33 @@ export async function evaluateAnswer(input: EvaluationInput): Promise<Evaluation
     console.warn("Gemini rubric validation failed", { model, questionIndex: input.questionIndex, error: error instanceof Error ? error.message : "unknown" });
     rubric = null;
   }
+  return rubric;
+  }
+
+  let rubric: RubricResult | null;
+  const retryInstruction = "LƯU Ý QUAN TRỌNG: Lần trước trường evidence không khớp nguyên văn với answer. Hãy copy chính xác 100% từng ký tự từ trường answer, không rút gọn bằng dấu ..., không đổi dấu ngoặc.";
+  try {
+    rubric = await runAttempt();
+    const hasMissingEvidence = provider !== "ollama"
+      && input.userAnswer.trim().length > 0
+      && rubric !== null
+      && rubric.criteria.some((c) => c.status === "insufficient_data" && c.reason.includes("AI chưa cung cấp"));
+    if (hasMissingEvidence) {
+      try {
+        rubric = (await runAttempt(retryInstruction)) ?? rubric;
+      } catch {
+        // Keep the first partial evaluation if retry fails.
+      }
+    }
+  } catch (err) {
+    const isEvidenceError = err instanceof Error && /Bằng chứng|nguyên văn/.test(err.message);
+    if (provider !== "ollama" && isEvidenceError) {
+      rubric = await runAttempt(retryInstruction);
+    } else {
+      throw err;
+    }
+  }
+
   if (!rubric) return { score: null, rubric: null, feedback: "AI chấm điểm chưa thành công. Câu trả lời đã được lưu; bạn có thể chấm lại trong trang chi tiết buổi phỏng vấn.", suggestion: null };
   const structureLabel = rubric.structure.status === "passed" ? "Đạt chuẩn cấu trúc" : rubric.structure.status === "failed" ? "Chưa đạt chuẩn cấu trúc" : "Chưa đủ dữ liệu cấu trúc";
   return {

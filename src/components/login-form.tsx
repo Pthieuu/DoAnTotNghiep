@@ -179,10 +179,13 @@ export default function LoginForm({ configured, confirmationError }: { configure
                 )}
                 {mode === "verify_otp" && (
                   <div>
-                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]"><label htmlFor="otp" className="text-primary">Verification Code</label></div>
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]">
+                      <label htmlFor="otp" className="text-primary">Verification Code</label>
+                      <button type="button" onClick={handleForgotPassword} className="text-[10px] text-secondary hover:underline">Resend or change email</button>
+                    </div>
                     <div className="relative">
                       <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center align-middle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[18px] text-outline"><Icon name="pin_invoke" /></span>
-                      <input id="otp" name="otp" type="text" maxLength={8} placeholder="12345678" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary tracking-widest" />
+                      <input id="otp" name="otp" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={8} placeholder="Enter verification code" required className="w-full rounded-sm bg-surface-container-low py-3 pr-3 pl-10 text-[13px] outline-offset-2 placeholder:text-outline focus:outline-2 focus:outline-secondary tracking-widest" />
                     </div>
                   </div>
                 )}
