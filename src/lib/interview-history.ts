@@ -1,5 +1,22 @@
 import type { createClient } from "./supabase/server";
 import type { DashboardSession } from "./dashboard-data";
+import type { RubricResult } from "./interview-rubric";
+
+function provisionalAverage(answers: Array<{ score?: number | null; rubric?: RubricResult | null }>): number | null {
+  const scores = answers
+    .map((a) => {
+      if (a.rubric && typeof a.rubric.totalScore === "number" && Number.isFinite(a.rubric.totalScore)) {
+        return a.rubric.totalScore;
+      }
+      if (typeof a.score === "number" && Number.isFinite(a.score) && a.score >= 0 && a.score <= 10) {
+        return a.score * 10;
+      }
+      return null;
+    })
+    .filter((value): value is number => value !== null);
+  if (!scores.length) return null;
+  return Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 10) / 10;
+}
 
 export const HISTORY_PAGE_SIZE = 10;
 
@@ -106,8 +123,42 @@ export async function loadInterviewHistory(
       };
     }
 
+    const sessions = (rows ?? []) as DashboardSession[];
+    const missingIds = sessions
+      .filter((s) => s.status === "completed" && historyScore(s) === "Not assessed")
+      .map((s) => s.id);
+
+    if (missingIds.length > 0) {
+      const { data: answerRows } = await supabase
+        .from("interview_answers")
+        .select("session_id,score,rubric_json")
+        .in("session_id", missingIds);
+
+      if (answerRows && answerRows.length > 0) {
+        const grouped = new Map<string, Array<{ score: number | null; rubric: RubricResult | null }>>();
+        for (const row of answerRows as Array<{ session_id: string; score: number | null; rubric_json: RubricResult | null }>) {
+          const list = grouped.get(row.session_id) ?? [];
+          list.push({ score: row.score, rubric: row.rubric_json });
+          grouped.set(row.session_id, list);
+        }
+        for (const session of sessions) {
+          if (!missingIds.includes(session.id)) continue;
+          const ans = grouped.get(session.id);
+          if (!ans) continue;
+          const avg = provisionalAverage(ans);
+          if (avg !== null) {
+            session.summary_json = {
+              ...(session.summary_json && typeof session.summary_json === "object" ? session.summary_json : {}),
+              provisional: true,
+              totalScore: Math.round(avg),
+            };
+          }
+        }
+      }
+    }
+
     return {
-      sessions: (rows ?? []) as DashboardSession[],
+      sessions,
       totalCount: counts.all,
       filteredCount,
       page,
