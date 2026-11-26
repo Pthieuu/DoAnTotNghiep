@@ -40,25 +40,30 @@ export default function SpeechPreview({ voiceUri, rate, onVoiceChange, disabled 
   function preview() {
     stop(); setError("");
     const voice = voiceUri ? voices.find((item) => item.voiceURI === voiceUri) : voices[0];
-    if (!voice) { setError("Giọng đã chọn không có trên thiết bị này. Hãy chọn một giọng tiếng Nhật khác."); return; }
+    if (!voice) { setError("Selected voice is not available on this device. Please select another Japanese voice."); return; }
     try {
       const next = new SpeechSynthesisUtterance("こんにちは。面接を始めましょう。自己紹介をお願いします。");
       next.lang = "ja-JP"; next.voice = voice; next.rate = rate;
       next.onend = () => { utterance.current = null; setSpeaking(false); };
-      next.onerror = () => { utterance.current = null; setSpeaking(false); setError("Không thể phát giọng đọc. Hãy thử lại hoặc chọn giọng khác."); };
+      next.onerror = () => { utterance.current = null; setSpeaking(false); setError("Unable to play voice preview. Please try again or select another voice."); };
       utterance.current = next; setSpeaking(true); window.speechSynthesis.speak(next);
-    } catch { stop(); setError("Không thể phát giọng đọc trên trình duyệt này."); }
+    } catch { stop(); setError("Unable to play voice preview on this browser."); }
   }
-  return <div className="space-y-3">
-    <label htmlFor="speech-voice" className="block text-sm font-semibold">Giọng đọc tiếng Nhật (Web Speech)</label>
-    <select id="speech-voice" disabled={disabled || !supported || !voices.length} value={voiceUri} onChange={(event) => { stop(); onVoiceChange(event.target.value); }} className="w-full rounded-lg border border-slate-300 p-3 text-sm disabled:opacity-50">
-      <option value="">Giọng tiếng Nhật tự động</option>
-      {voiceUri && !voices.some((voice) => voice.voiceURI === voiceUri) && <option value={voiceUri}>Giọng đã lưu không có trên thiết bị này</option>}
-      {voices.map((voice) => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} ({voice.lang})</option>)}
-    </select>
-    {!supported ? <p role="status" className="text-sm text-amber-700">Trình duyệt không hỗ trợ Web Speech API.</p> : !voices.length && <p role="status" className="text-sm text-amber-700">Chưa có giọng tiếng Nhật. Hãy cài giọng tiếng Nhật trong hệ điều hành rồi mở lại trang.</p>}
-    <p className="text-xs leading-5 text-slate-500">Giọng nghe thử phụ thuộc trình duyệt và hệ điều hành. Giọng Gemini Live được cấu hình riêng.</p>
-    <button type="button" disabled={disabled || !supported || !voices.length} onClick={speaking ? stop : preview} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40">{speaking ? <Square size={16} /> : <Play size={16} />}{speaking ? "Dừng nghe thử" : "Nghe thử tiếng Nhật"}</button>
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-  </div>;
+  return (
+    <div className="space-y-3">
+      <label htmlFor="speech-voice" className="block text-sm font-semibold">Japanese Voice Synthesis (Web Speech)</label>
+      <select id="speech-voice" disabled={disabled || !supported || !voices.length} value={voiceUri} onChange={(event) => { stop(); onVoiceChange(event.target.value); }} className="w-full rounded-lg border border-slate-300 p-3 text-sm disabled:opacity-50">
+        <option value="">System Default Japanese Voice</option>
+        {voiceUri && !voices.some((voice) => voice.voiceURI === voiceUri) && <option value={voiceUri}>Saved voice is not available on this device</option>}
+        {voices.map((voice) => <option key={voice.voiceURI} value={voice.voiceURI}>{voice.name} ({voice.lang})</option>)}
+      </select>
+      {!supported ? <p role="status" className="text-sm text-amber-700">Browser does not support the Web Speech API.</p> : !voices.length && <p role="status" className="text-sm text-amber-700">No Japanese voices found. Please install a Japanese voice pack in your OS settings and reload the page.</p>}
+      <p className="text-xs leading-5 text-slate-500">Preview voice depends on browser and OS speech engines. Gemini Live uses dedicated cloud AI voices.</p>
+      <button type="button" disabled={disabled || !supported || !voices.length} onClick={speaking ? stop : preview} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold disabled:opacity-40">
+        {speaking ? <Square size={16} /> : <Play size={16} />}
+        {speaking ? "Stop Preview" : "Preview Japanese Voice"}
+      </button>
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    </div>
+  );
 }
